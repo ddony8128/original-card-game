@@ -147,7 +147,7 @@ const Index = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             로비로 돌아가기
           </Button>
-          <h1 className="text-4xl font-bold bg-linear-to-r from-primary to-accent bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-primary to-accent bg-clip-text">
             {editingDeckId ? "덱 수정" : "덱 빌더"}
           </h1>
         </div>
@@ -199,52 +199,13 @@ const Index = () => {
           <div className="flex flex-col gap-4 min-h-0">
             <DeckPanel
               deckCards={deckCards}
-              onCardRemove={handleRemove}
-              onDeckSave={handleSave}
+              onRemoveCard={handleRemove}
+              maxDeckSize={MAX_DECK_SIZE}
             />
           </div>
         </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="col-span-1">
-      <h1 className="text-xl font-bold mb-4">
-        {editingDeckId ? "덱 수정" : "새 덱 만들기"}
-      </h1>
-
-
-
-      <div className="flex gap-4">
-        <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-3">
-          {mockCards.map((card) => {
-            const count = deckCards.find((c) => c.id === card.id)?.count || 0;
-            return (
-              <button
-                key={card.id}
-                onClick={() => handleAdd(card.id)}
-                className="border p-3 rounded bg-card hover:bg-accent text-left"
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-bold">{card.name}</span>
-                  <span className="text-sm">{count > 0 && `x${count}`}</span>
-                </div>
-                <p className="text-sm text-muted-foreground">{card.description}</p>
-                <p className="text-xs text-primary mt-1">마나 {card.manaCost}</p>
-              </button>
-            );
-          })}
-        </div>
-
-        </div>
-          </div>
-
-          {/* Right Panel - Deck */}
-          <DeckPanel
-            deckCards={deckCards}
-            onRemoveCard={handleRemove}
-            maxDeckSize={MAX_DECK_SIZE}
-          />
-        </div>
-      </div>
+    </div>
   );
 }
 

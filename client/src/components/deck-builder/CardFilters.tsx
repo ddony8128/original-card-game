@@ -1,54 +1,73 @@
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-type CardFiltersProps = {
+interface CardFiltersProps {
   selectedMana: number | null;
   onManaSelect: (mana: number | null) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
-};
+}
 
-export function CardFilters({
-  selectedMana,
-  onManaSelect,
-  searchQuery,
-  onSearchChange,
-}: CardFiltersProps) {
+const manaFilters = [
+  { value: 1, label: "1" },
+  { value: 2, label: "2" },
+  { value: 3, label: "3" },
+  { value: 4, label: "4" },
+  { value: 5, label: "5+" }
+];
+
+export const CardFilters = ({ 
+  selectedMana, 
+  onManaSelect, 
+  searchQuery, 
+  onSearchChange 
+}: CardFiltersProps) => {
   return (
-    <div className="flex flex-col gap-3">
-      <Input
-        placeholder="카드 이름 검색"
-        value={searchQuery}
-        onChange={(e) => onSearchChange(e.target.value)}
-        className="max-w-sm"
-      />
-      <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          variant={selectedMana === null ? "default" : "outline"}
-          onClick={() => onManaSelect(null)}
-        >
-          전체
-        </Button>
-        {[1, 2, 3, 4].map((m) => (
+    <div className="space-y-4 p-4 bg-card rounded-lg border border-border">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="카드 이름이나 내용 검색..."
+          value={searchQuery}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="pl-10 bg-secondary border-border"
+        />
+      </div>
+
+      {/* Mana Cost Filters */}
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">마나 비용</p>
+        <div className="flex flex-wrap gap-2">
           <Button
-            key={m}
-            variant={selectedMana === m ? "default" : "outline"}
-            onClick={() => onManaSelect(m)}
+            variant={selectedMana === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => onManaSelect(null)}
+            className={cn(
+              "transition-all",
+              selectedMana === null && "shadow-[0_0_20px_hsl(260_80%_55%/0.4)]"
+            )}
           >
-            {m}
+            전체
           </Button>
-        ))}
-        <Button
-          variant={selectedMana === 5 ? "default" : "outline"}
-          onClick={() => onManaSelect(5)}
-        >
-          5+
-        </Button>
+          {manaFilters.map((filter) => (
+            <Button
+              key={filter.value}
+              variant={selectedMana === filter.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => onManaSelect(filter.value)}
+              className={cn(
+                "transition-all",
+                selectedMana === filter.value && "shadow-[0_0_20px_hsl(260_80%_55%/0.4)]"
+              )}
+            >
+              {filter.label}
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   );
-}
-
-export default CardFilters;
-
-
+};
