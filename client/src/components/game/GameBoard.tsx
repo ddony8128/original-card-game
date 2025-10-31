@@ -1,4 +1,4 @@
-import { Position } from "@/types/game";
+import type { Position } from "@/types/game";
 import { cn } from "@/lib/utils";
 
 interface GameBoardProps {
