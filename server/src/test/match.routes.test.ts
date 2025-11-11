@@ -9,10 +9,16 @@ let app: any;
 
 async function registerAndLogin(suffix: string) {
   const username = `u_${Date.now()}_${suffix}`;
-  await request(app).post("/api/auth/register").send({ username, password: "pw" });
-  const res = await request(app).post("/api/auth/login").send({ username, password: "pw" });
+  await request(app)
+    .post("/api/auth/register")
+    .send({ username, password: "pw" });
+  const res = await request(app)
+    .post("/api/auth/login")
+    .send({ username, password: "pw" });
   const cookie = res.headers["set-cookie"]?.[0] as string;
-  const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+  const me = await request(app)
+    .get("/api/auth/me")
+    .set("Cookie", cookie);
   return { cookie, userId: me.body.id as string, username };
 }
 
@@ -41,7 +47,9 @@ describe("Match routes", () => {
   });
 
   it("POST /api/match/create -> 201", async () => {
-    const res = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const res = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty("roomId");
     expect(res.body).toHaveProperty("host.username", host.username);
@@ -57,7 +65,9 @@ describe("Match routes", () => {
   });
 
   it("join success -> 200 with host/guest", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
     const res = await request(app)
       .post("/api/match/join")
@@ -71,29 +81,49 @@ describe("Match routes", () => {
   });
 
   it("join conflict -> 409", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
-    const joined = await request(app).post("/api/match/join").set("Cookie", guest.cookie).send({ roomId });
+    const joined = await request(app)
+      .post("/api/match/join")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
     expect(joined.status).toBe(200);
     const u3 = await registerAndLogin("third");
-    const res = await request(app).post("/api/match/join").set("Cookie", u3.cookie).send({ roomId });
+    const res = await request(app)
+      .post("/api/match/join")
+      .set("Cookie", u3.cookie)
+      .send({ roomId });
     expect(res.status).toBe(409);
   });
 
   it("GET /api/match/:roomId -> state", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
-    await request(app).post("/api/match/join").set("Cookie", guest.cookie).send({ roomId });
-    const res = await request(app).get(`/api/match/${roomId}`).set("Cookie", host.cookie);
+    await request(app)
+      .post("/api/match/join")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
+    const res = await request(app)
+      .get(`/api/match/${roomId}`)
+      .set("Cookie", host.cookie);
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("roomId", roomId);
     expect(res.body.status).toBe("waiting");
   });
 
   it("PATCH /api/match/deck -> 403 when deck not owned", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
-    await request(app).post("/api/match/join").set("Cookie", guest.cookie).send({ roomId });
+    await request(app)
+      .post("/api/match/join")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
     // seed deck for host, try submit as guest
     seedDeck(host.userId, "deck-host-x");
     const res = await request(app)
@@ -104,9 +134,14 @@ describe("Match routes", () => {
   });
 
   it("PATCH /api/match/deck -> playing when both submitted", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
-    await request(app).post("/api/match/join").set("Cookie", guest.cookie).send({ roomId });
+    await request(app)
+      .post("/api/match/join")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
     seedDeck(host.userId, "deck-h1");
     seedDeck(guest.userId, "deck-g1");
     const r1 = await request(app)
@@ -127,24 +162,40 @@ describe("Match routes", () => {
   });
 
   it("POST /api/match/leave -> finished", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
-    await request(app).post("/api/match/join").set("Cookie", guest.cookie).send({ roomId });
-    const res = await request(app).post("/api/match/leave").set("Cookie", guest.cookie).send({ roomId });
+    await request(app)
+      .post("/api/match/join")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
+    const res = await request(app)
+      .post("/api/match/leave")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ roomId, status: "finished" });
   });
 
   it("DELETE /api/match/:roomId -> 403 for guest, 200 for host", async () => {
-    const created = await request(app).post("/api/match/create").set("Cookie", host.cookie);
+    const created = await request(app)
+      .post("/api/match/create")
+      .set("Cookie", host.cookie);
     const roomId = created.body.roomId as string;
-    await request(app).post("/api/match/join").set("Cookie", guest.cookie).send({ roomId });
-    const resGuest = await request(app).delete(`/api/match/${roomId}`).set("Cookie", guest.cookie);
+    await request(app)
+      .post("/api/match/join")
+      .set("Cookie", guest.cookie)
+      .send({ roomId });
+    const resGuest = await request(app)
+      .delete(`/api/match/${roomId}`)
+      .set("Cookie", guest.cookie);
     expect(resGuest.status).toBe(403);
-    const resHost = await request(app).delete(`/api/match/${roomId}`).set("Cookie", host.cookie);
+    const resHost = await request(app)
+      .delete(`/api/match/${roomId}`)
+      .set("Cookie", host.cookie);
     expect(resHost.status).toBe(200);
     expect(resHost.body).toEqual({ roomId, status: "finished" });
   });
 });
-
 
