@@ -1,16 +1,13 @@
-import express from "express";
-import cors from "cors";
+import http from "node:http";
 import 'dotenv/config';
+import { app } from "./src/app";
+import { attachWebSocket } from "./src/ws/socket";
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// HTTP server
+const server = http.createServer(app);
 
-
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+// Attach WebSocket server
+attachWebSocket(server);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
+server.listen(PORT, () => console.log(`✅ Server running on ${PORT}`));
