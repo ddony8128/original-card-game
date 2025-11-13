@@ -25,8 +25,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.log
-!src/features/logs/
-!src/features/logs/**
+!client/src/features/logs/
+!client/src/features/logs/**
 
 # TypeScript
 *.tsbuildinfo

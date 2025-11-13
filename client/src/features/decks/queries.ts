@@ -18,7 +18,11 @@ export function useCreateDeckMutation() {
 export function useUpdateDeckMutation(deckId: string) {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (input: { name: string; main_cards: string[]; cata_cards: string[] }) =>
+		mutationFn: (input: {
+			name: string;
+			main_cards: Array<{ id: string; count: number }>;
+			cata_cards: Array<{ id: string; count: number }>;
+		}) =>
 			decksApi.update(deckId, input),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: ["decks"] });
