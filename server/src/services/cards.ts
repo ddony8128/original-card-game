@@ -38,8 +38,6 @@ export const cardsService = {
   }): Promise<{
     items: CardRow[];
     total: number;
-    page: number;
-    limit: number;
   }> {
     const paginate = !(params.page === undefined && params.limit === undefined);
     const page = paginate ? Math.max(1, Number(params.page ?? 1)) : 1;
@@ -54,7 +52,12 @@ export const cardsService = {
       .order("name_ko", { ascending: true });
 
     if (typeof params.mana === "number" && Number.isFinite(params.mana)) {
-      query = query.eq("mana", params.mana);
+      // mana=5가 들어오면 5 이상으로 필터 (5+)
+      if (params.mana >= 5) {
+        query = query.gte("mana", 5);
+      } else {
+        query = query.eq("mana", params.mana);
+      }
     }
 
     if (params.name && params.name.trim() !== "") {
@@ -80,9 +83,7 @@ export const cardsService = {
     const rows = (data ?? []) as Array<Omit<CardRow, "effect_json"> & { effect_json: unknown }>;
     return {
       items: rows.map((r) => ({ ...r, effect_json: coerceJson(r.effect_json) })),
-      total: count ?? rows.length,
-      page,
-      limit: paginate ? limit : rows.length,
+      total: count ?? rows.length
     };
   },
 };

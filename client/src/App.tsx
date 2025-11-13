@@ -4,11 +4,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import Login from "./pages/Login";
 import Lobby from "./pages/Lobby";
-import DeckList from "./pages/DeckList";
-import Index from "./pages/Index";
+import DeckBuilder from "./pages/DeckBuilder";
+import BackRoom from "./pages/BackRoom";
 import Game from "./pages/Game";
-import Result from "./pages/Result";
 import NotFound from "./pages/NotFound";
+import RequireAuth from "./components/auth/RequireAuth";
+import RequireParticipant from "./components/auth/RequireParticipant";
 
 const queryClient = new QueryClient();
 
@@ -20,11 +21,10 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Navigate to="/login" />} />
-            <Route path="/lobby" element={<Lobby />} />
-            <Route path="/deck-list" element={<DeckList />} />
-            <Route path="/deck-builder" element={<Index />} />
-            <Route path="/game" element={<Game />} />
-            <Route path="/result" element={<Result />} />
+            <Route path="/lobby" element={<RequireAuth><Lobby /></RequireAuth>} />
+            <Route path="/deck-builder" element={<RequireAuth><DeckBuilder /></RequireAuth>} />
+            <Route path="/back-room/:roomId" element={<RequireParticipant><BackRoom /></RequireParticipant>} />
+            <Route path="/game/:roomId" element={<RequireParticipant requirePlaying><Game /></RequireParticipant>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

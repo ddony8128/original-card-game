@@ -1,5 +1,5 @@
-import type { Position } from "@/types/game";
-import { cn } from "@/lib/utils";
+import type { Position } from "@/shared/types/game";
+import { cn } from "@/shared/lib/utils";
 
 interface GameBoardProps {
   playerPosition: Position;

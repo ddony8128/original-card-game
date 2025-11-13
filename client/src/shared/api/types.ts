@@ -1,30 +1,21 @@
 // Server DTO types for API layer
 
-export type AuthRegisterResponse = {
+export type AuthResponse = {
 	id: string;
 	username: string;
 	message: string;
-};
-
-export type AuthLoginResponse = {
-	id: string;
-	username: string;
-	message: string;
-};
-
-export type AuthMeResponse = {
-	id: string;
-	username: string;
 	created_at: string;
-	message: string;
 };
+
+export type Json = null | boolean | number | string | { [key: string]: Json } | Json[];
 
 export type CardDto = {
 	id: string;
+	name_dev: string;
 	name_ko: string;
 	type: "instant" | "ritual" | "catastrophe" | "summon" | "item";
-	mana: number;
-	effect_json: unknown | null;
+	mana: number | null;
+	effect_json: Json | null;
 	token: boolean;
 	description_ko: string;
 };
@@ -32,15 +23,13 @@ export type CardDto = {
 export type CardsListResponse = {
 	cards: CardDto[];
 	total: number;
-	page?: number;
-	limit?: number;
 };
 
 export type DeckDto = {
 	id: string;
 	name: string;
-	main_cards: string[];
-	cata_cards: string[];
+	main_cards: Array< Omit<CardDto, "token" | "effect_json"> & { count: number } >;
+	cata_cards: Array< Omit<CardDto, "token" | "effect_json"> & { count: number } >;
 	created_at: string;
 	updated_at: string;
 };

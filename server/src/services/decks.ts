@@ -36,8 +36,19 @@ export const decksService = {
       .select("id,name_dev,name_ko,description_ko,type,mana,token")
       .in("id", ids);
     if (error) throw error;
-    const byId = new Map<string, { id: string; name_dev: string; name_ko: string; description_ko: string | null; type: DeckList[number]["type"]; mana: number | null; token: boolean }>();
-    for (const row of data ?? []) byId.set(row.id, row as any);
+    const byId = new Map<
+      string,
+      {
+        id: string;
+        name_dev: string;
+        name_ko: string;
+        description_ko: string | null;
+        type: DeckList[number]["type"];
+        mana: number | null;
+        token: boolean;
+      }
+    >();
+    for (const row of data ?? []) byId.set((row as any).id, row as any);
 
     // 공통 제약: token=false
     const ensureRow = (id: string) => {

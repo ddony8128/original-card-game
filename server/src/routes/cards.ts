@@ -48,7 +48,7 @@ cardsRouter.get("/", (req, res) => {
             }
         }
 
-        const { items, total, page: p, limit: l } = await cardsService.list({
+        const { items, total } = await cardsService.list({
             mana,
             name,
             token,
@@ -58,6 +58,7 @@ cardsRouter.get("/", (req, res) => {
         });
         const normalized = items.map((r) => ({
             id: r.id,
+            name_dev: r.name_dev,
             name_ko: r.name_ko,
             type: r.type,
             mana: r.mana,
@@ -65,7 +66,7 @@ cardsRouter.get("/", (req, res) => {
             token: r.token,
             description_ko: r.description_ko,
         }));
-        res.status(HttpStatus.OK).json({ cards: normalized, total, page: p, limit: l });
+        res.status(HttpStatus.OK).json({ cards: normalized, total });
     })().catch((e) =>
         res
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -82,7 +83,8 @@ cardsRouter.get("/:id", (req, res) => {
                 .json({ message: "not found" });
         return res.json({
             id: card.id,
-            name: card.name_ko,
+            name_dev: card.name_dev,
+            name_ko: card.name_ko,
             type: card.type,
             mana: card.mana,
             effects: card.effect_json ?? null,

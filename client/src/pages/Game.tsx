@@ -1,141 +1,150 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useGameStore } from "@/store/useGameStore";
-import { useDeckStore } from "@/store/useDeckStore";
-import type { Card as CardType } from "@/types/deck";
+import { useNavigate, useParams } from "react-router-dom";
+import type { Card as CardType } from "@/shared/types/deck";
 import { GameCard } from "@/components/deck-builder/GameCard";
 import { GameBoard } from "@/components/game/GameBoard";
-import type { GameState, Position } from "@/types/game";
+import type { GameState, Position } from "@/shared/types/game";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Trash2, Play } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
+import { useDecksQuery } from "@/features/decks/queries";
+import { useMeQuery } from "@/features/auth/queries";
 
 export default function Game() {
   const navigate = useNavigate();
-  const { user, room } = useGameStore();
-  const { decks } = useDeckStore();
-  
+  const { roomId } = useParams<{ roomId: string }>();
+  const { data: me } = useMeQuery();
+  const { data: serverDecks } = useDecksQuery();
+
+  // 상단 테스트 버튼/플레이스홀더
+  const [wsMessage, setWsMessage] = useState<string>("");
+
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<Position | null>(null);
 
   useEffect(() => {
-    if (!user || !room) {
-      navigate("/");
+    if (!me) {
+      navigate("/login");
       return;
     }
-    
-    // 첫 번째 덱으로 게임 초기화
-    if (decks.length > 0 && !gameState) {
-      const deck = decks[0];
-      const fullDeck: CardType[] = [];
-      deck.cards.forEach(card => {
-        for (let i = 0; i < card.count; i++) {
-          fullDeck.push({ ...card });
-        }
-      });
-      
-      // 덱 섞기
-      const shuffled = [...fullDeck].sort(() => Math.random() - 0.5);
-      
-      // 초기 핸드 5장 드로우
-      const initialHand = shuffled.slice(0, 5);
-      const remainingDeck = shuffled.slice(5);
-      
-      setGameState({
-        deck: remainingDeck,
-        hand: initialHand,
-        discardPile: [],
-        playedCards: [],
-        mana: 3,
-        maxMana: 3,
-        hp: 20,
-        maxHp: 20,
-        playerPosition: { x: 2, y: 4 }, // 하단 중앙
-        opponentPosition: { x: 2, y: 0 }, // 상단 중앙
-      });
-    }
-  }, [user, room, decks, gameState, navigate]);
+    if (!serverDecks || serverDecks.length === 0 || gameState) return;
+
+    // 서버 첫 번째 덱으로 초기화 (main + cata)
+    const deck = serverDecks[0];
+    const entries = [...deck.main_cards, ...deck.cata_cards];
+    const fullDeck: CardType[] = [];
+    entries.forEach(e => {
+      for (let i = 0; i < (e.count ?? 0); i++) {
+        fullDeck.push({
+          id: e.id,
+          name_dev: e.name_dev,
+          name_ko: e.name_ko,
+          description_ko: e.description_ko ?? "",
+          type: e.type,
+          mana: e.mana,
+        });
+      }
+    });
+
+    const shuffled = [...fullDeck].sort(() => Math.random() - 0.5);
+    const initialHand = shuffled.slice(0, 5);
+    const remainingDeck = shuffled.slice(5);
+
+    setGameState({
+      deck: remainingDeck,
+      hand: initialHand,
+      discardPile: [],
+      playedCards: [],
+      mana: 3,
+      maxMana: 3,
+      hp: 20,
+      maxHp: 20,
+      playerPosition: { x: 2, y: 4 },
+      opponentPosition: { x: 2, y: 0 },
+    });
+  }, [me, serverDecks, gameState, navigate]);
 
   const drawCard = () => {
     if (!gameState) return;
-    
+
     if (gameState.deck.length === 0) {
       toast.error("덱에 카드가 없습니다.", {
         description: "덱에 카드를 추가하세요.",
       });
       return;
     }
-    
+
     if (gameState.hand.length >= 10) {
       toast.error("손패가 가득 찼습니다.", {
         description: "최대 10장까지 보유할 수 있습니다.",
       });
       return;
     }
-    
+
     const newDeck = [...gameState.deck];
     const drawnCard = newDeck.shift()!;
-    
+
     setGameState({
       ...gameState,
       deck: newDeck,
       hand: [...gameState.hand, drawnCard],
     });
-    
+
     toast.success("카드를 뽑았습니다.", {
-      description: `${drawnCard.name}을(를) 뽑았습니다.`,
+      description: `${drawnCard.name_ko}을(를) 뽑았습니다.`,
     });
   };
 
   const playCard = (index: number) => {
     if (!gameState) return;
-    
+
     const card = gameState.hand[index];
-    
-    if (gameState.mana < card.manaCost) {
+
+    const cost = card.mana ?? 0;
+    if (gameState.mana < cost) {
       toast.error("마나가 부족합니다.", {
-        description: `${card.manaCost} 마나가 필요합니다.`,
+        description: `${cost} 마나가 필요합니다.`,
       });
       return;
     }
-    
+
     const newHand = [...gameState.hand];
     newHand.splice(index, 1);
-    
+
     setGameState({
       ...gameState,
       hand: newHand,
       playedCards: [...gameState.playedCards, card],
-      mana: gameState.mana - card.manaCost,
+      mana: gameState.mana - cost,
     });
-    
+
     toast.success("카드를 사용했습니다.", {
-      description: `${card.name}을(를) 사용했습니다.`,
+      description: `${card.name_ko}을(를) 사용했습니다.`,
     });
-    
+
     setSelectedCardIndex(null);
   };
 
   const discardCard = (index: number) => {
     if (!gameState) return;
-    
+
     const card = gameState.hand[index];
     const newHand = [...gameState.hand];
     newHand.splice(index, 1);
-    
+
     setGameState({
       ...gameState,
       hand: newHand,
       discardPile: [...gameState.discardPile, card],
     });
-    
+
     toast.success("카드를 버렸습니다.", {
-      description: `${card.name}을(를) 버렸습니다.`,
+      description: `${card.name_ko}을(를) 버렸습니다.`,
     });
-    
+
     setSelectedCardIndex(null);
   };
 
@@ -191,14 +200,14 @@ export default function Game() {
 
   const endTurn = () => {
     if (!gameState) return;
-    
+
     setGameState({
       ...gameState,
       mana: Math.min(gameState.maxMana + 1, 10),
       maxMana: Math.min(gameState.maxMana + 1, 10),
       playedCards: [],
     });
-    
+
     toast.success("턴 종료", {
       description: "새로운 턴이 시작됩니다.",
     });
@@ -215,8 +224,23 @@ export default function Game() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             로비
           </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() =>
+                setWsMessage(
+                  "WS 테스트 버튼 클릭됨 (추후 WebSocket 연결 예정)"
+                )
+              }
+            >
+              WS 테스트
+            </Button>
+            <div className="text-xs text-muted-foreground min-w-[200px]">
+              {wsMessage || "웹소켓 상태 메시지 ..."}
+            </div>
+          </div>
           <div className="text-sm text-muted-foreground">
-            방 코드: {room?.code}
+            방 코드: {roomId ?? "-"}
           </div>
         </div>
 
@@ -234,7 +258,9 @@ export default function Game() {
         <div className="grid grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold text-primary">{gameState.hp}</div>
+              <div className="text-2xl font-bold text-primary">
+                {gameState.hp}
+              </div>
               <div className="text-xs text-muted-foreground">HP</div>
             </CardContent>
           </Card>
@@ -254,7 +280,9 @@ export default function Game() {
           </Card>
           <Card>
             <CardContent className="pt-6 text-center">
-              <div className="text-2xl font-bold">{gameState.discardPile.length}</div>
+              <div className="text-2xl font-bold">
+                {gameState.discardPile.length}
+              </div>
               <div className="text-xs text-muted-foreground">버린 카드</div>
             </CardContent>
           </Card>
@@ -294,7 +322,7 @@ export default function Game() {
                 </Button>
               </div>
             </div>
-            
+
             {gameState.hand.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
                 손패가 비어있습니다
@@ -302,23 +330,27 @@ export default function Game() {
             ) : (
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
                 {gameState.hand.map((card, index) => (
-                  <div key={`${card.id}-${index}`} className="relative">
+                  <div
+                    key={`${card.id}-${index}`}
+                    className="relative"
+                  >
                     <div
                       className={cn(
                         "transition-all",
-                        selectedCardIndex === index && "ring-2 ring-primary rounded-lg"
+                        selectedCardIndex === index &&
+                          "ring-2 ring-primary rounded-lg"
                       )}
                       onClick={() => setSelectedCardIndex(index)}
                     >
                       <GameCard card={card} />
                     </div>
-                    
+
                     {selectedCardIndex === index && (
                       <div className="absolute -bottom-2 left-0 right-0 flex gap-1 justify-center z-10">
                         <Button
                           size="sm"
                           className="h-7 text-xs"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             playCard(index);
                           }}
@@ -329,7 +361,7 @@ export default function Game() {
                           size="sm"
                           variant="destructive"
                           className="h-7 text-xs"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             discardCard(index);
                           }}

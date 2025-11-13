@@ -6,8 +6,6 @@ export type CardsListParams = {
 	name?: string;
 	token?: boolean;
 	type?: CardDto["type"];
-	page?: number;
-	limit?: number;
 };
 
 export const cardsApi = {
@@ -17,8 +15,6 @@ export const cardsApi = {
 		if (params.name) q.set("name", params.name);
 		if (params.token != null) q.set("token", params.token ? "true" : "false");
 		if (params.type) q.set("type", params.type);
-		if (params.page != null) q.set("page", String(params.page));
-		if (params.limit != null) q.set("limit", String(params.limit));
 		const qs = q.toString();
 		return http<CardsListResponse>(`/api/cards${qs ? `?${qs}` : ""}`);
 	},

@@ -1,5 +1,5 @@
-import type { Card } from "@/types/deck";
-import { cn } from "@/lib/utils";
+import type { Card } from "@/shared/types/deck";
+import { cn } from "@/shared/lib/utils";
 
 interface GameCardProps {
   card: Card;
@@ -16,7 +16,8 @@ const manaColors = {
 };
 
 export const GameCard = ({ card, onClick, count }: GameCardProps) => {
-  const manaColor = manaColors[Math.min(card.manaCost, 5) as keyof typeof manaColors];
+  const manaValue = (card.mana ?? 0);
+  const manaColor = manaColors[Math.min(manaValue, 5) as keyof typeof manaColors];
   
   return (
     <div
@@ -34,7 +35,7 @@ export const GameCard = ({ card, onClick, count }: GameCardProps) => {
         "font-bold text-lg text-white shadow-lg z-10",
         manaColor
       )}>
-        {card.manaCost}
+        {manaValue}
       </div>
 
       {/* Count Badge */}
@@ -55,9 +56,9 @@ export const GameCard = ({ card, onClick, count }: GameCardProps) => {
 
       {/* Card Content */}
       <div className="p-3 space-y-2">
-        <h3 className="font-bold text-sm text-foreground truncate">{card.name}</h3>
+        <h3 className="font-bold text-sm text-foreground truncate">{card.name_ko}</h3>
         <p className="text-xs text-muted-foreground line-clamp-2 min-h-8">
-          {card.description}
+          {card.description_ko}
         </p>
       </div>
 

@@ -8,6 +8,7 @@ export function useCardsQuery(params: CardsListParams) {
 	});
 }
 
+/*  no use for now
 export function useCardQuery(id: string, enabled = true) {
 	return useQuery({
 		queryKey: ["card", id],
@@ -15,5 +16,5 @@ export function useCardQuery(id: string, enabled = true) {
 		enabled,
 	});
 }
-
+*/
 
