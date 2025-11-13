@@ -21,7 +21,11 @@ export async function http<T>(path: string, options: RequestInit = {}): Promise<
 	const body = isJson ? await response.json().catch(() => undefined) : undefined;
 
 	if (!response.ok) {
-		const message = (body as any)?.message ?? `HTTP ${response.status}`;
+		let message = `HTTP ${response.status}`;
+		if (body && typeof body === "object" && "message" in body) {
+			const m = (body as { message?: unknown }).message;
+			if (typeof m === "string") message = m;
+		}
 		throw new ApiError(response.status, message, body);
 	}
 	return body as T;

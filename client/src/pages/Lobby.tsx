@@ -19,12 +19,12 @@ export default function Lobby() {
   const joinRoom = useJoinRoomMutation();
   const deleteDeckMutation = useDeleteDeckMutation();
 
+  const totalDeckCount = useMemo(() => serverDecks?.length ?? 0, [serverDecks]);
+
   if (!me) {
     navigate('/login');
     return null;
   }
-
-  const totalDeckCount = useMemo(() => serverDecks?.length ?? 0, [serverDecks]);
 
   const requireDecksOrWarn = () => {
     if (loadingDecks) {
@@ -38,6 +38,15 @@ export default function Lobby() {
     return true;
   };
 
+  const getErrorMessage = (err: unknown): string | undefined => {
+    if (err instanceof Error) return err.message;
+    if (typeof err === 'object' && err && 'message' in err) {
+      const m = (err as { message?: unknown }).message;
+      return typeof m === 'string' ? m : undefined;
+    }
+    return undefined;
+  };
+
   const handleCreateRoom = async () => {
     if (!requireDecksOrWarn()) return;
     try {
@@ -45,8 +54,8 @@ export default function Lobby() {
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
       toast.success("방이 생성되었습니다.", { description: `방 코드 : ${res.roomId}` });
       navigate(`/back-room/${res.roomId}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "방 생성에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "방 생성에 실패했습니다.");
     }
   };
 
@@ -58,8 +67,8 @@ export default function Lobby() {
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
       toast.success("방에 입장했습니다.", { description: `방 코드 : ${res.roomId}` });
       navigate(`/back-room/${res.roomId}`);
-    } catch (e: any) {
-      toast.error(e?.message ?? "방 참가에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "방 참가에 실패했습니다.");
     }
   };
 
@@ -178,8 +187,8 @@ export default function Lobby() {
                                 toast.success("덱이 삭제되었습니다.", {
                                   description: deck.name,
                                 }),
-                              onError: (e: any) =>
-                                toast.error(e?.message ?? "삭제 실패"),
+                              onError: (err: unknown) =>
+                                toast.error(getErrorMessage(err) ?? "삭제 실패"),
                             });
                           }}
                         >

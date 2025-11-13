@@ -28,12 +28,21 @@ export default function Login() {
   // 수동 me 요청 용도
   const { refetch: refetchMe } = useMeQuery({ enabled: false });
 
+  const getErrorMessage = (err: unknown): string | undefined => {
+    if (err instanceof Error) return err.message;
+    if (typeof err === "object" && err && "message" in err) {
+      const m = (err as { message?: unknown }).message;
+      return typeof m === "string" ? m : undefined;
+    }
+    return undefined;
+  };
+
   const doAfterAuth = async () => {
     try {
       await refetchMe();
       navigate("/lobby", { replace: true });
-    } catch (e: any) {
-      toast.error(e?.message ?? "인증 상태 확인에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "인증 상태 확인에 실패했습니다.");
     }
   };
 
@@ -48,8 +57,8 @@ export default function Login() {
       });
       await refetchMe();
       await doAfterAuth();
-    } catch (e: any) {
-      toast.error(e?.message ?? "로그인에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "로그인에 실패했습니다.");
     }
   };
 
@@ -72,8 +81,8 @@ export default function Login() {
       setPassword(regPassword.trim());
       await refetchMe();
       await doAfterAuth();
-    } catch (e: any) {
-      toast.error(e?.message ?? "회원가입에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "회원가입에 실패했습니다.");
     }
   };
 

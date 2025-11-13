@@ -54,3 +54,61 @@ Base URL: `/api`
 
 환경 변수
 - `client/.env`에 `VITE_API_BASE_URL` 설정 필요. 모든 요청은 `credentials: "include"`로 쿠키 인증 사용.
+
+## 테스트
+
+### 프론트엔드(client)
+
+- 사전 준비
+  - 의존성 설치: `cd client && npm i`
+  - Vitest 설정: `vite.config.ts`의 `test` 섹션(`environment: 'jsdom'`, `setupFiles: 'src/test/setup.ts'`)을 사용합니다.
+  - MSW 설정: `src/test/testServer.ts`, `src/test/testHandlers.ts`에서 API를 가짜로 응답합니다. 절대/상대 경로 둘 다 매칭하도록 핸들러가 준비되어 있습니다.
+
+- 실행
+  - 단위/통합 테스트: 
+    ```bash
+    cd client
+    npm run test
+    ```
+  - 워치 모드(필요 시):
+    ```bash
+    npm run test -- --watch
+    ```
+  - 커버리지(필요 시):
+    ```bash
+    npm run test -- --coverage
+    ```
+
+- 참고
+  - 테스트 유틸: `src/test/render.tsx`의 `renderWithProviders`로 `QueryClientProvider`/`MemoryRouter`를 감쌉니다. `seed` 옵션으로 쿼리 캐시 초기화가 가능합니다.
+  - 가드 테스트: `RequireAuth`, `RequireParticipant`는 `/api/auth/me`, `/api/match/:roomId`를 MSW로 모킹하여 리다이렉트/권한 체크를 검증합니다.
+
+### 백엔드(server)
+
+- 사전 준비
+  - 의존성 설치: `cd server && npm i`
+  - 환경 변수: 테스트는 `cross-env DOTENV_CONFIG_PATH=.env.test`로 실행됩니다. 최소한 아래 값을 `server/.env.test`에 설정하세요.
+    ```env
+    JWT_SECRET=dev-secret
+    NODE_ENV=test
+    ```
+  - 외부 DB 필요 없음: `src/test/__mocks__/supabase.ts`가 인메모리 목을 제공합니다.
+
+- 실행
+  - 일회성 실행:
+    ```bash
+    cd server
+    npm run test
+    ```
+  - 워치 모드:
+    ```bash
+    npm run test:watch
+    ```
+  - 커버리지:
+    ```bash
+    npm run test:coverage
+    ```
+
+- 참고
+  - 라우트/서비스/타입 단위로 테스트가 구성되어 있습니다(`src/test/*`).
+  - JWT 쿠키 동작은 `auth` 라우트 테스트에서 검증합니다. 테스트 실행 시 쿠키/헤더 인증이 모두 지원됩니다.

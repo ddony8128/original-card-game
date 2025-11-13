@@ -36,14 +36,23 @@ export default function BackRoom() {
   const hostName = state?.host?.username ?? "(대기 중)";
   const guestName = state?.guest?.username ?? "(대기 중)";
 
+  const getErrorMessage = (err: unknown): string | undefined => {
+    if (err instanceof Error) return err.message;
+    if (typeof err === "object" && err && "message" in err) {
+      const m = (err as { message?: unknown }).message;
+      return typeof m === "string" ? m : undefined;
+    }
+    return undefined;
+  };
+
   const handleLeave = async () => {
     if (!roomId) return;
     try {
       await leaveRoom.mutateAsync(roomId);
       toast.success("방에서 나갔습니다.");
       navigate("/lobby");
-    } catch (e: any) {
-      toast.error(e?.message ?? "방 나가기에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "방 나가기에 실패했습니다.");
     }
   };
 
@@ -55,8 +64,8 @@ export default function BackRoom() {
       setLocked(true);
       toast.success("덱이 제출되었습니다.");
       await refetchState();
-    } catch (e: any) {
-      toast.error(e?.message ?? "덱 제출에 실패했습니다.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? "덱 제출에 실패했습니다.");
     }
   };
 

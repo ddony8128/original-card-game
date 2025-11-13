@@ -207,8 +207,14 @@ const DeckBuilder = () => {
       }
 
       // 로컬 동기화 제거: 서버를 단일 소스로 사용
-    } catch (e: any) {
-      toast.error(e?.message ?? "서버 저장 중 오류가 발생했습니다.");
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error
+          ? e.message
+          : (typeof e === "object" && e && "message" in e
+              ? (e as { message?: unknown }).message
+              : undefined);
+      toast.error(typeof message === "string" ? message : "서버 저장 중 오류가 발생했습니다.");
       return; // 실패 시 이동하지 않음
     }
 
