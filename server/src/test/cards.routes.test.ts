@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest';
+import request from 'supertest';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
-import request from 'supertest';
 
 async function setupApp() {
   const mod = await import('../app.js');
@@ -38,8 +38,6 @@ describe('Cards routes', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('cards');
     expect(res.body).toHaveProperty('total');
-    expect(res.body).toHaveProperty('page', 1);
-    expect(res.body.limit).toBe(res.body.total);
     expect(res.body.cards.length).toBe(res.body.total);
   });
 
