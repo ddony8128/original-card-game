@@ -1,5 +1,5 @@
-import type { Position } from "@/shared/types/game";
-import { cn } from "@/shared/lib/utils";
+import type { Position } from '@/shared/types/game';
+import { cn } from '@/shared/lib/utils';
 
 interface GameBoardProps {
   playerPosition: Position;
@@ -30,7 +30,7 @@ export function GameBoard({
   };
 
   return (
-    <div className="inline-grid grid-cols-5 gap-2 p-4 bg-card rounded-lg border">
+    <div className="bg-card inline-grid grid-cols-5 gap-2 rounded-lg border p-4">
       {Array.from({ length: 25 }, (_, i) => {
         const y = Math.floor(i / 5);
         const x = i % 5;
@@ -44,30 +44,23 @@ export function GameBoard({
             key={`${x}-${y}`}
             onClick={() => onCellClick({ x, y })}
             className={cn(
-              "w-16 h-16 rounded-lg border-2 transition-all duration-200",
-              "hover:border-primary/50 hover:scale-105",
+              'h-16 w-16 rounded-lg border-2 transition-all duration-200',
+              'hover:border-primary/50 hover:scale-105',
               isPlayer &&
-                "bg-linear-to-br from-blue-500 to-blue-600 border-blue-400 shadow-lg shadow-blue-500/50",
+                'border-blue-400 bg-linear-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50',
               isOpponent &&
-                "bg-linear-to-br from-red-500 to-red-600 border-red-400 shadow-lg shadow-red-500/50",
-              !isPlayer &&
-                !isOpponent &&
-                isSelected &&
-                "border-primary bg-primary/10",
+                'border-red-400 bg-linear-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/50',
+              !isPlayer && !isOpponent && isSelected && 'border-primary bg-primary/10',
               !isPlayer &&
                 !isOpponent &&
                 !isSelected &&
                 isAdjacent &&
-                "border-primary/30 bg-primary/5",
-              !isPlayer && !isOpponent && !isSelected && !isAdjacent && "border-border"
+                'border-primary/30 bg-primary/5',
+              !isPlayer && !isOpponent && !isSelected && !isAdjacent && 'border-border',
             )}
           >
-            {isPlayer && (
-              <div className="text-2xl font-bold text-white">👤</div>
-            )}
-            {isOpponent && (
-              <div className="text-2xl font-bold text-white">🤖</div>
-            )}
+            {isPlayer && <div className="text-2xl font-bold text-white">👤</div>}
+            {isOpponent && <div className="text-2xl font-bold text-white">🤖</div>}
           </button>
         );
       })}

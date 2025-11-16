@@ -1,7 +1,7 @@
-import http from "node:http";
+import http from 'node:http';
 import 'dotenv/config';
-import { app } from "./src/app";
-import { attachWebSocket } from "./src/ws/socket";
+import { app } from './src/app';
+import { attachWebSocket } from './src/ws/socket';
 
 // HTTP server
 const server = http.createServer(app);

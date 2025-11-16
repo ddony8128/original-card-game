@@ -1,7 +1,7 @@
-import http from "node:http";
-import { WebSocketServer } from "ws";
+import http from 'node:http';
+import { WebSocketServer } from 'ws';
 
-type WsClient = import("ws").WebSocket & { roomCode?: string; userId?: string };
+type WsClient = import('ws').WebSocket & { roomCode?: string; userId?: string };
 
 export type WsApi = {
   broadcast: (roomCode: string, data: unknown) => void;
@@ -9,7 +9,7 @@ export type WsApi = {
 };
 
 export function attachWebSocket(server: http.Server): WsApi {
-  const wss = new WebSocketServer({ server, path: "/api/match/socket" });
+  const wss = new WebSocketServer({ server, path: '/api/match/socket' });
 
   const rooms = new Map<string, Set<WsClient>>();
   const roomUsers = new Map<string, Map<string, Set<WsClient>>>();
@@ -34,16 +34,19 @@ export function attachWebSocket(server: http.Server): WsApi {
     });
   }
 
-  wss.on("connection", (socket: WsClient) => {
-    socket.on("message", (buf) => {
+  wss.on('connection', (socket: WsClient) => {
+    socket.on('message', (buf) => {
       try {
         const { event, data } = JSON.parse(buf.toString()) as {
           event: string;
           data: any;
         };
 
-        if (event === "join_room") {
-          const { roomCode, userId } = data as { roomCode: string; userId?: string };
+        if (event === 'join_room') {
+          const { roomCode, userId } = data as {
+            roomCode: string;
+            userId?: string;
+          };
           socket.roomCode = roomCode;
           if (userId) socket.userId = userId;
           if (!rooms.has(roomCode)) rooms.set(roomCode, new Set());
@@ -54,7 +57,10 @@ export function attachWebSocket(server: http.Server): WsApi {
             if (!map.has(userId)) map.set(userId, new Set());
             map.get(userId)!.add(socket);
           }
-          broadcast(roomCode, { event: "room_update", data: { status: "joined" } });
+          broadcast(roomCode, {
+            event: 'room_update',
+            data: { status: 'joined' },
+          });
           return;
         }
 
@@ -62,22 +68,38 @@ export function attachWebSocket(server: http.Server): WsApi {
         const roomCode = socket.roomCode;
 
         switch (event) {
-          case "start_game":
-            broadcast(roomCode, { event: "state_update", data: { status: "started" } });
-            broadcast(roomCode, { event: "turn_change", data: { currentPlayer: "player1" } });
+          case 'start_game':
+            broadcast(roomCode, {
+              event: 'state_update',
+              data: { status: 'started' },
+            });
+            broadcast(roomCode, {
+              event: 'turn_change',
+              data: { currentPlayer: 'player1' },
+            });
             break;
-          case "player_action":
-            broadcast(roomCode, { event: "card_effect", data });
+          case 'player_action':
+            broadcast(roomCode, { event: 'card_effect', data });
             break;
-          case "end_turn":
-            broadcast(roomCode, { event: "turn_change", data: { next: true } });
+          case 'end_turn':
+            broadcast(roomCode, { event: 'turn_change', data: { next: true } });
             break;
-          case "surrender":
-            broadcast(roomCode, { event: "game_over", data: { winnerId: data?.opponentId ?? null } });
+          case 'surrender':
+            broadcast(roomCode, {
+              event: 'game_over',
+              data: { winnerId: data?.opponentId ?? null },
+            });
             break;
-          case "direct_to_player": {
-            const { toUserId, payload } = data as { toUserId: string; payload: unknown };
-            if (toUserId) sendTo(roomCode, toUserId, { event: "state_update", data: payload });
+          case 'direct_to_player': {
+            const { toUserId, payload } = data as {
+              toUserId: string;
+              payload: unknown;
+            };
+            if (toUserId)
+              sendTo(roomCode, toUserId, {
+                event: 'state_update',
+                data: payload,
+              });
             break;
           }
           default:
@@ -88,7 +110,7 @@ export function attachWebSocket(server: http.Server): WsApi {
       }
     });
 
-    socket.on("close", () => {
+    socket.on('close', () => {
       const roomCode = socket.roomCode;
       if (roomCode) {
         if (rooms.has(roomCode)) {
@@ -110,5 +132,3 @@ export function attachWebSocket(server: http.Server): WsApi {
 
   return { broadcast, sendTo };
 }
-
-

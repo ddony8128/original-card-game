@@ -1,14 +1,14 @@
-import { Router } from "express";
-import { requireAuth } from "../middleware/auth";
-import { decksService } from "../services/decks";
-import { HttpStatus } from "../type/status";
-import { DeckList, coerceDeckList } from "../type/deck";
+import { Router } from 'express';
+import { requireAuth } from '../middleware/auth';
+import { decksService } from '../services/decks';
+import { HttpStatus } from '../type/status';
+import { DeckList, coerceDeckList } from '../type/deck';
 
 export const decksRouter = Router();
 
 decksRouter.use(requireAuth);
 
-decksRouter.get("/", (req, res) => {
+decksRouter.get('/', (req, res) => {
   const userId = (req as any).user.id as string;
   (async () => {
     const rows = await decksService.listByUser(userId);
@@ -21,10 +21,12 @@ decksRouter.get("/", (req, res) => {
       updated_at: row.updated_at,
     }));
     res.status(HttpStatus.OK).json(res_json);
-  })().catch((e) => res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }));
+  })().catch((e) =>
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
+  );
 });
 
-decksRouter.post("/", (req, res) => {
+decksRouter.post('/', (req, res) => {
   const userId = (req as any).user.id as string;
   const { name, main_cards, cata_cards } = req.body as {
     name?: string;
@@ -32,7 +34,9 @@ decksRouter.post("/", (req, res) => {
     cata_cards?: unknown;
   };
   if (!name)
-    return res.status(HttpStatus.BAD_REQUEST).json({ message: "name required" });
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .json({ message: 'name required' });
   (async () => {
     // 입력 파싱 및 형태 검증
     let mainParsed: DeckList, cataParsed: DeckList;
@@ -42,13 +46,13 @@ decksRouter.post("/", (req, res) => {
     } catch (e: any) {
       return res
         .status(HttpStatus.BAD_REQUEST)
-        .json({ message: e.message || "invalid deck payload" });
+        .json({ message: e.message || 'invalid deck payload' });
     }
 
     try {
       const { main, cata } = await decksService.validateAndHydrate(
         mainParsed,
-        cataParsed
+        cataParsed,
       );
       const deck = await decksService.create(userId, name, {
         main_cards: main,
@@ -64,19 +68,19 @@ decksRouter.post("/", (req, res) => {
       });
     } catch (e: any) {
       // 검증 실패는 400으로 매핑
-      if (typeof e?.message === "string") {
+      if (typeof e?.message === 'string') {
         return res.status(HttpStatus.BAD_REQUEST).json({ message: e.message });
       }
       return res
         .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json({ message: "unexpected error" });
+        .json({ message: 'unexpected error' });
     }
   })().catch((e) =>
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message })
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
   );
 });
 
-decksRouter.put("/:deckId", (req, res) => {
+decksRouter.put('/:deckId', (req, res) => {
   const userId = (req as any).user.id as string;
   const { name, main_cards, cata_cards } = req.body as {
     name?: string;
@@ -84,27 +88,29 @@ decksRouter.put("/:deckId", (req, res) => {
     cata_cards?: unknown;
   };
   if (!name)
-    return res.status(HttpStatus.BAD_REQUEST).json({ message: "name required" });
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .json({ message: 'name required' });
 
   let mainParsed: DeckList, cataParsed: DeckList;
-    try {
-      mainParsed = coerceDeckList(main_cards);
-      cataParsed = coerceDeckList(cata_cards);
-    } catch (e: any) {
-      return res
-        .status(HttpStatus.BAD_REQUEST)
-        .json({ message: e.message || "invalid deck payload" });
-    }
+  try {
+    mainParsed = coerceDeckList(main_cards);
+    cataParsed = coerceDeckList(cata_cards);
+  } catch (e: any) {
+    return res
+      .status(HttpStatus.BAD_REQUEST)
+      .json({ message: e.message || 'invalid deck payload' });
+  }
 
   (async () => {
     const deck = await decksService.getById(req.params.deckId);
     if (!deck)
-      return res.status(HttpStatus.NOT_FOUND).json({ message: "not found" });
+      return res.status(HttpStatus.NOT_FOUND).json({ message: 'not found' });
     if (deck.user_id !== userId)
-      return res.status(HttpStatus.FORBIDDEN).json({ message: "forbidden" });
+      return res.status(HttpStatus.FORBIDDEN).json({ message: 'forbidden' });
     const { main, cata } = await decksService.validateAndHydrate(
       mainParsed,
-      cataParsed
+      cataParsed,
     );
     const updated = await decksService.update(deck.id, {
       name,
@@ -120,21 +126,21 @@ decksRouter.put("/:deckId", (req, res) => {
       updated_at: updated.updated_at,
     });
   })().catch((e) =>
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message })
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
   );
 });
 
-decksRouter.delete("/:deckId", (req, res) => {
+decksRouter.delete('/:deckId', (req, res) => {
   const userId = (req as any).user.id as string;
   (async () => {
     const deck = await decksService.getById(req.params.deckId);
     if (!deck)
-      return res.status(HttpStatus.NOT_FOUND).json({ message: "not found" });
+      return res.status(HttpStatus.NOT_FOUND).json({ message: 'not found' });
     if (deck.user_id !== userId)
-      return res.status(HttpStatus.FORBIDDEN).json({ message: "forbidden" });
+      return res.status(HttpStatus.FORBIDDEN).json({ message: 'forbidden' });
     await decksService.softDelete(deck.id);
     res.status(HttpStatus.NO_CONTENT).end();
   })().catch((e) =>
-    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message })
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
   );
 });

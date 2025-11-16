@@ -12,7 +12,7 @@ import { useMeQuery } from '@/features/auth/queries';
 export default function Lobby() {
   const navigate = useNavigate();
   const { data: me } = useMeQuery();
-  const [roomCode, setRoomCode] = useState("");
+  const [roomCode, setRoomCode] = useState('');
 
   const { data: serverDecks, isLoading: loadingDecks } = useDecksQuery();
   const createRoom = useCreateRoomMutation();
@@ -52,10 +52,10 @@ export default function Lobby() {
     try {
       const res = await createRoom.mutateAsync();
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
-      toast.success("방이 생성되었습니다.", { description: `방 코드 : ${res.roomId}` });
+      toast.success('방이 생성되었습니다.', { description: `방 코드 : ${res.roomId}` });
       navigate(`/back-room/${res.roomId}`);
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? "방 생성에 실패했습니다.");
+      toast.error(getErrorMessage(e) ?? '방 생성에 실패했습니다.');
     }
   };
 
@@ -65,31 +65,30 @@ export default function Lobby() {
     try {
       const res = await joinRoom.mutateAsync(roomCode.trim());
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
-      toast.success("방에 입장했습니다.", { description: `방 코드 : ${res.roomId}` });
+      toast.success('방에 입장했습니다.', { description: `방 코드 : ${res.roomId}` });
       navigate(`/back-room/${res.roomId}`);
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? "방 참가에 실패했습니다.");
+      toast.error(getErrorMessage(e) ?? '방 참가에 실패했습니다.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-accent/10 p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
+    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">로비</h1>
           <p className="text-muted-foreground">환영합니다, {me?.username}님!</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                방 만들기
+                <Plus className="h-5 w-5" />방 만들기
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-muted-foreground mb-4 text-sm">
                 새로운 게임 방을 만들고 친구를 초대하세요
               </p>
               <Button
@@ -98,7 +97,7 @@ export default function Lobby() {
                 size="lg"
                 disabled={createRoom.isPending}
               >
-                <Users className="w-4 h-4 mr-2" />
+                <Users className="mr-2 h-4 w-4" />
                 {createRoom.isPending ? '생성 중...' : '방 생성'}
               </Button>
             </CardContent>
@@ -107,8 +106,7 @@ export default function Lobby() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <LogIn className="w-5 h-5" />
-                방 참가
+                <LogIn className="h-5 w-5" />방 참가
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -116,7 +114,7 @@ export default function Lobby() {
                 placeholder="방 코드 입력"
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleJoinRoom()}
+                onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
                 className="uppercase"
               />
               <Button
@@ -134,37 +132,28 @@ export default function Lobby() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BookOpen className="w-5 h-5" />
-              내 덱 ({totalDeckCount}/4)
+              <BookOpen className="h-5 w-5" />내 덱 ({totalDeckCount}/4)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {(serverDecks?.length ?? 0) === 0 ? (
-              <div className="text-center py-8 space-y-4">
+              <div className="space-y-4 py-8 text-center">
                 <p className="text-muted-foreground">아직 덱이 없습니다</p>
-                <Button onClick={() => navigate("/deck-builder")}>
-                  첫 번째 덱 만들기
-                </Button>
+                <Button onClick={() => navigate('/deck-builder')}>첫 번째 덱 만들기</Button>
               </div>
             ) : (
               <div className="space-y-3">
                 {serverDecks?.map((deck) => {
-                  const mainCount = deck.main_cards.reduce(
-                    (s, e) => s + (e.count ?? 0),
-                    0
-                  );
-                  const cataCount = deck.cata_cards.reduce(
-                    (s, e) => s + (e.count ?? 0),
-                    0
-                  );
+                  const mainCount = deck.main_cards.reduce((s, e) => s + (e.count ?? 0), 0);
+                  const cataCount = deck.cata_cards.reduce((s, e) => s + (e.count ?? 0), 0);
                   return (
                     <div
                       key={deck.id}
-                      className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-border"
+                      className="bg-secondary/50 border-border flex items-center justify-between rounded-lg border p-3"
                     >
                       <div>
                         <h3 className="font-semibold">{deck.name}</h3>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           메인 {mainCount}장 · 재앙 {cataCount}장
                         </p>
                       </div>
@@ -174,7 +163,7 @@ export default function Lobby() {
                           size="sm"
                           onClick={() => navigate(`/deck-builder?sid=${deck.id}`)}
                         >
-                          <Pencil className="w-4 h-4 mr-2" />
+                          <Pencil className="mr-2 h-4 w-4" />
                           수정
                         </Button>
                         <Button
@@ -184,15 +173,15 @@ export default function Lobby() {
                             if (!confirm(`${deck.name} 덱을 삭제하시겠습니까?`)) return;
                             deleteDeckMutation.mutate(deck.id, {
                               onSuccess: () =>
-                                toast.success("덱이 삭제되었습니다.", {
+                                toast.success('덱이 삭제되었습니다.', {
                                   description: deck.name,
                                 }),
                               onError: (err: unknown) =>
-                                toast.error(getErrorMessage(err) ?? "삭제 실패"),
+                                toast.error(getErrorMessage(err) ?? '삭제 실패'),
                             });
                           }}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -201,7 +190,7 @@ export default function Lobby() {
 
                 {totalDeckCount < 4 && (
                   <Button
-                    onClick={() => navigate("/deck-builder")}
+                    onClick={() => navigate('/deck-builder')}
                     variant="outline"
                     className="w-full"
                   >

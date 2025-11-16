@@ -1,4 +1,4 @@
-import type { Card } from "./deck";
+import type { Card } from './deck';
 
 export interface Position {
   x: number;
@@ -17,4 +17,3 @@ export interface GameState {
   playerPosition: Position;
   opponentPosition: Position;
 }
-

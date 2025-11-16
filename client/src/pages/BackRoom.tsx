@@ -1,25 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useDecksQuery } from "@/features/decks/queries";
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useDecksQuery } from '@/features/decks/queries';
 import {
   useLeaveRoomMutation,
   useMatchStateQuery,
   useSubmitDeckMutation,
-} from "@/features/match/queries";
-import { toast } from "sonner";
-import { useMeQuery } from "@/features/auth/queries";
+} from '@/features/match/queries';
+import { toast } from 'sonner';
+import { useMeQuery } from '@/features/auth/queries';
 
 export default function BackRoom() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
 
-  const { data: state, refetch: refetchState } = useMatchStateQuery(
-    roomId,
-    true
-  );
+  const { data: state, refetch: refetchState } = useMatchStateQuery(roomId, true);
   const { data: serverDecks, isLoading: loadingDecks } = useDecksQuery();
   const leaveRoom = useLeaveRoomMutation();
   const submitDeck = useSubmitDeckMutation();
@@ -28,19 +25,19 @@ export default function BackRoom() {
   const [locked, setLocked] = useState(false);
 
   useEffect(() => {
-    if (!me) navigate("/login");
-    if (!roomId) navigate("/lobby");
+    if (!me) navigate('/login');
+    if (!roomId) navigate('/lobby');
   }, [me, roomId, navigate]);
 
-  const canStart = state?.status === "playing";
-  const hostName = state?.host?.username ?? "(대기 중)";
-  const guestName = state?.guest?.username ?? "(대기 중)";
+  const canStart = state?.status === 'playing';
+  const hostName = state?.host?.username ?? '(대기 중)';
+  const guestName = state?.guest?.username ?? '(대기 중)';
 
   const getErrorMessage = (err: unknown): string | undefined => {
     if (err instanceof Error) return err.message;
-    if (typeof err === "object" && err && "message" in err) {
+    if (typeof err === 'object' && err && 'message' in err) {
       const m = (err as { message?: unknown }).message;
-      return typeof m === "string" ? m : undefined;
+      return typeof m === 'string' ? m : undefined;
     }
     return undefined;
   };
@@ -49,10 +46,10 @@ export default function BackRoom() {
     if (!roomId) return;
     try {
       await leaveRoom.mutateAsync(roomId);
-      toast.success("방에서 나갔습니다.");
-      navigate("/lobby");
+      toast.success('방에서 나갔습니다.');
+      navigate('/lobby');
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? "방 나가기에 실패했습니다.");
+      toast.error(getErrorMessage(e) ?? '방 나가기에 실패했습니다.');
     }
   };
 
@@ -62,18 +59,18 @@ export default function BackRoom() {
       await submitDeck.mutateAsync({ roomId, deckId });
       setSelectedDeckId(deckId);
       setLocked(true);
-      toast.success("덱이 제출되었습니다.");
+      toast.success('덱이 제출되었습니다.');
       await refetchState();
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? "덱 제출에 실패했습니다.");
+      toast.error(getErrorMessage(e) ?? '덱 제출에 실패했습니다.');
     }
   };
 
   const deckList = useMemo(() => serverDecks ?? [], [serverDecks]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-accent/10 p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
+    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">대기실</h1>
           <Button variant="outline" onClick={handleLeave}>
@@ -85,18 +82,18 @@ export default function BackRoom() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>방 참가자</span>
-              <span className="text-sm text-muted-foreground">
-                상태: {state?.status ?? "unknown"}
+              <span className="text-muted-foreground text-sm">
+                상태: {state?.status ?? 'unknown'}
               </span>
             </CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-secondary/50">
-              <div className="text-sm text-muted-foreground">Host</div>
+            <div className="bg-secondary/50 rounded-lg p-4">
+              <div className="text-muted-foreground text-sm">Host</div>
               <div className="text-xl font-bold">{hostName}</div>
             </div>
-            <div className="p-4 rounded-lg bg-secondary/50">
-              <div className="text-sm text-muted-foreground">Guest</div>
+            <div className="bg-secondary/50 rounded-lg p-4">
+              <div className="text-muted-foreground text-sm">Guest</div>
               <div className="text-xl font-bold">{guestName}</div>
             </div>
           </CardContent>
@@ -108,32 +105,24 @@ export default function BackRoom() {
           </CardHeader>
           <CardContent>
             {loadingDecks ? (
-              <div className="text-center text-muted-foreground py-8">
-                덱을 불러오는 중...
-              </div>
+              <div className="text-muted-foreground py-8 text-center">덱을 불러오는 중...</div>
             ) : deckList.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
+              <div className="text-muted-foreground py-8 text-center">
                 저장된 서버 덱이 없습니다. 덱을 먼저 만들어주세요.
               </div>
             ) : (
               <div className="space-y-2">
                 {deckList.map((d) => {
-                  const mainCount = d.main_cards.reduce(
-                    (s, e) => s + (e.count ?? 0),
-                    0
-                  );
-                  const cataCount = d.cata_cards.reduce(
-                    (s, e) => s + (e.count ?? 0),
-                    0
-                  );
+                  const mainCount = d.main_cards.reduce((s, e) => s + (e.count ?? 0), 0);
+                  const cataCount = d.cata_cards.reduce((s, e) => s + (e.count ?? 0), 0);
                   return (
                     <div
                       key={d.id}
-                      className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg border border-border"
+                      className="bg-secondary/50 border-border flex items-center justify-between rounded-lg border p-3"
                     >
                       <div>
                         <div className="font-semibold">{d.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-muted-foreground text-xs">
                           메인 {mainCount}장 / 재앙 {cataCount}장
                         </div>
                       </div>
@@ -142,7 +131,7 @@ export default function BackRoom() {
                         disabled={locked || selectedDeckId === d.id}
                         onClick={() => handleSelectDeck(d.id)}
                       >
-                        {selectedDeckId === d.id ? "선택됨" : "선택"}
+                        {selectedDeckId === d.id ? '선택됨' : '선택'}
                       </Button>
                     </div>
                   );
@@ -161,4 +150,3 @@ export default function BackRoom() {
     </div>
   );
 }
-

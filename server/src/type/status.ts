@@ -10,5 +10,4 @@ export const HttpStatus = {
   INTERNAL_SERVER_ERROR: 500,
 } as const;
 
-export type HttpStatusCode = typeof HttpStatus[keyof typeof HttpStatus];
-
+export type HttpStatusCode = (typeof HttpStatus)[keyof typeof HttpStatus];

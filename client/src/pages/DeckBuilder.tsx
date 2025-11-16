@@ -1,18 +1,18 @@
-import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { GameCard } from "@/components/deck-builder/GameCard";
-import { CardFilters } from "@/components/deck-builder/CardFilters";
-import { DeckPanel } from "@/components/deck-builder/DeckPanel";
-import type { DeckCard, Card as LocalCard } from "@/shared/types/deck";
-import { ArrowLeft, Save } from "lucide-react";
-import { toast } from "sonner";
-import { useCardsQuery } from "@/features/cards/queries";
-import { useDecksQuery } from "@/features/decks/queries";
-import { decksApi } from "@/features/decks/api";
-import type { CardDto } from "@/shared/api/types";
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { GameCard } from '@/components/deck-builder/GameCard';
+import { CardFilters } from '@/components/deck-builder/CardFilters';
+import { DeckPanel } from '@/components/deck-builder/DeckPanel';
+import type { DeckCard, Card as LocalCard } from '@/shared/types/deck';
+import { ArrowLeft, Save } from 'lucide-react';
+import { toast } from 'sonner';
+import { useCardsQuery } from '@/features/cards/queries';
+import { useDecksQuery } from '@/features/decks/queries';
+import { decksApi } from '@/features/decks/api';
+import type { CardDto } from '@/shared/api/types';
 
 const MAX_MAIN_SIZE = 16;
 const MAX_CATA_SIZE = 4;
@@ -23,8 +23,8 @@ const DeckBuilder = () => {
   const [searchParams] = useSearchParams();
   // 로컬 스토어 제거: 서버만 사용
 
-  const [deckName, setDeckName] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [deckName, setDeckName] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedMana, setSelectedMana] = useState<number | null>(null);
 
   const [serverEditingDeckId, setServerEditingDeckId] = useState<string | null>(null);
@@ -41,15 +41,12 @@ const DeckBuilder = () => {
 
   // 카드 id -> dto 맵 (저장 시 분류용)
   const cardDtoById = useMemo(
-    () =>
-      new Map<string, CardDto>(
-        (cardsResp?.cards ?? []).map((c) => [c.id, c])
-      ),
-    [cardsResp?.cards]
+    () => new Map<string, CardDto>((cardsResp?.cards ?? []).map((c) => [c.id, c])),
+    [cardsResp?.cards],
   );
 
   useEffect(() => {
-    const sid = searchParams.get("sid"); // 서버 덱 편집용
+    const sid = searchParams.get('sid'); // 서버 덱 편집용
     if (sid && serverDecks) {
       const s = serverDecks.find((d) => d.id === sid);
       if (s) {
@@ -67,9 +64,9 @@ const DeckBuilder = () => {
               id: dto.id,
               name_dev: dto.name_dev,
               name_ko: dto.name_ko,
-              description_ko: dto.description_ko ?? "",
+              description_ko: dto.description_ko ?? '',
               mana: dto.mana,
-              type: dto.type as "instant" | "ritual" | "catastrophe" | "summon" | "item",
+              type: dto.type as 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item',
               count,
             },
           ];
@@ -84,10 +81,10 @@ const DeckBuilder = () => {
       id: dto.id,
       name_dev: dto.name_dev,
       name_ko: dto.name_ko,
-      description_ko: dto.description_ko ?? "",
+      description_ko: dto.description_ko ?? '',
       mana: dto.mana,
-      type: dto.type as "instant" | "ritual" | "catastrophe" | "summon" | "item",
-    })
+      type: dto.type as 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item',
+    }),
   );
 
   // 필터링은 서버에서 처리하므로 그대로 사용
@@ -95,7 +92,7 @@ const DeckBuilder = () => {
 
   const isCatastrophe = (cardId: string) => {
     const dto = cardDtoById.get(cardId);
-    return dto?.type === "catastrophe";
+    return dto?.type === 'catastrophe';
   };
 
   const countsByCategory = () => {
@@ -118,26 +115,26 @@ const DeckBuilder = () => {
 
     const existing = deckCards.find((c) => c.id === cardId);
     if (existing && existing.count >= MAX_DUPLICATE)
-      return toast.error("최대 2장까지만 추가할 수 있습니다.");
+      return toast.error('최대 2장까지만 추가할 수 있습니다.');
 
     const { main, cata } = countsByCategory();
     if (isCatastrophe(cardId)) {
       if (cata + 1 > MAX_CATA_SIZE) {
-        return toast.error("재앙 카드는 최대 4장까지 추가할 수 있습니다.");
+        return toast.error('재앙 카드는 최대 4장까지 추가할 수 있습니다.');
       }
     } else {
       if (main + 1 > MAX_MAIN_SIZE) {
-        return toast.error("메인 카드는 최대 16장까지 추가할 수 있습니다.");
+        return toast.error('메인 카드는 최대 16장까지 추가할 수 있습니다.');
       }
     }
 
     setDeckCards((prev) =>
       existing
         ? prev.map((c) => (c.id === cardId ? { ...c, count: c.count + 1 } : c))
-        : [...prev, { ...card, count: 1 }]
+        : [...prev, { ...card, count: 1 }],
     );
 
-    toast.success("카드가 추가되었습니다!", {
+    toast.success('카드가 추가되었습니다!', {
       description: card.name_ko,
     });
   };
@@ -153,19 +150,19 @@ const DeckBuilder = () => {
         .filter((c) => c.count > 0);
     });
 
-    toast.success("카드가 제거되었습니다!", {
-      description: card?.name_ko || "",
+    toast.success('카드가 제거되었습니다!', {
+      description: card?.name_ko || '',
     });
   };
 
   const handleSave = async () => {
     if (!deckName.trim()) {
-      toast.error("덱 이름을 입력하세요.");
+      toast.error('덱 이름을 입력하세요.');
       return;
     }
 
     if (deckCards.length === 0) {
-      toast.error("덱에 카드를 추가하세요.");
+      toast.error('덱에 카드를 추가하세요.');
       return;
     }
 
@@ -181,8 +178,7 @@ const DeckBuilder = () => {
     try {
       // id별 count 집계
       const countMap = new Map<string, number>();
-      for (const dc of deckCards)
-        countMap.set(dc.id, (countMap.get(dc.id) ?? 0) + dc.count);
+      for (const dc of deckCards) countMap.set(dc.id, (countMap.get(dc.id) ?? 0) + dc.count);
       const entries = Array.from(countMap.entries()).map(([id, count]) => ({
         id,
         count,
@@ -196,14 +192,14 @@ const DeckBuilder = () => {
           main_cards,
           cata_cards,
         });
-        toast.success("서버 덱이 수정되었습니다!", { description: deckName });
+        toast.success('서버 덱이 수정되었습니다!', { description: deckName });
       } else {
         await decksApi.create({
           name: deckName,
           main_cards,
           cata_cards,
         });
-        toast.success("서버 덱이 저장되었습니다!", { description: deckName });
+        toast.success('서버 덱이 저장되었습니다!', { description: deckName });
       }
 
       // 로컬 동기화 제거: 서버를 단일 소스로 사용
@@ -211,30 +207,30 @@ const DeckBuilder = () => {
       const message =
         e instanceof Error
           ? e.message
-          : (typeof e === "object" && e && "message" in e
-              ? (e as { message?: unknown }).message
-              : undefined);
-      toast.error(typeof message === "string" ? message : "서버 저장 중 오류가 발생했습니다.");
+          : typeof e === 'object' && e && 'message' in e
+            ? (e as { message?: unknown }).message
+            : undefined;
+      toast.error(typeof message === 'string' ? message : '서버 저장 중 오류가 발생했습니다.');
       return; // 실패 시 이동하지 않음
     }
 
-    navigate("/lobby");
+    navigate('/lobby');
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-accent/10">
+    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br">
       <div className="container mx-auto p-6">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" onClick={() => navigate("/lobby")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+        <div className="mb-6 flex items-center gap-4">
+          <Button variant="outline" onClick={() => navigate('/lobby')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
             로비로 돌아가기
           </Button>
-          <h1 className="text-4xl font-bold bg-linear-to-r from-primary to-accent bg-clip-text">
-            {serverEditingDeckId ? "덱 수정" : "덱 빌더"}
+          <h1 className="from-primary to-accent bg-linear-to-r bg-clip-text text-4xl font-bold">
+            {serverEditingDeckId ? '덱 수정' : '덱 빌더'}
           </h1>
         </div>
 
-        <div className="flex gap-4 mb-6">
+        <div className="mb-6 flex gap-4">
           <Input
             placeholder="덱 이름"
             value={deckName}
@@ -242,14 +238,14 @@ const DeckBuilder = () => {
             className="max-w-xs"
           />
           <Button onClick={handleSave}>
-            <Save className="w-4 h-4 mr-2" />
-            {serverEditingDeckId ? "수정 완료" : "덱 저장"}
+            <Save className="mr-2 h-4 w-4" />
+            {serverEditingDeckId ? '수정 완료' : '덱 저장'}
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 h-[calc(100vh-240px)]">
+        <div className="grid h-[calc(100vh-240px)] grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
           {/* Left Panel - Card Collction */}
-          <div className="flex flex-col gap-4 min-h-0">
+          <div className="flex min-h-0 flex-col gap-4">
             <CardFilters
               selectedMana={selectedMana}
               onManaSelect={setSelectedMana}
@@ -257,14 +253,14 @@ const DeckBuilder = () => {
               onSearchChange={setSearchQuery}
             />
 
-            <div className="flex-1 bg-card rounded-lg border border-border overflow-hidden">
+            <div className="bg-card border-border flex-1 overflow-hidden rounded-lg border">
               <ScrollArea className="h-full p-4">
                 {loadingCards ? (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground">
+                  <div className="text-muted-foreground flex h-64 items-center justify-center">
                     <p>카드를 불러오는 중...</p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
                     {filteredCards.map((card) => (
                       <GameCard
                         key={card.id}
@@ -276,7 +272,7 @@ const DeckBuilder = () => {
                   </div>
                 )}
                 {!loadingCards && filteredCards.length === 0 && (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground">
+                  <div className="text-muted-foreground flex h-64 items-center justify-center">
                     <p>검색 결과가 없습니다</p>
                   </div>
                 )}
@@ -284,19 +280,21 @@ const DeckBuilder = () => {
             </div>
           </div>
           {/* Right Panel - Deck */}
-          <div className="flex flex-col gap-4 min-h-0">
+          <div className="flex min-h-0 flex-col gap-4">
             <DeckPanel
               deckCards={deckCards}
               onRemoveCard={handleRemove}
               maxMainSize={MAX_MAIN_SIZE}
               maxCataSize={MAX_CATA_SIZE}
-              cataIds={new Set(
-                deckCards.flatMap((dc) => {
-                  // 선택된 카드가 재앙인지 여부는 dto를 통해 판별
-                  const dto = cardDtoById.get(dc.id);
-                  return dto?.type === "catastrophe" ? [dc.id] : [];
-                })
-              )}
+              cataIds={
+                new Set(
+                  deckCards.flatMap((dc) => {
+                    // 선택된 카드가 재앙인지 여부는 dto를 통해 판별
+                    const dto = cardDtoById.get(dc.id);
+                    return dto?.type === 'catastrophe' ? [dc.id] : [];
+                  }),
+                )
+              }
             />
           </div>
         </div>

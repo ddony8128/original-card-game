@@ -20,4 +20,3 @@
 //     { name: 'sample-store' }
 //   )
 // );
-
