@@ -3,7 +3,7 @@ import { Route } from 'react-router-dom';
 import { renderWithProviders } from './render';
 import { screen } from '@testing-library/react';
 
-it('초기 핸드 5장 및 roomId 표시', async () => {
+it('FoggedGameState가 없을 때 로딩 메시지를 표시한다', async () => {
   renderWithProviders(<Game />, {
     route: '/game/r1',
     routes: [
@@ -20,10 +20,8 @@ it('초기 핸드 5장 및 roomId 표시', async () => {
     },
   });
 
-  // roomId 텍스트
-  expect(await screen.findByText(/방 코드:/)).toBeInTheDocument();
-
-  // 손패 타이틀 표시
-  const handTitle = await screen.findByText(/내 손패/);
-  expect(handTitle).toBeInTheDocument();
+  // FoggedGameState가 설정되지 않았으므로 로딩 안내 문구가 보여야 한다.
+  expect(
+    await screen.findByText(/게임 상태를 불러오는 중입니다\./),
+  ).toBeInTheDocument();
 });

@@ -1,11 +1,15 @@
-import type { Position } from '@/shared/types/game';
 import { cn } from '@/shared/lib/utils';
 
+export type BoardPosition = {
+  x: number;
+  y: number;
+};
+
 interface GameBoardProps {
-  playerPosition: Position;
-  opponentPosition: Position;
-  selectedPosition: Position | null;
-  onCellClick: (position: Position) => void;
+  playerPosition: BoardPosition;
+  opponentPosition: BoardPosition;
+  selectedPosition: BoardPosition | null;
+  onCellClick: (position: BoardPosition) => void;
 }
 
 export function GameBoard({

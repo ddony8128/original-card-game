@@ -1,5 +1,8 @@
 import http from 'node:http';
 import { WebSocketServer } from 'ws';
+import { SocketManager } from './socketManager';
+import type { FoggedGameState } from '../type/gameState';
+import { GamePhase } from '../type/gameState';
 
 type WsClient = import('ws').WebSocket & { roomCode?: string; userId?: string };
 
@@ -11,30 +14,61 @@ export type WsApi = {
 export function attachWebSocket(server: http.Server): WsApi {
   const wss = new WebSocketServer({ server, path: '/api/match/socket' });
 
-  const rooms = new Map<string, Set<WsClient>>();
-  const roomUsers = new Map<string, Map<string, Set<WsClient>>>();
+  const manager = new SocketManager();
 
   function broadcast(roomCode: string, data: unknown) {
-    const clients = rooms.get(roomCode);
-    if (!clients) return;
-    const payload = JSON.stringify(data);
-    clients.forEach((client) => {
-      if (client.readyState === client.OPEN) client.send(payload);
-    });
+    manager.broadcast(roomCode, data);
   }
 
   function sendTo(roomCode: string, userId: string, data: unknown) {
-    const users = roomUsers.get(roomCode);
-    if (!users) return;
-    const targets = users.get(userId);
-    if (!targets) return;
-    const payload = JSON.stringify(data);
-    targets.forEach((client) => {
-      if (client.readyState === client.OPEN) client.send(payload);
-    });
+    manager.sendTo(roomCode, userId, data);
   }
 
   wss.on('connection', (socket: WsClient) => {
+    // 초기 FoggedGameState 전송 (연결 즉시)
+    const initialFog: FoggedGameState = {
+      phase: GamePhase.WAITING_FOR_MULLIGAN,
+      turn: 1,
+      activePlayer: 'player1',
+      winner: null,
+      board: {
+        width: 5,
+        height: 5,
+        wizards: {
+          player1: { r: 4, c: 2 },
+          player2: { r: 0, c: 2 },
+        },
+        rituals: [],
+      },
+      me: {
+        hp: 20,
+        mana: 0,
+        maxMana: 0,
+        hand: [],
+        handCount: 0,
+        deckCount: 0,
+        graveCount: 0,
+      },
+      opponent: {
+        hp: 20,
+        mana: 0,
+        maxMana: 0,
+        handCount: 0,
+        deckCount: 0,
+        graveCount: 0,
+      },
+      catastrophe: {
+        deckCount: 0,
+        graveCount: 0,
+      },
+      lastActions: [],
+    };
+    try {
+      socket.send(JSON.stringify({ event: 'game_start', data: initialFog }));
+    } catch {
+      // ignore
+    }
+
     socket.on('message', (buf) => {
       try {
         const { event, data } = JSON.parse(buf.toString()) as {
@@ -47,20 +81,38 @@ export function attachWebSocket(server: http.Server): WsApi {
             roomCode: string;
             userId?: string;
           };
-          socket.roomCode = roomCode;
-          if (userId) socket.userId = userId;
-          if (!rooms.has(roomCode)) rooms.set(roomCode, new Set());
-          rooms.get(roomCode)!.add(socket);
-          if (!roomUsers.has(roomCode)) roomUsers.set(roomCode, new Map());
-          if (userId) {
-            const map = roomUsers.get(roomCode)!;
-            if (!map.has(userId)) map.set(userId, new Set());
-            map.get(userId)!.add(socket);
-          }
+          manager.joinRoom(roomCode, socket, userId);
           broadcast(roomCode, {
             event: 'room_update',
             data: { status: 'joined' },
           });
+          return;
+        }
+
+        if (event === 'check') {
+          // 요청 보낸 대상에게 즉시 응답
+          try {
+            socket.send(
+              JSON.stringify({ event: 'check_back', data: { ok: true } }),
+            );
+          } catch {
+            // ignore
+          }
+          // 5초 후 방 전체에 phase 변경 브로드캐스트
+          const roomCode = socket.roomCode;
+          if (roomCode) {
+            const phases: GamePhase[] = [
+              GamePhase.WAITING_FOR_MULLIGAN,
+              GamePhase.RESOLVING,
+              GamePhase.WAITING_FOR_PLAYER_ACTION,
+              GamePhase.WAITING_FOR_PLAYER_INPUT,
+              GamePhase.GAME_OVER,
+            ];
+            setTimeout(() => {
+              const next = phases[Math.floor(Math.random() * phases.length)];
+              broadcast(roomCode, { event: 'change_phase', data: next });
+            }, 5000);
+          }
           return;
         }
 
@@ -111,22 +163,7 @@ export function attachWebSocket(server: http.Server): WsApi {
     });
 
     socket.on('close', () => {
-      const roomCode = socket.roomCode;
-      if (roomCode) {
-        if (rooms.has(roomCode)) {
-          rooms.get(roomCode)!.delete(socket);
-          if (rooms.get(roomCode)!.size === 0) rooms.delete(roomCode);
-        }
-        const userId = socket.userId;
-        if (userId && roomUsers.has(roomCode)) {
-          const map = roomUsers.get(roomCode)!;
-          if (map.has(userId)) {
-            map.get(userId)!.delete(socket);
-            if (map.get(userId)!.size === 0) map.delete(userId);
-          }
-          if (map.size === 0) roomUsers.delete(roomCode);
-        }
-      }
+      manager.leave(socket);
     });
   });
 
