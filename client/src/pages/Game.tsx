@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { GameBoard, type BoardPosition } from '@/components/game/GameBoard';
 import { GameHeader } from '@/components/game/GameHeader';
@@ -6,101 +6,37 @@ import { PlayerInfo } from '@/components/game/PlayerInfo';
 import { DeckInfo, CatastropheDeckInfo } from '@/components/game/DeckInfo';
 import { OpponentHand } from '@/components/game/OpponentHand';
 import { GameLog } from '@/components/game/GameLog';
-import type { FoggedGameState } from '@/shared/types/game';
+import { AnimationLayer, type SimpleAnimation } from '@/components/game/AnimationLayer';
+import {
+  RequestInputModal,
+  type InputRequest,
+  type InputOption,
+} from '@/components/game/RequestInputModal';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDecksQuery } from '@/features/decks/queries';
 import { useMeQuery } from '@/features/auth/queries';
 import { useGameFogStore } from '@/shared/store/gameStore';
+import { useGameSocket } from '@/ws/useGameSocket';
 
 export default function Game() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
   const { data: serverDecks } = useDecksQuery();
-  const setFogged = useGameFogStore((s) => s.setFogged);
-  const patchFogged = useGameFogStore((s) => s.patchFogged);
   const fogged = useGameFogStore((s) => s.fogged);
-
-  // 상단 테스트 버튼/플레이스홀더
-  const [wsMessage, setWsMessage] = useState<string>('');
-  const wsRef = useRef<WebSocket | null>(null);
+  const lastDiff = useGameFogStore((s) => s.lastDiff);
+  const requestInput = useGameFogStore((s) => s.requestInput);
+  const setRequestInput = useGameFogStore((s) => s.setRequestInput);
+  const clearLastDiff = useGameFogStore((s) => s.clearLastDiff);
 
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
 
-  // WebSocket 초기화 및 수신 핸들러
-  useEffect(() => {
-    // me 정보가 있거나 roomId가 있을 때 연결
-    if (!roomId) return;
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
-    const wsBase = apiBase.replace(/^http/i, 'ws');
-    const url = `${wsBase}/api/match/socket`;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setWsMessage('WS 연결됨');
-      console.log('[WS] 연결됨. 방 참여 요청 전송 roomId:', roomId, 'userId:', me?.id);
-      // 방 참여
-      ws.send(
-        JSON.stringify({
-          event: 'join_room',
-          data: { roomCode: roomId, userId: me?.id },
-        }),
-      );
-    };
-
-    ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(ev.data as string) as { event: string; data?: unknown };
-        console.log('[WS] 수신 이벤트:', msg?.event, '데이터:', msg?.data);
-        if (msg?.event === 'check_back') {
-          console.log('WS received check_back:', msg?.data);
-        }
-        if (msg?.event === 'game_start' && msg.data) {
-          console.log('[WS] game_start 수신, FoggedGameState 설정');
-          setFogged(msg.data as FoggedGameState);
-        }
-        if (msg?.event === 'change_phase') {
-          const phase = msg.data;
-          console.log('[WS] change_phase 수신:', phase);
-          if (typeof phase === 'string') {
-            patchFogged({ phase: phase as FoggedGameState['phase'] });
-          }
-        }
-      } catch (e) {
-        console.error('[WS] 메시지 처리 중 오류:', e, ev.data);
-        // ignore non-JSON
-      }
-    };
-
-    ws.onerror = (e) => {
-      setWsMessage('WS 오류');
-      console.error('[WS] 오류 발생:', e);
-    };
-    ws.onclose = (e) => {
-      setWsMessage('WS 연결 종료');
-      console.log('[WS] 연결 종료', e);
-    };
-
-    return () => {
-      try {
-        ws.close();
-      } finally {
-        wsRef.current = null;
-      }
-    };
-  }, [roomId, me?.id, setFogged, patchFogged]);
-
-  const sendWs = (event: string, data?: unknown) => {
-    const socket = wsRef.current;
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-      setWsMessage('WS 미연결 상태');
-      return;
-    }
-    socket.send(JSON.stringify({ event, data }));
-  };
+  const { sendPlayerInput, status: wsStatus } = useGameSocket({
+    roomId: roomId ?? '',
+    userId: me?.id,
+  });
 
   useEffect(() => {
     if (!me) {
@@ -115,7 +51,7 @@ export default function Game() {
   const handleBoardCellClick = (position: BoardPosition) => {
     setSelectedBoardPosition(position);
     // TODO: 서버로 이동 요청 전송 (FoggedGameState 기반)
-    // 예: sendWs('player_action', { type: 'move', target: { r: position.y, c: position.x } });
+    // 예: sendPlayerAction({ action: 'move', to: [position.y, position.x] });
     toast.info('보드 클릭', {
       description: `셀 (${position.x}, ${position.y})을 클릭했습니다.`,
     });
@@ -147,6 +83,50 @@ export default function Game() {
     ? { x: opponentWizard.c, y: opponentWizard.r }
     : { x: 2, y: 0 };
 
+  const animations: SimpleAnimation[] =
+    lastDiff?.animations?.map((anim) => {
+      switch (anim.kind) {
+        case 'draw':
+          return { type: 'draw' };
+        case 'damage':
+          return {
+            type: 'damage',
+            value: typeof anim.amount === 'number' ? anim.amount : undefined,
+          };
+        case 'heal':
+          return { type: 'heal', value: typeof anim.amount === 'number' ? anim.amount : undefined };
+        case 'discard':
+          return { type: 'discard' };
+        case 'burn':
+          return { type: 'burn' };
+        case 'move':
+          return { type: 'move' };
+        case 'ritual_place':
+          return { type: 'ritual_place' };
+        case 'ritual_destroy':
+          return { type: 'ritual_destroy' };
+        case 'shuffle':
+        default:
+          return { type: 'shuffle' };
+      }
+    }) ?? [];
+
+  const currentRequest: InputRequest | null = requestInput
+    ? {
+        type: requestInput.kind.startsWith('choose_')
+          ? 'move'
+          : requestInput.kind === 'choose_discard'
+            ? 'discard'
+            : requestInput.kind === 'choose_burn'
+              ? 'burn'
+              : requestInput.kind === 'select_install_position'
+                ? 'ritual_placement'
+                : 'target',
+        prompt: `입력이 필요합니다: ${requestInput.kind}`,
+        options: requestInput.options as InputOption[],
+      }
+    : null;
+
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -156,19 +136,8 @@ export default function Game() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             로비
           </Button>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                sendWs('check');
-                setWsMessage('check 전송');
-              }}
-            >
-              WS 테스트
-            </Button>
-            <div className="text-muted-foreground min-w-[200px] text-xs">
-              {wsMessage || '웹소켓 상태 메시지 ...'}
-            </div>
+          <div className="text-muted-foreground min-w-[200px] text-right text-xs">
+            WS 상태: {wsStatus}
           </div>
           <div className="text-muted-foreground text-sm">방 코드: {roomId ?? '-'}</div>
         </div>
@@ -231,6 +200,23 @@ export default function Game() {
           />
         </div>
       </div>
+
+      <AnimationLayer
+        animations={animations}
+        onAnimationComplete={() => {
+          clearLastDiff();
+        }}
+      />
+      <RequestInputModal
+        request={currentRequest}
+        onResponse={(response) => {
+          // TODO: 서버에서 기대하는 형태에 맞게 응답 변환
+          // 현재는 선택된 옵션 배열을 그대로 answer로 보낸다.
+          sendPlayerInput({ answer: response });
+          setRequestInput(null);
+        }}
+        onCancel={() => setRequestInput(null)}
+      />
     </div>
   );
 }

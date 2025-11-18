@@ -3,6 +3,13 @@ import { WebSocketServer } from 'ws';
 import { SocketManager } from './socketManager';
 import type { FoggedGameState } from '../type/gameState';
 import { GamePhase } from '../type/gameState';
+import type {
+  ClientToServerEvent,
+  ClientToServerMessage,
+  ReadyPayload,
+  PlayerActionPayload,
+} from '../type/wsProtocol';
+import type { ServerToClientMessage } from '../type/wsProtocol';
 
 type WsClient = import('ws').WebSocket & { roomCode?: string; userId?: string };
 
@@ -25,93 +32,73 @@ export function attachWebSocket(server: http.Server): WsApi {
   }
 
   wss.on('connection', (socket: WsClient) => {
-    // 초기 FoggedGameState 전송 (연결 즉시)
-    const initialFog: FoggedGameState = {
-      phase: GamePhase.WAITING_FOR_MULLIGAN,
-      turn: 1,
-      activePlayer: 'player1',
-      winner: null,
-      board: {
-        width: 5,
-        height: 5,
-        wizards: {
-          player1: { r: 4, c: 2 },
-          player2: { r: 0, c: 2 },
-        },
-        rituals: [],
-      },
-      me: {
-        hp: 20,
-        mana: 0,
-        maxMana: 0,
-        hand: [],
-        handCount: 0,
-        deckCount: 0,
-        graveCount: 0,
-      },
-      opponent: {
-        hp: 20,
-        mana: 0,
-        maxMana: 0,
-        handCount: 0,
-        deckCount: 0,
-        graveCount: 0,
-      },
-      catastrophe: {
-        deckCount: 0,
-        graveCount: 0,
-      },
-      lastActions: [],
-    };
-    try {
-      socket.send(JSON.stringify({ event: 'game_start', data: initialFog }));
-    } catch {
-      // ignore
-    }
-
     socket.on('message', (buf) => {
       try {
-        const { event, data } = JSON.parse(buf.toString()) as {
-          event: string;
-          data: any;
-        };
+        const raw = JSON.parse(buf.toString()) as
+          | ClientToServerMessage
+          | {
+              event: ClientToServerEvent | string;
+              data: unknown;
+            };
 
-        if (event === 'join_room') {
-          const { roomCode, userId } = data as {
-            roomCode: string;
-            userId?: string;
+        const event = (raw as ClientToServerMessage).event;
+        const data = (raw as ClientToServerMessage).data;
+
+        if (event === 'ready') {
+          const { roomId, userId } = data as ReadyPayload;
+          socket.userId = userId;
+          manager.joinRoom(roomId, socket, userId);
+
+          // TODO: 양쪽 플레이어 모두 ready가 되었을 때만 보내도록 개선
+          const initialFog: FoggedGameState = {
+            phase: GamePhase.WAITING_FOR_MULLIGAN,
+            turn: 1,
+            activePlayer: userId ?? 'player1',
+            winner: null,
+            board: {
+              width: 5,
+              height: 5,
+              wizards: {
+                [userId ?? 'player1']: { r: 4, c: 2 },
+              },
+              rituals: [],
+            },
+            me: {
+              hp: 20,
+              mana: 0,
+              maxMana: 0,
+              hand: [],
+              handCount: 0,
+              deckCount: 0,
+              graveCount: 0,
+            },
+            opponent: {
+              hp: 20,
+              mana: 0,
+              maxMana: 0,
+              handCount: 0,
+              deckCount: 0,
+              graveCount: 0,
+            },
+            catastrophe: {
+              deckCount: 0,
+              graveCount: 0,
+            },
+            lastActions: [],
           };
-          manager.joinRoom(roomCode, socket, userId);
-          broadcast(roomCode, {
-            event: 'room_update',
-            data: { status: 'joined' },
-          });
-          return;
-        }
 
-        if (event === 'check') {
-          // 요청 보낸 대상에게 즉시 응답
+          const msg: ServerToClientMessage = {
+            event: 'game_init',
+            data: {
+              state: initialFog,
+              version: 1,
+            },
+          };
+
           try {
-            socket.send(
-              JSON.stringify({ event: 'check_back', data: { ok: true } }),
-            );
+            socket.send(JSON.stringify(msg));
           } catch {
             // ignore
-          }
-          // 5초 후 방 전체에 phase 변경 브로드캐스트
-          const roomCode = socket.roomCode;
-          if (roomCode) {
-            const phases: GamePhase[] = [
-              GamePhase.WAITING_FOR_MULLIGAN,
-              GamePhase.RESOLVING,
-              GamePhase.WAITING_FOR_PLAYER_ACTION,
-              GamePhase.WAITING_FOR_PLAYER_INPUT,
-              GamePhase.GAME_OVER,
-            ];
-            setTimeout(() => {
-              const next = phases[Math.floor(Math.random() * phases.length)];
-              broadcast(roomCode, { event: 'change_phase', data: next });
-            }, 5000);
           }
           return;
         }
@@ -120,40 +107,70 @@ export function attachWebSocket(server: http.Server): WsApi {
         const roomCode = socket.roomCode;
 
         switch (event) {
-          case 'start_game':
-            broadcast(roomCode, {
-              event: 'state_update',
-              data: { status: 'started' },
-            });
-            broadcast(roomCode, {
-              event: 'turn_change',
-              data: { currentPlayer: 'player1' },
-            });
-            break;
-          case 'player_action':
-            broadcast(roomCode, { event: 'card_effect', data });
-            break;
-          case 'end_turn':
-            broadcast(roomCode, { event: 'turn_change', data: { next: true } });
-            break;
-          case 'surrender':
-            broadcast(roomCode, {
-              event: 'game_over',
-              data: { winnerId: data?.opponentId ?? null },
-            });
-            break;
-          case 'direct_to_player': {
-            const { toUserId, payload } = data as {
-              toUserId: string;
-              payload: unknown;
+          case 'player_action': {
+            const action = data as PlayerActionPayload;
+            // TODO: 실제 엔진에 위임하여 state_patch / request_input / game_over 생성
+            // 임시: 받은 액션을 그대로 로그에 남기는 state_patch 더미 전송
+            const patchMessage: ServerToClientMessage = {
+              event: 'state_patch',
+              data: {
+                version: Date.now(),
+                fogged_state: {
+                  phase: GamePhase.WAITING_FOR_PLAYER_ACTION,
+                  turn: 1,
+                  activePlayer: socket.userId ?? 'player1',
+                  winner: null,
+                  board: {
+                    width: 5,
+                    height: 5,
+                    wizards: {
+                      [socket.userId ?? 'player1']: { r: 4, c: 2 },
+                    },
+                    rituals: [],
+                  },
+                  me: {
+                    hp: 20,
+                    mana: 1,
+                    maxMana: 1,
+                    hand: [],
+                    handCount: 0,
+                    deckCount: 0,
+                    graveCount: 0,
+                  },
+                  opponent: {
+                    hp: 20,
+                    mana: 0,
+                    maxMana: 0,
+                    handCount: 0,
+                    deckCount: 0,
+                    graveCount: 0,
+                  },
+                  catastrophe: {
+                    deckCount: 0,
+                    graveCount: 0,
+                  },
+                  lastActions: [
+                    {
+                      turn: 1,
+                      text: JSON.stringify(action),
+                      timestamp: Date.now(),
+                    },
+                  ],
+                },
+                diff_patch: {
+                  animations: [],
+                  log: ['dummy player_action processed'],
+                },
+              },
             };
-            if (toUserId)
-              sendTo(roomCode, toUserId, {
-                event: 'state_update',
-                data: payload,
-              });
+
+            broadcast(roomCode, patchMessage);
             break;
           }
+          case 'answer_mulligan':
+          case 'player_input':
+            // TODO: 엔진 구현 후 처리
+            break;
           default:
             break;
         }
