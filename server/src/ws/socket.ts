@@ -1,17 +1,15 @@
 import http from 'node:http';
 import { WebSocketServer } from 'ws';
 import { SocketManager } from './socketManager';
-import type { FoggedGameState } from '../type/gameState';
-import { GamePhase } from '../type/gameState';
 import type {
   ClientToServerEvent,
   ClientToServerMessage,
   ReadyPayload,
   PlayerActionPayload,
+  AnswerMulliganPayload,
+  PlayerInputPayload,
 } from '../type/wsProtocol';
-import type { ServerToClientMessage } from '../type/wsProtocol';
-
-type WsClient = import('ws').WebSocket & { roomCode?: string; userId?: string };
+import { GameRoomManager, type WsClient } from './gameRoomManager';
 
 export type WsApi = {
   broadcast: (roomCode: string, data: unknown) => void;
@@ -22,6 +20,7 @@ export function attachWebSocket(server: http.Server): WsApi {
   const wss = new WebSocketServer({ server, path: '/api/match/socket' });
 
   const manager = new SocketManager();
+  const roomManager = new GameRoomManager(manager);
 
   function broadcast(roomCode: string, data: unknown) {
     manager.broadcast(roomCode, data);
@@ -46,131 +45,37 @@ export function attachWebSocket(server: http.Server): WsApi {
 
         if (event === 'ready') {
           const { roomId, userId } = data as ReadyPayload;
+          if (!roomId || !userId) return;
           socket.userId = userId;
-          manager.joinRoom(roomId, socket, userId);
-
-          // TODO: 양쪽 플레이어 모두 ready가 되었을 때만 보내도록 개선
-          const initialFog: FoggedGameState = {
-            phase: GamePhase.WAITING_FOR_MULLIGAN,
-            turn: 1,
-            activePlayer: userId ?? 'player1',
-            winner: null,
-            board: {
-              width: 5,
-              height: 5,
-              wizards: {
-                [userId ?? 'player1']: { r: 4, c: 2 },
-              },
-              rituals: [],
-            },
-            me: {
-              hp: 20,
-              mana: 0,
-              maxMana: 0,
-              hand: [],
-              handCount: 0,
-              deckCount: 0,
-              graveCount: 0,
-            },
-            opponent: {
-              hp: 20,
-              mana: 0,
-              maxMana: 0,
-              handCount: 0,
-              deckCount: 0,
-              graveCount: 0,
-            },
-            catastrophe: {
-              deckCount: 0,
-              graveCount: 0,
-            },
-            lastActions: [],
-          };
-
-          const msg: ServerToClientMessage = {
-            event: 'game_init',
-            data: {
-              state: initialFog,
-              version: 1,
-            },
-          };
-
-          try {
-            socket.send(JSON.stringify(msg));
-          } catch {
-            // ignore
-          }
+          socket.roomCode = roomId;
+          roomManager.addClient(roomId, socket, userId);
+          void roomManager.handleReady(roomId, {
+            roomId,
+            userId,
+          });
           return;
         }
 
-        if (!socket.roomCode) return;
+        if (!socket.roomCode || !socket.userId) return;
         const roomCode = socket.roomCode;
+        const userId = socket.userId as string;
 
         switch (event) {
           case 'player_action': {
             const action = data as PlayerActionPayload;
-            // TODO: 실제 엔진에 위임하여 state_patch / request_input / game_over 생성
-            // 임시: 받은 액션을 그대로 로그에 남기는 state_patch 더미 전송
-            const patchMessage: ServerToClientMessage = {
-              event: 'state_patch',
-              data: {
-                version: Date.now(),
-                fogged_state: {
-                  phase: GamePhase.WAITING_FOR_PLAYER_ACTION,
-                  turn: 1,
-                  activePlayer: socket.userId ?? 'player1',
-                  winner: null,
-                  board: {
-                    width: 5,
-                    height: 5,
-                    wizards: {
-                      [socket.userId ?? 'player1']: { r: 4, c: 2 },
-                    },
-                    rituals: [],
-                  },
-                  me: {
-                    hp: 20,
-                    mana: 1,
-                    maxMana: 1,
-                    hand: [],
-                    handCount: 0,
-                    deckCount: 0,
-                    graveCount: 0,
-                  },
-                  opponent: {
-                    hp: 20,
-                    mana: 0,
-                    maxMana: 0,
-                    handCount: 0,
-                    deckCount: 0,
-                    graveCount: 0,
-                  },
-                  catastrophe: {
-                    deckCount: 0,
-                    graveCount: 0,
-                  },
-                  lastActions: [
-                    {
-                      turn: 1,
-                      text: JSON.stringify(action),
-                      timestamp: Date.now(),
-                    },
-                  ],
-                },
-                diff_patch: {
-                  animations: [],
-                  log: ['dummy player_action processed'],
-                },
-              },
-            };
-
-            broadcast(roomCode, patchMessage);
+            void roomManager.handlePlayerAction(roomCode, userId, action);
             break;
           }
-          case 'answer_mulligan':
-          case 'player_input':
-            // TODO: 엔진 구현 후 처리
+          case 'answer_mulligan': {
+            const payload = data as AnswerMulliganPayload;
+            void roomManager.handleAnswerMulligan(roomCode, userId, payload);
             break;
+          }
+          case 'player_input': {
+            const payload = data as PlayerInputPayload;
+            void roomManager.handlePlayerInput(roomCode, userId, payload);
+            break;
+          }
           default:
             break;
         }
@@ -180,7 +85,7 @@ export function attachWebSocket(server: http.Server): WsApi {
     });
 
     socket.on('close', () => {
-      manager.leave(socket);
+      roomManager.removeClient(socket);
     });
   });
 
