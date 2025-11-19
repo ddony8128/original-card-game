@@ -64,18 +64,21 @@ export class GameEngineCore {
   private readonly observers: ObserverRegistry;
   private burnedThisAction = new Set<CardID>();
   private version = 1;
-  private readyPlayers = new Set<PlayerID>();
-  private pendingInput:
-    | {
-        playerId: PlayerID;
-        kind: RequestInputKind;
-        type: 'install_position' | 'cast_target' | 'hand_discard';
-        cardId?: CardID;
-        count?: number;
-      }
-    | null = null;
+  private readyPlayers = false; // 모든 플레이어가 ready 되었는지 확인
+  private pendingInput: {
+    playerId: PlayerID;
+    kind: RequestInputKind;
+    type: 'install_position' | 'cast_target' | 'hand_discard';
+    cardId?: CardID;
+    count?: number;
+  } | null = null;
 
-  constructor(initialState: GameState, ctx: EngineContext, roomId: string, players: PlayerID[]) {
+  constructor(
+    initialState: GameState,
+    ctx: EngineContext,
+    roomId: string,
+    players: PlayerID[],
+  ) {
     this.state = initialState;
     this.effectStack = new EffectStack();
     this.observers = new ObserverRegistry();
@@ -90,22 +93,25 @@ export class GameEngineCore {
     };
   }
 
-  static create(initialState: GameState, ctx: EngineContext, config: EngineConfig): GameEngineCore {
+  static create(
+    initialState: GameState,
+    ctx: EngineContext,
+    config: EngineConfig,
+  ): GameEngineCore {
     return new GameEngineCore(initialState, ctx, config.roomId, config.players);
   }
 
-  markReady(playerId: PlayerID): EngineResult[] {
-    this.readyPlayers.add(playerId);
-    if (this.readyPlayers.size < this.players.length) {
-      return [];
-    }
-
+  markReady(): EngineResult[] {
     // 모든 플레이어 ready → 게임 초기화
+    if (this.readyPlayers) return [];
     this.initializeGame();
 
     this.state.phase = GamePhase.WAITING_FOR_MULLIGAN;
 
     const results: EngineResult[] = [];
+
+    // 초기 상태 패치
+    results.push(...this.buildStatePatchForAll());
     this.players.forEach((pid) => {
       const player = this.state.players[pid];
       const initialHand = [...player.hand];
@@ -119,8 +125,6 @@ export class GameEngineCore {
       });
     });
 
-    // 클라이언트가 fogged_state를 같이 보고 싶다면 state_patch도 함께 보낸다.
-    results.push(...this.buildStatePatchForAll());
     return results;
   }
 
@@ -136,9 +140,10 @@ export class GameEngineCore {
     this.players.forEach((pid, idx) => {
       const ps = this.state.players[pid];
       this.shuffle(ps.deck);
+      this.shuffle(this.state.catastropheDeck);
       const drawCount = idx === firstIdx ? 2 : 3;
       for (let i = 0; i < drawCount; i += 1) {
-        this.drawCardNoTriggers(pid);
+        this.bringCardToHand(pid);
       }
       ps.mulliganSelected = false;
     });
@@ -172,7 +177,9 @@ export class GameEngineCore {
 
     switch (act) {
       case 'move':
-        return this.handleMove(playerId, { to: (action as any).to as [number, number] });
+        return this.handleMove(playerId, {
+          to: (action as any).to as [number, number],
+        });
       case 'end_turn':
         return this.handleEndTurn(playerId);
       case 'use_card':
@@ -203,25 +210,40 @@ export class GameEngineCore {
 
   // ---- 개별 액션 처리 ----
 
-  private handleMove(playerId: PlayerID, payload: { to: [number, number] }): EngineResult[] {
+  private handleMove(
+    playerId: PlayerID,
+    payload: { to: [number, number] },
+  ): EngineResult[] {
     const me = this.state.board.wizards[playerId];
     if (!me) {
       return [
-        { kind: 'invalid_action', targetPlayer: playerId, invalidReason: 'no_wizard' },
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'no_wizard',
+        },
       ];
     }
 
     const [toR, toC] = payload.to;
     if (!this.isInsideBoard(toR, toC)) {
       return [
-        { kind: 'invalid_action', targetPlayer: playerId, invalidReason: 'out_of_board' },
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'out_of_board',
+        },
       ];
     }
 
     const playerState = this.state.players[playerId];
     if (playerState.mana < 1) {
       return [
-        { kind: 'invalid_action', targetPlayer: playerId, invalidReason: 'not_enough_mana' },
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'not_enough_mana',
+        },
       ];
     }
 
@@ -241,7 +263,11 @@ export class GameEngineCore {
   private handleEndTurn(playerId: PlayerID): EngineResult[] {
     if (this.state.activePlayer !== playerId) {
       return [
-        { kind: 'invalid_action', targetPlayer: playerId, invalidReason: 'not_your_turn' },
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'not_your_turn',
+        },
       ];
     }
     const effect: TurnEndEffect = {
@@ -307,9 +333,7 @@ export class GameEngineCore {
     if (meta.kind === 'ritual') {
       // 설치 가능한 위치 계산 → request_input (좌표는 플레이어 시점 기준으로 변환)
       const absOptions = this.computeInstallPositions(playerId);
-      const options = absOptions.map((pos) =>
-        this.toViewerPos(pos, playerId),
-      );
+      const options = absOptions.map((pos) => this.toViewerPos(pos, playerId));
       this.pendingInput = {
         playerId,
         kind: 'select_install_position',
@@ -379,7 +403,9 @@ export class GameEngineCore {
     }
     playerState.mulliganSelected = true;
 
-    const allDone = this.players.every((pid) => this.state.players[pid].mulliganSelected);
+    const allDone = this.players.every(
+      (pid) => this.state.players[pid].mulliganSelected,
+    );
     if (!allDone) {
       return this.buildStatePatchForAll();
     }
@@ -513,7 +539,9 @@ export class GameEngineCore {
             from,
             to: [move.to.r, move.to.c],
           });
-          diff.log.push(`플레이어 ${effect.owner}가 (${from[0]},${from[1]}) → (${move.to.r},${move.to.c}) 이동`);
+          diff.log.push(
+            `플레이어 ${effect.owner}가 (${from[0]},${from[1]}) → (${move.to.r},${move.to.c}) 이동`,
+          );
         }
         break;
       }
@@ -545,7 +573,9 @@ export class GameEngineCore {
         // 최대 마나 증가 및 현재 마나 회복 (간단한 규칙)
         p.maxMana += 1;
         p.mana = p.maxMana;
-        diff.log.push(`플레이어 ${ts.owner} 턴 시작 (마나 ${p.mana}/${p.maxMana})`);
+        diff.log.push(
+          `플레이어 ${ts.owner} 턴 시작 (마나 ${p.mana}/${p.maxMana})`,
+        );
         // 일반 드로우 1장
         this.drawCardNoTriggers(ts.owner, diff);
         // onTurnStart 트리거 호출
@@ -602,7 +632,9 @@ export class GameEngineCore {
       }
       case 'CAST_EXECUTE': {
         const cast = effect as CastExecuteEffect;
-        diff.log.push(`플레이어 ${cast.owner}가 인스턴트 카드를 사용 (id=${cast.cardId})`);
+        diff.log.push(
+          `플레이어 ${cast.owner}가 인스턴트 카드를 사용 (id=${cast.cardId})`,
+        );
         // effect_json의 onCast 트리거 실행
         this.executeCardTrigger(cast.cardId, 'onCast', cast.owner, diff);
         break;
@@ -623,7 +655,9 @@ export class GameEngineCore {
   }
 
   private checkGameOver(): boolean {
-    const alive = Object.entries(this.state.players).filter(([_, p]) => p.hp > 0);
+    const alive = Object.entries(this.state.players).filter(
+      ([_, p]) => p.hp > 0,
+    );
     if (alive.length <= 1) {
       this.state.phase = GamePhase.GAME_OVER;
       this.state.winner = alive[0]?.[0] ?? null;
@@ -759,7 +793,10 @@ export class GameEngineCore {
     return viewer === this.bottomSidePlayerId;
   }
 
-  private toViewerPos(pos: { r: number; c: number }, viewer: PlayerID): { r: number; c: number } {
+  private toViewerPos(
+    pos: { r: number; c: number },
+    viewer: PlayerID,
+  ): { r: number; c: number } {
     const { height } = this.state.board;
     if (this.isBottomSide(viewer)) return pos;
     return { r: height - 1 - pos.r, c: pos.c };
@@ -782,6 +819,16 @@ export class GameEngineCore {
     }
   }
 
+  // 덱에서 순서대로 카드를 가져오는 행위, 드로우가 아님 (멀리건 / 드로우 내부에서 활용)
+  private bringCardToHand(playerId: PlayerID): CardID | null {
+    const p = this.state.players[playerId];
+    if (!p) return null;
+    if (p.deck.length === 0) return null;
+    const card = p.deck.shift() as CardID;
+    p.hand.push(card);
+    return card;
+  }
+
   private drawCardNoTriggers(playerId: PlayerID, diff?: DiffPatch) {
     const p = this.state.players[playerId];
     if (!p) return;
@@ -797,7 +844,9 @@ export class GameEngineCore {
     }
   }
 
-  private computeInstallPositions(playerId: PlayerID): { r: number; c: number }[] {
+  private computeInstallPositions(
+    playerId: PlayerID,
+  ): { r: number; c: number }[] {
     const positions: { r: number; c: number }[] = [];
     const { width, height, rituals } = this.state.board;
     const occupied = new Set<string>();
@@ -815,10 +864,13 @@ export class GameEngineCore {
   }
 
   private enqueueTriggeredEffects(trigger: string, context: unknown) {
-    const effects = this.observers.collectTriggeredEffects(trigger as any, {
-      playerId: (context as any).playerId,
-      ...((context as any) ?? {}),
-    } as any);
+    const effects = this.observers.collectTriggeredEffects(
+      trigger as any,
+      {
+        playerId: (context as any).playerId,
+        ...((context as any) ?? {}),
+      } as any,
+    );
     if (effects.length > 0) {
       this.effectStack.push(effects);
     }
@@ -848,5 +900,3 @@ export class GameEngineCore {
     );
   }
 }
-
-

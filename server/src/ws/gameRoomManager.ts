@@ -31,6 +31,7 @@ type RoomMap = Map<string, RoomEngine>;
 
 export class GameRoomManager {
   private readonly rooms: RoomMap = new Map();
+  private readonly userReady: Map<PlayerID, boolean> = new Map();
 
   constructor(private readonly socketManager: SocketManager) {}
 
@@ -42,10 +43,18 @@ export class GameRoomManager {
     this.socketManager.leave(socket);
   }
 
-  async handleReady(roomId: string, payload: ReadyPayload & { userId: PlayerID }): Promise<void> {
+  async handleReady(
+    roomId: string,
+    payload: ReadyPayload & { userId: PlayerID },
+  ): Promise<void> {
     const room = await this.ensureRoom(roomId);
     if (!room) return;
-    await room.engine.markReady(payload.userId);
+    this.userReady.set(payload.userId, true);
+    console.log('준비완료 메시지 수신', roomId, this.userReady);
+
+    if (this.userReady.size === room.players.length) {
+      await room.engine.markReady();
+    }
   }
 
   async handlePlayerAction(
@@ -120,7 +129,11 @@ export class GameRoomManager {
       }
     }
 
-    const initialState: GameState = createInitialGameState(players, decksByPlayer, cataByPlayer);
+    const initialState: GameState = createInitialGameState(
+      players,
+      decksByPlayer,
+      cataByPlayer,
+    );
     const ctx = await buildEngineContextFromDecks(deckConfigs);
 
     const engine = GameEngine.create({
@@ -149,6 +162,9 @@ export class GameRoomManager {
         event: 'state_patch',
         data: payload,
       };
+      console.log(
+        `[onStatePatch] roomId=${roomId} targetPlayer=${targetPlayer ?? 'ALL'} version=${payload.version}`,
+      );
       if (targetPlayer) {
         if (!room.initializedPlayers.has(targetPlayer)) {
           const initMsg: ServerToClientMessage = {
@@ -158,9 +174,15 @@ export class GameRoomManager {
               version: payload.version,
             },
           };
+          console.log(
+            `[onStatePatch] Sending game_init to player ${targetPlayer} in room ${roomId}`,
+          );
           this.socketManager.sendTo(roomId, targetPlayer, initMsg);
           room.initializedPlayers.add(targetPlayer);
         }
+        console.log(
+          `[onStatePatch] Sending state_patch to player ${targetPlayer} in room ${roomId}`,
+        );
         this.socketManager.sendTo(roomId, targetPlayer, msg);
       } else {
         room.players.forEach((pid) => {
@@ -172,10 +194,16 @@ export class GameRoomManager {
                 version: payload.version,
               },
             };
+            console.log(
+              `[onStatePatch] Broadcasting game_init to player ${pid} in room ${roomId}`,
+            );
             this.socketManager.sendTo(roomId, pid, initMsg);
             room.initializedPlayers.add(pid);
           }
         });
+        console.log(
+          `[onStatePatch] Broadcasting state_patch to all players in room ${roomId}`,
+        );
         this.socketManager.broadcast(roomId, msg);
       }
     });
@@ -186,6 +214,9 @@ export class GameRoomManager {
         event: 'ask_mulligan',
         data: payload,
       };
+      console.log(
+        `[onAskMulligan] Sending ask_mulligan to player ${targetPlayer} in room ${roomId}`,
+      );
       this.socketManager.sendTo(roomId, targetPlayer, msg);
     });
 
@@ -217,5 +248,3 @@ export class GameRoomManager {
     });
   }
 }
-
-

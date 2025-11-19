@@ -15,25 +15,31 @@ import {
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { useDecksQuery } from '@/features/decks/queries';
 import { useMeQuery } from '@/features/auth/queries';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import { useGameSocket } from '@/ws/useGameSocket';
+import { useMulliganRequest } from '@/components/game/useMulliganRequest';
 
 export default function Game() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
-  const { data: serverDecks } = useDecksQuery();
   const fogged = useGameFogStore((s) => s.fogged);
   const lastDiff = useGameFogStore((s) => s.lastDiff);
   const requestInput = useGameFogStore((s) => s.requestInput);
   const setRequestInput = useGameFogStore((s) => s.setRequestInput);
   const clearLastDiff = useGameFogStore((s) => s.clearLastDiff);
-
+  const isMyTurn = useGameFogStore((s) => s.isMyTurn);
+  const hasEnoughMana = useGameFogStore((s) => s.hasEnoughMana);
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
 
-  const { sendPlayerInput, status: wsStatus } = useGameSocket({
+  const {
+    sendReady,
+    sendAnswerMulligan,
+    sendPlayerInput,
+    sendPlayerAction,
+    status: wsStatus,
+  } = useGameSocket({
     roomId: roomId ?? '',
     userId: me?.id,
   });
@@ -43,20 +49,32 @@ export default function Game() {
       navigate('/login');
       return;
     }
-    // 덱 정보는 서버 / FoggedGameState에서 관리하므로
-    // 여기서는 별도 로컬 GameState를 만들지 않습니다.
-    if (!serverDecks || serverDecks.length === 0) return;
-  }, [me, serverDecks, navigate]);
+
+    sendReady();
+  }, [me, navigate, sendReady]);
+
+  const myId = me?.id;
+
+  const { mulliganRequest, handleMulliganResponse, handleMulliganCancel } = useMulliganRequest({
+    sendAnswerMulligan,
+  });
 
   const handleBoardCellClick = (position: BoardPosition) => {
     setSelectedBoardPosition(position);
-    // TODO: 서버로 이동 요청 전송 (FoggedGameState 기반)
-    // 예: sendPlayerAction({ action: 'move', to: [position.y, position.x] });
-    toast.info('보드 클릭', {
+    if (!myId || !isMyTurn(myId)) {
+      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      return;
+    }
+    if (!hasEnoughMana(1)) {
+      toast.error('마나가 부족하여 이동할 수 없습니다.');
+      return;
+    }
+
+    sendPlayerAction({ action: 'move', to: [position.y, position.x] });
+    toast.info('이동 시도', {
       description: `셀 (${position.x}, ${position.y})을 클릭했습니다.`,
     });
   };
-  const myId = me?.id;
   const myWizard = myId && fogged ? fogged.board.wizards[myId] : undefined;
   const opponentWizard =
     fogged && myId
@@ -68,9 +86,7 @@ export default function Game() {
       <div className="from-background via-background to-accent/10 flex min-h-screen items-center justify-center bg-linear-to-br">
         <div className="text-center">
           <p className="text-muted-foreground mb-2 text-sm">게임 상태를 불러오는 중입니다.</p>
-          <p className="text-muted-foreground text-xs">
-            방에 입장했는지, 서버에서 <code>game_start</code> 이벤트가 왔는지 확인해주세요.
-          </p>
+          <p className="text-muted-foreground text-xs">상대가 게임에 입장했는지 확인해주세요.</p>
         </div>
       </div>
     );
@@ -126,6 +142,8 @@ export default function Game() {
         options: requestInput.options as InputOption[],
       }
     : null;
+
+  const activeRequest = mulliganRequest ?? currentRequest;
 
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4">
@@ -208,14 +226,25 @@ export default function Game() {
         }}
       />
       <RequestInputModal
-        request={currentRequest}
+        request={activeRequest}
         onResponse={(response) => {
-          // TODO: 서버에서 기대하는 형태에 맞게 응답 변환
-          // 현재는 선택된 옵션 배열을 그대로 answer로 보낸다.
-          sendPlayerInput({ answer: response });
-          setRequestInput(null);
+          if (!activeRequest) return;
+          if (activeRequest.type === 'mulligan') {
+            handleMulliganResponse(response);
+          } else {
+            // 일반 request_input 응답
+            sendPlayerInput({ answer: response });
+            setRequestInput(null);
+          }
         }}
-        onCancel={() => setRequestInput(null)}
+        onCancel={() => {
+          if (!activeRequest) return;
+          if (activeRequest.type === 'mulligan') {
+            handleMulliganCancel();
+          } else {
+            setRequestInput(null);
+          }
+        }}
       />
     </div>
   );

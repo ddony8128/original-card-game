@@ -102,7 +102,23 @@ export function RequestInputModal({ request, onResponse, onCancel }: RequestInpu
                   >
                     {/* 옵션 타입에 따라 다르게 렌더링 */}
                     {typeof option === 'object' && option !== null && 'name' in option && (
-                      <div className="text-sm font-medium">{(option as { name: string }).name}</div>
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium">
+                          {(option as { name: string }).name}
+                        </div>
+                        {'mana' in option &&
+                          typeof (option as { mana?: unknown }).mana === 'number' && (
+                            <div className="text-xs">
+                              마나: {(option as { mana?: number }).mana}
+                            </div>
+                          )}
+                        {'description' in option &&
+                          typeof (option as { description?: unknown }).description === 'string' && (
+                            <div className="text-muted-foreground text-xs whitespace-pre-wrap">
+                              {(option as { description?: string }).description}
+                            </div>
+                          )}
+                      </div>
                     )}
                     {typeof option === 'object' &&
                       option !== null &&
@@ -119,15 +135,6 @@ export function RequestInputModal({ request, onResponse, onCancel }: RequestInpu
               })}
             </div>
           )}
-
-          {/* 선택 정보 */}
-          <div className="text-muted-foreground text-center text-xs">
-            {request.minSelect !== undefined && request.maxSelect !== undefined && (
-              <span>
-                {selectedOptions.length} / {request.minSelect}-{request.maxSelect} 선택됨
-              </span>
-            )}
-          </div>
 
           {/* 액션 버튼 */}
           <div className="flex justify-end gap-2">

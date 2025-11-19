@@ -23,9 +23,18 @@ import type { EngineContext } from '../core/context';
  */
 
 export interface GameEngineEventHandlers {
-  onStatePatch?: (targetPlayer: PlayerID | null | undefined, payload: StatePatchPayload) => void;
-  onAskMulligan?: (targetPlayer: PlayerID | null | undefined, payload: AskMulliganPayload) => void;
-  onRequestInput?: (targetPlayer: PlayerID | null | undefined, payload: RequestInputPayload) => void;
+  onStatePatch?: (
+    targetPlayer: PlayerID | null | undefined,
+    payload: StatePatchPayload,
+  ) => void;
+  onAskMulligan?: (
+    targetPlayer: PlayerID | null | undefined,
+    payload: AskMulliganPayload,
+  ) => void;
+  onRequestInput?: (
+    targetPlayer: PlayerID | null | undefined,
+    payload: RequestInputPayload,
+  ) => void;
   onGameOver?: (payload: GameOverPayload) => void;
   onInvalidAction?: (
     targetPlayer: PlayerID | null | undefined,
@@ -44,8 +53,8 @@ export class GameEngine {
   readonly players: PlayerID[];
 
   private handlers: GameEngineEventHandlers = {};
-  private readonly readyPlayers = new Set<PlayerID>();
-  private started = false;
+  private readyPlayers: boolean = false; // 모든 플레이어가 ready 되었는지 확인
+  private started: boolean = false;
 
   private constructor(core: GameEngineCore) {
     this.core = core;
@@ -87,22 +96,23 @@ export class GameEngine {
    * 플레이어가 ready 를 눌렀을 때 호출.
    * 내부적으로 모든 플레이어가 ready 가 되면 초기화 + 멀리건 요청/상태 패치를 발생시킨다.
    */
-  async markReady(playerId: PlayerID): Promise<void> {
-    if (this.started) return;
-    if (this.readyPlayers.has(playerId)) return;
+  async markReady(): Promise<void> {
+    if (this.started || this.readyPlayers) return;
 
-    this.readyPlayers.add(playerId);
-    const results = this.core.markReady(playerId);
-    if (this.readyPlayers.size >= this.players.length) {
-      this.started = true;
-    }
+    console.log('모든 플레이어가 ready 되었습니다.', this.players);
+    this.readyPlayers = true;
+    const results = this.core.markReady();
+    this.started = true;
     this.dispatchResults(results);
   }
 
   /**
    * 일반적인 player_action 처리 (이동, 턴 종료, 카드 사용 등).
    */
-  async handlePlayerAction(playerId: PlayerID, action: PlayerActionPayload): Promise<void> {
+  async handlePlayerAction(
+    playerId: PlayerID,
+    action: PlayerActionPayload,
+  ): Promise<void> {
     const results = await this.core.handlePlayerAction(playerId, action);
     this.dispatchResults(results);
   }
@@ -110,7 +120,11 @@ export class GameEngine {
   /**
    * 멀리건 응답 처리.
    */
-  async handleAnswerMulligan(playerId: PlayerID, payload: { replaceIndices: number[] }) {
+  async handleAnswerMulligan(
+    playerId: PlayerID,
+    payload: { replaceIndices: number[] },
+  ) {
+    console.log('[GameEngine] handleAnswerMulligan', playerId, payload);
     const results = await this.core.handleAnswerMulligan(playerId, payload);
     this.dispatchResults(results);
   }
@@ -118,7 +132,10 @@ export class GameEngine {
   /**
    * request_input 에 대한 일반 응답 처리.
    */
-  async handlePlayerInput(playerId: PlayerID, payload: PlayerInputPayload): Promise<void> {
+  async handlePlayerInput(
+    playerId: PlayerID,
+    payload: PlayerInputPayload,
+  ): Promise<void> {
     const results = await this.core.handlePlayerInput(playerId, payload);
     this.dispatchResults(results);
   }
@@ -140,7 +157,10 @@ export class GameEngine {
           break;
         case 'request_input':
           if (r.requestInput && this.handlers.onRequestInput) {
-            this.handlers.onRequestInput(r.targetPlayer ?? null, r.requestInput);
+            this.handlers.onRequestInput(
+              r.targetPlayer ?? null,
+              r.requestInput,
+            );
           }
           break;
         case 'game_over':
@@ -151,7 +171,8 @@ export class GameEngine {
         case 'invalid_action':
           if (this.handlers.onInvalidAction) {
             const payload: InvalidActionPayload = {
-              reason: (r.invalidReason ?? 'invalid_action') as InvalidActionPayload['reason'],
+              reason: (r.invalidReason ??
+                'invalid_action') as InvalidActionPayload['reason'],
             };
             this.handlers.onInvalidAction(r.targetPlayer ?? null, payload);
           }

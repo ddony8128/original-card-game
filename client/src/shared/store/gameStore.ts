@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { FoggedGameState } from '@/shared/types/game';
+import type { FoggedGameState, PlayerID } from '@/shared/types/game';
 import type {
   AskMulliganPayload,
   DiffPatch,
@@ -14,6 +14,7 @@ type GameFogState = {
   lastDiff: DiffPatch | null;
   requestInput: RequestInputPayload | null;
   mulligan: AskMulliganPayload | null;
+  selectedDeckId: string | null;
 };
 
 type GameFogActions = {
@@ -21,8 +22,11 @@ type GameFogActions = {
   applyStatePatch: (payload: StatePatchPayload) => void;
   setRequestInput: (payload: RequestInputPayload | null) => void;
   setMulligan: (payload: AskMulliganPayload | null) => void;
+  isMyTurn: (userId: PlayerID) => boolean;
+  hasEnoughMana: (cost: number) => boolean;
   clearLastDiff: () => void;
   clear: () => void;
+  setSelectedDeckId: (deckId: string | null) => void;
 };
 
 export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) => ({
@@ -31,6 +35,7 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
   lastDiff: null,
   requestInput: null,
   mulligan: null,
+  selectedDeckId: null,
   setFromGameInit: (payload) =>
     set({
       fogged: payload.state,
@@ -50,7 +55,18 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
   },
   setRequestInput: (payload) => set({ requestInput: payload }),
   setMulligan: (payload) => set({ mulligan: payload }),
+  isMyTurn: (userId: PlayerID) => {
+    const current = get().fogged;
+    if (!current) return false;
+    return current.activePlayer === userId && current.phase === 'WAITING_FOR_PLAYER_ACTION';
+  },
+  hasEnoughMana: (cost: number) => {
+    const current = get().fogged;
+    if (!current) return false;
+    return current.me.mana >= cost && current.phase === 'WAITING_FOR_PLAYER_ACTION';
+  },
   clearLastDiff: () => set({ lastDiff: null }),
+  setSelectedDeckId: (deckId) => set({ selectedDeckId: deckId }),
   clear: () =>
     set({
       fogged: null,
@@ -58,5 +74,6 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
       lastDiff: null,
       requestInput: null,
       mulligan: null,
+      selectedDeckId: null,
     }),
 }));

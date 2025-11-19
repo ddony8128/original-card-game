@@ -76,7 +76,7 @@ export function useGameSocket({ roomId, userId }: UseGameSocketParams) {
   }, [socket, setFromGameInit, applyStatePatch, setMulligan, setRequestInput]);
 
   return {
-    socket,
+    sendReady: socket.sendReady,
     sendAnswerMulligan: socket.sendAnswerMulligan,
     sendPlayerAction: socket.sendPlayerAction,
     sendPlayerInput: socket.sendPlayerInput,

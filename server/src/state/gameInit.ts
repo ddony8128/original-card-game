@@ -1,4 +1,10 @@
-import { GamePhase, type GameState, type PlayerID, type CardID, type PlayerState } from '../type/gameState';
+import {
+  GamePhase,
+  type GameState,
+  type PlayerID,
+  type CardID,
+  type PlayerState,
+} from '../type/gameState';
 import type { DeckList } from '../type/deck';
 import type { EngineContext, CardMeta } from '../core/context';
 import { cardsService } from '../services/cards';
@@ -9,7 +15,11 @@ export interface PlayerDeckConfig {
   cata: DeckList;
 }
 
-export function createInitialGameState(players: PlayerID[], decks: Map<PlayerID, DeckList>, cataDecks: Map<PlayerID, DeckList>): GameState {
+export function createInitialGameState(
+  players: PlayerID[],
+  decks: Map<PlayerID, DeckList>,
+  cataDecks: Map<PlayerID, DeckList>,
+): GameState {
   const boardWidth = 5;
   const boardHeight = 5;
 
@@ -40,7 +50,7 @@ export function createInitialGameState(players: PlayerID[], decks: Map<PlayerID,
       deck,
       grave: [],
       hand: [],
-      handLimit: 10,
+      handLimit: 6,
       mulliganSelected: false,
     };
   });
@@ -71,7 +81,9 @@ export function createInitialGameState(players: PlayerID[], decks: Map<PlayerID,
   };
 }
 
-export async function buildEngineContextFromDecks(configs: PlayerDeckConfig[]): Promise<EngineContext> {
+export async function buildEngineContextFromDecks(
+  configs: PlayerDeckConfig[],
+): Promise<EngineContext> {
   const neededCardIds = new Set<CardID>();
   configs.forEach((cfg) => {
     cfg.main.forEach((entry) => neededCardIds.add(entry.id));
@@ -99,5 +111,3 @@ export async function buildEngineContextFromDecks(configs: PlayerDeckConfig[]): 
 
   return ctx;
 }
-
-

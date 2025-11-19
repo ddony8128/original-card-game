@@ -10,6 +10,8 @@ import {
 } from '@/features/match/queries';
 import { toast } from 'sonner';
 import { useMeQuery } from '@/features/auth/queries';
+import { useGameFogStore } from '@/shared/store/gameStore';
+import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 
 export default function BackRoom() {
   const navigate = useNavigate();
@@ -23,6 +25,9 @@ export default function BackRoom() {
 
   const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+
+  const setGlobalSelectedDeckId = useGameFogStore((s) => s.setSelectedDeckId);
+  const setCardMetaFromDeck = useCardMetaStore((s) => s.setFromDeck);
 
   useEffect(() => {
     if (!me) navigate('/login');
@@ -55,10 +60,15 @@ export default function BackRoom() {
 
   const handleSelectDeck = async (deckId: string) => {
     if (!roomId || locked) return;
+    const deck = deckList.find((d) => d.id === deckId);
     try {
       await submitDeck.mutateAsync({ roomId, deckId });
       setSelectedDeckId(deckId);
       setLocked(true);
+      if (deck) {
+        setGlobalSelectedDeckId(deckId);
+        setCardMetaFromDeck(deck);
+      }
       toast.success('덱이 제출되었습니다.');
       await refetchState();
     } catch (e: unknown) {
