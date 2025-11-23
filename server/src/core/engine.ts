@@ -4,6 +4,7 @@ import {
   type FoggedGameState,
   type PlayerID,
   type CardID,
+  type CardInstance,
 } from '../type/gameState';
 import type {
   DiffPatch,
@@ -132,7 +133,9 @@ export class GameEngineCore {
     // 선후공 랜덤 결정
     const firstIdx = Math.floor(this.ctx.random() * this.players.length);
     const firstPlayer = this.players[firstIdx];
-    this.bottomSidePlayerId = firstPlayer;
+    // 화면 기준 아래쪽 플레이어는 항상 players[0]으로 고정
+    // (호스트를 항상 아래에서 보게 하기 위함)
+    this.bottomSidePlayerId = this.players[0] ?? firstPlayer;
     this.state.turn = 1;
     this.state.activePlayer = firstPlayer;
 
@@ -185,7 +188,7 @@ export class GameEngineCore {
       case 'use_card':
         return this.handleUseCard(
           playerId,
-          (action as any).cardId as CardID,
+          (action as any).cardInstance as CardInstance,
           (action as any).target as [number, number] | undefined,
         );
       case 'use_ritual':
@@ -236,6 +239,20 @@ export class GameEngineCore {
       ];
     }
 
+    // 상대 마법사가 있는 칸으로 이동 금지
+    const occupiedByOtherWizard = Object.entries(this.state.board.wizards).some(
+      ([pid, pos]) => pid !== playerId && pos.r === toR && pos.c === toC,
+    );
+    if (occupiedByOtherWizard) {
+      return [
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'cell_occupied',
+        },
+      ];
+    }
+
     const playerState = this.state.players[playerId];
     if (playerState.mana < 1) {
       return [
@@ -280,7 +297,7 @@ export class GameEngineCore {
 
   private async handleUseCard(
     playerId: PlayerID,
-    cardId: CardID,
+    cardInstance: CardInstance,
     _target: [number, number] | undefined,
   ): Promise<EngineResult[]> {
     const playerState = this.state.players[playerId];
@@ -294,7 +311,9 @@ export class GameEngineCore {
       ];
     }
 
-    const handIndex = playerState.hand.indexOf(cardId);
+    const handIndex = playerState.hand.findIndex(
+      (ci) => ci.id === cardInstance.id,
+    );
     if (handIndex === -1) {
       return [
         {
@@ -304,6 +323,9 @@ export class GameEngineCore {
         },
       ];
     }
+
+    const usedInstance = playerState.hand[handIndex];
+    const cardId = usedInstance.cardId;
 
     const meta = this.ctx.lookupCard(cardId);
     if (!meta) {
@@ -363,7 +385,7 @@ export class GameEngineCore {
 
     // burn되지 않은 instant 카드는 사용 후 grave로 이동
     if (!this.burnedThisAction.has(cardId)) {
-      playerState.grave.push(cardId);
+      playerState.grave.push(usedInstance);
     }
     this.burnedThisAction.clear();
 
@@ -389,7 +411,7 @@ export class GameEngineCore {
 
     // 선택한 손패를 덱으로 돌려보내고 다시 섞은 뒤 동일 개수 드로우
     const indices = [...payload.replaceIndices].sort((a, b) => b - a);
-    const returned: CardID[] = [];
+    const returned: typeof playerState.hand = [];
     indices.forEach((idx) => {
       if (idx >= 0 && idx < playerState.hand.length) {
         const [card] = playerState.hand.splice(idx, 1);
@@ -480,7 +502,7 @@ export class GameEngineCore {
       const player = this.state.players[playerId];
       if (player) {
         answerIds.forEach((cid) => {
-          const idx = player.hand.indexOf(cid);
+          const idx = player.hand.findIndex((ci) => ci.cardId === cid);
           if (idx >= 0) {
             const [card] = player.hand.splice(idx, 1);
             player.grave.push(card);
@@ -724,9 +746,22 @@ export class GameEngineCore {
 
     const { width, height } = this.state.board;
 
+    console.log('meState', {
+      meState,
+    });
+    console.log('opponentState', {
+      opponentState,
+    });
+
     const wizards: FoggedGameState['board']['wizards'] = {} as any;
     Object.entries(this.state.board.wizards).forEach(([pid, pos]) => {
       const translated = this.toViewerPos(pos, viewer);
+
+      console.log('translated', {
+        r: translated.r,
+        c: translated.c,
+      });
+
       (wizards as any)[pid] = { r: translated.r, c: translated.c };
     });
 
@@ -754,15 +789,17 @@ export class GameEngineCore {
       },
       me: {
         hp: meState?.hp ?? 0,
+        maxHp: meState?.maxHp ?? meState?.hp ?? 0,
         mana: meState?.mana ?? 0,
         maxMana: meState?.maxMana ?? 0,
-        hand: meState?.hand.map((cardId) => ({ id: cardId })) ?? [],
+        hand: meState?.hand ?? [],
         handCount: meState?.hand.length ?? 0,
         deckCount: meState?.deck.length ?? 0,
         graveCount: meState?.grave.length ?? 0,
       },
       opponent: {
         hp: opponentState?.hp ?? 0,
+        maxHp: opponentState?.maxHp ?? opponentState?.hp ?? 0,
         mana: opponentState?.mana ?? 0,
         maxMana: opponentState?.maxMana ?? 0,
         handCount: opponentState?.hand.length ?? 0,
@@ -820,11 +857,11 @@ export class GameEngineCore {
   }
 
   // 덱에서 순서대로 카드를 가져오는 행위, 드로우가 아님 (멀리건 / 드로우 내부에서 활용)
-  private bringCardToHand(playerId: PlayerID): CardID | null {
+  private bringCardToHand(playerId: PlayerID): CardInstance | null {
     const p = this.state.players[playerId];
     if (!p) return null;
     if (p.deck.length === 0) return null;
-    const card = p.deck.shift() as CardID;
+    const card = p.deck.shift()!;
     p.hand.push(card);
     return card;
   }
@@ -836,7 +873,7 @@ export class GameEngineCore {
       // TODO: discard → deck 리셔플 및 catastrophe 드로우 처리
       return;
     }
-    const card = p.deck.shift() as CardID;
+    const card = p.deck.shift()!;
     p.hand.push(card);
     if (diff) {
       diff.animations.push({ kind: 'draw', player: playerId });

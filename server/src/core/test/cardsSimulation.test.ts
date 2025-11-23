@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import type { GameState, PlayerID, CardID } from '../../type/gameState';
+import type {
+  GameState,
+  PlayerID,
+  CardID,
+  CardInstance,
+} from '../../type/gameState';
 import { GamePhase } from '../../type/gameState';
 import { GameEngineCore } from '../engine';
 import type { EngineContext, CardMeta } from '../context';
@@ -11,21 +16,23 @@ function createEmptyState(): GameState {
   const players: Record<PlayerID, any> = {
     [P1]: {
       hp: 20,
+      maxHp: 20,
       maxMana: 3,
       mana: 3,
-      deck: [] as CardID[],
-      grave: [] as CardID[],
-      hand: [] as CardID[],
+      deck: [] as CardInstance[],
+      grave: [] as CardInstance[],
+      hand: [] as CardInstance[],
       handLimit: 10,
       mulliganSelected: false,
     },
     [P2]: {
       hp: 20,
+      maxHp: 20,
       maxMana: 3,
       mana: 3,
-      deck: [] as CardID[],
-      grave: [] as CardID[],
-      hand: [] as CardID[],
+      deck: [] as CardInstance[],
+      grave: [] as CardInstance[],
+      hand: [] as CardInstance[],
       handLimit: 10,
       mulliganSelected: false,
     },
@@ -404,7 +411,7 @@ describe('GameEngineCore card simulation', () => {
     const state = createEmptyState();
     state.players[P1].mana = 0;
     state.players[P1].maxMana = 3;
-    state.players[P1].hand = ['c01-001'];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-001' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -424,7 +431,7 @@ describe('GameEngineCore card simulation', () => {
   it('c01-002 마나가 담긴 찌르기: 근접 적에게 2 피해', async () => {
     const state = createEmptyState();
     state.players[P1].mana = 0;
-    state.players[P1].hand = ['c01-002'];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-002' }];
     // 근접 범위 테스트를 위해 적 위치를 한 칸 앞으로 당김 (거리 1)
     state.board.wizards[P2] = { r: 3, c: 2 };
 
@@ -444,7 +451,7 @@ describe('GameEngineCore card simulation', () => {
   it('c01-003 운기조식: 내 마법사가 3 회복', async () => {
     const state = createEmptyState();
     state.players[P1].hp = 10;
-    state.players[P1].hand = ['c01-003'];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-003' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -461,7 +468,7 @@ describe('GameEngineCore card simulation', () => {
 
   it('c01-004 각력 강화: 전방 한 칸 이동', async () => {
     const state = createEmptyState();
-    state.players[P1].hand = ['c01-004'];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-004' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -482,7 +489,7 @@ describe('GameEngineCore card simulation', () => {
 
   it('c01-006 마력탄: 거리 2 내 적에게 3 피해', async () => {
     const state = createEmptyState();
-    state.players[P1].hand = ['c01-006'];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-006' }];
     // 거리 2 테스트: 기본 위치(4,2)와 (2,2) → 거리 2
     state.board.wizards[P2] = { r: 2, c: 2 };
     const engine = GameEngineCore.create(state, ctx, {
@@ -501,19 +508,19 @@ describe('GameEngineCore card simulation', () => {
   it('c01-007 치킨 게임: 상대 덱 8장 버리고 재앙 1장 발동', async () => {
     const state = createEmptyState();
     state.players[P2].deck = [
-      'd1',
-      'd2',
-      'd3',
-      'd4',
-      'd5',
-      'd6',
-      'd7',
-      'd8',
-      'd9',
-      'd10',
+      { id: 'd1', cardId: 'd1' },
+      { id: 'd2', cardId: 'd2' },
+      { id: 'd3', cardId: 'd3' },
+      { id: 'd4', cardId: 'd4' },
+      { id: 'd5', cardId: 'd5' },
+      { id: 'd6', cardId: 'd6' },
+      { id: 'd7', cardId: 'd7' },
+      { id: 'd8', cardId: 'd8' },
+      { id: 'd9', cardId: 'd9' },
+      { id: 'd10', cardId: 'd10' },
     ];
-    state.catastropheDeck = ['cata1'];
-    state.players[P1].hand = ['c01-007'];
+    state.catastropheDeck = [{ id: 'cata1', cardId: 'cata1' }];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-007' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -533,7 +540,7 @@ describe('GameEngineCore card simulation', () => {
 
   it('c01-005 침입자 감지: 파괴 시 드로우 1, 적에게 2 피해', async () => {
     const state = createEmptyState();
-    state.players[P1].deck = ['x'];
+    state.players[P1].deck = [{ id: 'x1', cardId: 'x' }];
     state.players[P1].hand = [];
 
     const engine = GameEngineCore.create(state, ctx, {
@@ -551,8 +558,12 @@ describe('GameEngineCore card simulation', () => {
 
   it('c01-008 독서의 시간: 2장 드로우 후 1장 선택해 버림', async () => {
     const state = createEmptyState();
-    state.players[P1].deck = ['a', 'b', 'c'];
-    state.players[P1].hand = ['c01-008'];
+    state.players[P1].deck = [
+      { id: 'a1', cardId: 'a' },
+      { id: 'b1', cardId: 'b' },
+      { id: 'c1', cardId: 'c' },
+    ];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-008' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -573,12 +584,14 @@ describe('GameEngineCore card simulation', () => {
     } as any);
 
     expect(engine.state.players[P1].hand.length).toBe(1);
-    expect(engine.state.players[P1].grave.includes(discardTarget)).toBe(true);
+    expect(
+      engine.state.players[P1].grave.some((ci) => ci.id === discardTarget.id),
+    ).toBe(true);
   });
 
   it('c01-009 마력 저격: 거리 4 내 적에게 2 피해', async () => {
     const state = createEmptyState();
-    state.players[P1].hand = ['c01-009'];
+    state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-009' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -619,7 +632,14 @@ describe('GameEngineCore card simulation', () => {
 
   it('c01-030 궁극의 흑마법: 덱 위 5장 버리고 상대에게 5 피해', async () => {
     const state = createEmptyState();
-    state.players[P1].deck = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6'];
+    state.players[P1].deck = [
+      { id: 'a1', cardId: 'a1' },
+      { id: 'a2', cardId: 'a2' },
+      { id: 'a3', cardId: 'a3' },
+      { id: 'a4', cardId: 'a4' },
+      { id: 'a5', cardId: 'a5' },
+      { id: 'a6', cardId: 'a6' },
+    ];
     state.players[P2].hp = 20;
 
     const engine = GameEngineCore.create(state, ctx, {
@@ -638,7 +658,7 @@ describe('GameEngineCore card simulation', () => {
   it('c01-901 이건 그냥 장난일 뿐이야: 1 피해 + 재앙덱 비어있지 않으면 재앙 1장 추가 발동', async () => {
     const state = createEmptyState();
     state.players[P1].hp = 10;
-    state.catastropheDeck = ['c01-901-x'];
+    state.catastropheDeck = [{ id: 'c01-901-x', cardId: 'c01-901-x' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomId: 'test',
@@ -684,7 +704,10 @@ describe('GameEngineCore card simulation', () => {
 
     const stateB = createEmptyState();
     stateB.players[P1].hp = 10;
-    stateB.players[P1].deck = ['top1', 'top2'];
+    stateB.players[P1].deck = [
+      { id: 'top1', cardId: 'top1' },
+      { id: 'top2', cardId: 'top2' },
+    ];
 
     const engineB = GameEngineCore.create(stateB, ctx, {
       roomId: 'test',
@@ -699,7 +722,11 @@ describe('GameEngineCore card simulation', () => {
   it('c01-904 쓰레기 버려욧: 손이 비었으면 덱 위 2장 discard, 아니면 손에서 2장 random discard', async () => {
     const stateA = createEmptyState();
     stateA.players[P1].hand = [];
-    stateA.players[P1].deck = ['d1', 'd2', 'd3'];
+    stateA.players[P1].deck = [
+      { id: 'd1', cardId: 'd1' },
+      { id: 'd2', cardId: 'd2' },
+      { id: 'd3', cardId: 'd3' },
+    ];
 
     const engineA = GameEngineCore.create(stateA, ctx, {
       roomId: 'test',
@@ -711,8 +738,16 @@ describe('GameEngineCore card simulation', () => {
     expect(engineA.state.players[P1].grave.length).toBe(2);
 
     const stateB = createEmptyState();
-    stateB.players[P1].hand = ['h1', 'h2', 'h3'];
-    stateB.players[P1].deck = ['d1', 'd2', 'd3'];
+    stateB.players[P1].hand = [
+      { id: 'h1', cardId: 'h1' },
+      { id: 'h2', cardId: 'h2' },
+      { id: 'h3', cardId: 'h3' },
+    ];
+    stateB.players[P1].deck = [
+      { id: 'd1', cardId: 'd1' },
+      { id: 'd2', cardId: 'd2' },
+      { id: 'd3', cardId: 'd3' },
+    ];
 
     const engineB = GameEngineCore.create(stateB, ctx, {
       roomId: 'test',
@@ -762,5 +797,3 @@ describe('GameEngineCore card simulation', () => {
     expect(engine.state.players[P1].hp).toBe(17);
   });
 });
-
-

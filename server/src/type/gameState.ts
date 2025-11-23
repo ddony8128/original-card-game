@@ -25,11 +25,12 @@ export interface RitualInstance {
 
 export interface PlayerState {
   hp: number;
+  maxHp: number;
   maxMana: number;
   mana: number;
-  deck: CardID[];
-  grave: CardID[];
-  hand: CardID[];
+  deck: CardInstance[];
+  grave: CardInstance[];
+  hand: CardInstance[];
   handLimit: number;
   mulliganSelected?: boolean;
 }
@@ -46,8 +47,8 @@ export interface GameState {
     rituals: RitualInstance[];
   };
   players: Record<PlayerID, PlayerState>;
-  catastropheDeck: CardID[];
-  catastropheGrave: CardID[];
+  catastropheDeck: CardInstance[];
+  catastropheGrave: CardInstance[];
   logs: GameLogEntry[];
 }
 
@@ -66,8 +67,11 @@ export interface PublicRitual {
   usedThisTurn: boolean;
 }
 
-export interface PublicHandCard {
-  id: CardID;
+export type CardInstanceId = string;
+
+export interface CardInstance {
+  id: CardInstanceId;
+  cardId: CardID;
   //  name: string;
   //  mana: number;
   //  type: 'instant' | 'ritual';
@@ -89,15 +93,17 @@ export interface FoggedGameState {
   };
   me: {
     hp: number;
+    maxHp: number;
     mana: number;
     maxMana: number;
-    hand: PublicHandCard[];
+    hand: CardInstance[];
     handCount: number;
     deckCount: number;
     graveCount: number;
   };
   opponent: {
     hp: number;
+    maxHp: number;
     mana: number;
     maxMana: number;
     handCount: number;

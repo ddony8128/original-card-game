@@ -4,6 +4,7 @@ import {
   type PlayerID,
   type CardID,
   type PlayerState,
+  type CardInstance,
 } from '../type/gameState';
 import type { DeckList } from '../type/deck';
 import type { EngineContext, CardMeta } from '../core/context';
@@ -24,27 +25,34 @@ export function createInitialGameState(
   const boardHeight = 5;
 
   const playerStates: Record<PlayerID, PlayerState> = {} as any;
-  const catastropheDeck: CardID[] = [];
+  const catastropheDeck: CardInstance[] = [];
 
   players.forEach((pid, index) => {
     const main = decks.get(pid) ?? [];
     const cata = cataDecks.get(pid) ?? [];
 
-    const deck: CardID[] = [];
+    const deck: CardInstance[] = [];
     main.forEach((entry) => {
       for (let i = 0; i < entry.count; i += 1) {
-        deck.push(entry.id);
+        deck.push({
+          id: `main_${pid}_${entry.id}_${i}`,
+          cardId: entry.id,
+        });
       }
     });
 
     cata.forEach((entry) => {
       for (let i = 0; i < entry.count; i += 1) {
-        catastropheDeck.push(entry.id);
+        catastropheDeck.push({
+          id: `cata_${pid}_${entry.id}_${i}`,
+          cardId: entry.id,
+        });
       }
     });
 
     playerStates[pid] = {
       hp: 20,
+      maxHp: 20,
       maxMana: 0,
       mana: 0,
       deck,

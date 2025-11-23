@@ -1,4 +1,4 @@
-import type { FoggedGameState, PlayerID, CardID } from '@/shared/types/game';
+import type { FoggedGameState, PlayerID, CardInstance } from '@/shared/types/game';
 
 // ---- 공통 기본 타입 ----
 
@@ -51,7 +51,7 @@ export interface GameInitPayload {
 }
 
 export interface AskMulliganPayload {
-  initialHand: CardID[];
+  initialHand: CardInstance[];
 }
 
 export interface StatePatchPayload {
@@ -124,7 +124,7 @@ export interface PlayerActionPayloadBase {
 
 export interface UseCardActionPayload extends PlayerActionPayloadBase {
   action: 'use_card';
-  cardId: CardID;
+  cardInstance: CardInstance;
   target?: [number, number];
 }
 

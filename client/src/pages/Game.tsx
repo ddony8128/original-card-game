@@ -67,6 +67,13 @@ export default function Game() {
 
   const handleBoardCellClick = (position: BoardPosition) => {
     setSelectedBoardPosition(position);
+
+    // 상대 마법사가 있는 칸으로는 이동하지 않도록 클라이언트에서 차단
+    if (position.x === opponentPosition.x && position.y === opponentPosition.y) {
+      toast.error('상대 마법사가 있는 칸으로는 이동할 수 없습니다.');
+      return;
+    }
+
     if (!myId || !isMyTurn(myId)) {
       toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
       return;
@@ -93,7 +100,7 @@ export default function Game() {
       return;
     }
 
-    const meta = getCardMeta(handEntry.id);
+    const meta = getCardMeta(handEntry.cardId);
     const manaCost = meta?.mana ?? 0;
 
     if (!hasEnoughMana(manaCost)) {
@@ -101,8 +108,8 @@ export default function Game() {
       return;
     }
 
-    sendPlayerAction({ action: 'use_card', cardId: handEntry.id });
-    console.log('sendPlayerAction', { action: 'use_card', cardId: handEntry.id });
+    sendPlayerAction({ action: 'use_card', cardInstance: handEntry });
+    console.log('sendPlayerAction', { action: 'use_card', cardInstance: handEntry });
 
     setSelectedCardIndex(null);
     toast.info('카드 사용', {
@@ -212,7 +219,7 @@ export default function Game() {
         <div className="grid grid-cols-3 gap-4">
           <PlayerInfo
             hp={fogged.opponent.hp}
-            maxHp={fogged.opponent.hp}
+            maxHp={fogged.opponent.maxHp}
             mana={fogged.opponent.mana}
             maxMana={fogged.opponent.maxMana}
             label="상대"
@@ -250,7 +257,7 @@ export default function Game() {
         <div className="grid grid-cols-3 gap-4">
           <PlayerInfo
             hp={fogged.me.hp}
-            maxHp={fogged.me.hp}
+            maxHp={fogged.me.maxHp}
             mana={fogged.me.mana}
             maxMana={fogged.me.maxMana}
             label="나"
@@ -285,8 +292,8 @@ export default function Game() {
             ) : (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
                 {fogged.me.hand.map((handEntry, index) => {
-                  const meta = getCardMeta(handEntry.id);
-                  const displayName = meta?.name ?? handEntry.id;
+                  const meta = getCardMeta(handEntry.cardId);
+                  const displayName = meta?.name ?? handEntry.cardId;
                   const mana = meta?.mana ?? 0;
                   const description = meta?.description ?? '';
 

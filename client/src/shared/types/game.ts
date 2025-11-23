@@ -2,6 +2,13 @@
 export type PlayerID = string;
 export type CardID = string;
 
+export type CardInstanceId = string;
+
+export interface CardInstance {
+  id: CardInstanceId;
+  cardId: CardID;
+}
+
 export interface PublicRitual {
   id: string;
   cardId: CardID;
@@ -45,9 +52,10 @@ export interface FoggedGameState {
 
   me: {
     hp: number;
+    maxHp: number;
     mana: number;
     maxMana: number;
-    hand: PublicHandCard[];
+    hand: CardInstance[];
     handCount: number;
     deckCount: number;
     graveCount: number;
@@ -55,6 +63,7 @@ export interface FoggedGameState {
 
   opponent: {
     hp: number;
+    maxHp: number;
     mana: number;
     maxMana: number;
     handCount: number;

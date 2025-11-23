@@ -246,11 +246,11 @@ function drawCatastropheCard(
     }
     engine.state.catastropheDeck = grave.splice(0, grave.length);
   }
-  const cardId = engine.state.catastropheDeck.shift();
-  if (!cardId) return;
-  engine.state.catastropheGrave.push(cardId);
+  const cardInst = engine.state.catastropheDeck.shift();
+  if (!cardInst) return;
+  engine.state.catastropheGrave.push(cardInst);
   diff.log.push(
-    `플레이어 ${actor}가 재앙 카드를 뽑아 즉시 발동했습니다. (${cardId})`,
+    `플레이어 ${actor}가 재앙 카드를 뽑아 즉시 발동했습니다. (${cardInst.cardId})`,
   );
   // TODO: 재앙 카드 effect_json의 onDrawn 트리거 실행
 }
