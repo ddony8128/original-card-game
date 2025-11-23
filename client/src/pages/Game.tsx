@@ -13,12 +13,15 @@ import {
   type InputOption,
 } from '@/components/game/RequestInputModal';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowLeft, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMeQuery } from '@/features/auth/queries';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import { useGameSocket } from '@/ws/useGameSocket';
 import { useMulliganRequest } from '@/components/game/useMulliganRequest';
+import { cn } from '@/shared/lib/utils';
+import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 
 export default function Game() {
   const navigate = useNavigate();
@@ -32,6 +35,7 @@ export default function Game() {
   const isMyTurn = useGameFogStore((s) => s.isMyTurn);
   const hasEnoughMana = useGameFogStore((s) => s.hasEnoughMana);
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
+  const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
 
   const {
     sendReady,
@@ -55,6 +59,8 @@ export default function Game() {
 
   const myId = me?.id;
 
+  const getCardMeta = useCardMetaStore((s) => s.getById);
+
   const { mulliganRequest, handleMulliganResponse, handleMulliganCancel } = useMulliganRequest({
     sendAnswerMulligan,
   });
@@ -74,7 +80,46 @@ export default function Game() {
     toast.info('이동 시도', {
       description: `셀 (${position.x}, ${position.y})을 클릭했습니다.`,
     });
+    console.log('sendPlayerAction', { action: 'move', to: [position.y, position.x] });
   };
+
+  const handlePlayCard = (index: number) => {
+    if (!fogged) return;
+    const handEntry = fogged.me.hand[index];
+    if (!handEntry) return;
+
+    if (!myId || !isMyTurn(myId)) {
+      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      return;
+    }
+
+    const meta = getCardMeta(handEntry.id);
+    const manaCost = meta?.mana ?? 0;
+
+    if (!hasEnoughMana(manaCost)) {
+      toast.error('마나가 부족하여 카드를 사용할 수 없습니다.');
+      return;
+    }
+
+    sendPlayerAction({ action: 'use_card', cardId: handEntry.id });
+    console.log('sendPlayerAction', { action: 'use_card', cardId: handEntry.id });
+
+    setSelectedCardIndex(null);
+    toast.info('카드 사용', {
+      description: `${meta?.name ?? handEntry.id}을(를) 사용했습니다.`,
+    });
+  };
+
+  const handleEndTurn = () => {
+    if (!myId || !isMyTurn(myId)) {
+      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      return;
+    }
+
+    sendPlayerAction({ action: 'end_turn' });
+    console.log('sendPlayerAction', { action: 'end_turn' });
+  };
+
   const myWizard = myId && fogged ? fogged.board.wizards[myId] : undefined;
   const opponentWizard =
     fogged && myId
@@ -217,6 +262,79 @@ export default function Game() {
             label="내 덱"
           />
         </div>
+
+        {/* My Hand */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-medium">내 손패 ({fogged.me.hand.length}장)</div>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleEndTurn}
+                disabled={!myId || !isMyTurn(myId)}
+              >
+                턴 종료
+              </Button>
+            </div>
+
+            {fogged.me.hand.length === 0 ? (
+              <div className="text-muted-foreground py-8 text-center text-xs">
+                손패가 비어 있습니다.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+                {fogged.me.hand.map((handEntry, index) => {
+                  const meta = getCardMeta(handEntry.id);
+                  const displayName = meta?.name ?? handEntry.id;
+                  const mana = meta?.mana ?? 0;
+                  const description = meta?.description ?? '';
+
+                  return (
+                    <div key={handEntry.id} className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedCardIndex(selectedCardIndex === index ? null : index)
+                        }
+                        className={cn(
+                          'bg-card text-card-foreground w-full cursor-pointer rounded-lg border p-3 text-left shadow-sm transition-all hover:scale-105 hover:shadow-lg',
+                          selectedCardIndex === index && 'ring-primary scale-105 ring-2',
+                        )}
+                      >
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-xs font-semibold">{displayName}</span>
+                          <span className="bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
+                            {mana}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground line-clamp-3 text-[11px]">
+                          {description}
+                        </p>
+                      </button>
+
+                      {selectedCardIndex === index && (
+                        <div className="pointer-events-none absolute right-0 -bottom-3 left-0 flex justify-center">
+                          <Button
+                            size="sm"
+                            className="pointer-events-auto h-7 px-2 text-[11px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayCard(index);
+                            }}
+                          >
+                            <Play className="mr-1 h-3 w-3" />
+                            사용
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <AnimationLayer

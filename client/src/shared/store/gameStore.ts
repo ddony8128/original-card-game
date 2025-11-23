@@ -46,8 +46,17 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
     }),
   applyStatePatch: (payload) => {
     const current = get().fogged;
-    if (!current) return;
+    console.log('[applyStatePatch] payload:', payload);
+    if (!current) {
+      console.log('[applyStatePatch] No current fogged state. Skipping patch.');
+      return;
+    }
     set({
+      fogged: payload.fogged_state,
+      version: payload.version,
+      lastDiff: payload.diff_patch,
+    });
+    console.log('[applyStatePatch] State updated:', {
       fogged: payload.fogged_state,
       version: payload.version,
       lastDiff: payload.diff_patch,

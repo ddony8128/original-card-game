@@ -756,7 +756,7 @@ export class GameEngineCore {
         hp: meState?.hp ?? 0,
         mana: meState?.mana ?? 0,
         maxMana: meState?.maxMana ?? 0,
-        hand: [], // 카드 정보는 effectJson/카드 메타에서 채울 예정
+        hand: meState?.hand.map((cardId) => ({ id: cardId })) ?? [],
         handCount: meState?.hand.length ?? 0,
         deckCount: meState?.deck.length ?? 0,
         graveCount: meState?.grave.length ?? 0,

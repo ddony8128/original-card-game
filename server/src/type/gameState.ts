@@ -68,11 +68,13 @@ export interface PublicRitual {
 
 export interface PublicHandCard {
   id: CardID;
-  name: string;
-  mana: number;
-  type: 'instant' | 'ritual';
-  description: string;
+  //  name: string;
+  //  mana: number;
+  //  type: 'instant' | 'ritual';
+  //  description: string;
 }
+// 일단 메타 정보는 따로 제공하거나 클라이언트에서 캐시.
+// CardID만 전달.
 
 export interface FoggedGameState {
   phase: GamePhase;
