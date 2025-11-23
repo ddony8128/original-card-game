@@ -61,14 +61,14 @@ export interface StatePatchPayload {
 }
 
 export type RequestInputKind =
-  | 'select_install_position'
-  | 'select_cast_target'
-  | 'select_ritual_target'
-  | 'choose_discard'
-  | 'choose_burn'
-  | 'choose_move_direction'
-  | 'choose_move'
-  | (string & {});
+  | { type: 'map'; kind: 'select_install_position' }
+  | { type: 'map'; kind: 'select_cast_target' }
+  | { type: 'map'; kind: 'select_ritual_target' }
+  | { type: 'option'; kind: 'choose_discard' }
+  | { type: 'option'; kind: 'choose_burn' }
+  | { type: 'map'; kind: 'choose_move_direction' }
+  | { type: 'map'; kind: 'choose_move' }
+  | { type: 'text'; kind: string };
 
 export interface RequestInputPayload {
   kind: RequestInputKind;
@@ -102,7 +102,7 @@ export type WsServerToClientMessage = {
 export type ClientToServerEvent = 'ready' | 'answer_mulligan' | 'player_action' | 'player_input';
 
 export interface ReadyPayload {
-  roomId: string;
+  roomCode: string;
   userId?: string;
 }
 

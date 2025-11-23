@@ -1,4 +1,3 @@
-import type { WebSocket } from 'ws';
 import type { PlayerID, GameState } from '../type/gameState';
 import type {
   AnswerMulliganPayload,
@@ -6,9 +5,14 @@ import type {
   PlayerInputPayload,
   ReadyPayload,
   ServerToClientMessage,
+  StatePatchPayload,
+  AskMulliganPayload,
+  RequestInputPayload,
+  GameOverPayload,
+  InvalidActionPayload,
 } from '../type/wsProtocol';
 import type { DeckList } from '../type/deck';
-import { roomsService } from '../services/rooms';
+import { roomsService, type RoomRow } from '../services/rooms';
 import { decksService } from '../services/decks';
 import { GameEngine } from '../type/gameEngine';
 import {
@@ -16,82 +20,141 @@ import {
   createInitialGameState,
   type PlayerDeckConfig,
 } from '../state/gameInit';
-import type { SocketManager } from './socketManager';
-
-export type WsClient = WebSocket & { roomCode?: string; userId?: string };
+import type { SocketManager, SocketClient } from './socketManager';
 
 type RoomEngine = {
-  roomId: string;
+  roomCode: string;
   engine: GameEngine;
   players: PlayerID[];
   initializedPlayers: Set<PlayerID>;
+  // game_init 메시지 전송 여부 확인 용도
+  readyPlayers: Set<PlayerID>;
+  // 게임 시작 조건 확인 용도
 };
 
-type RoomMap = Map<string, RoomEngine>;
-
 export class GameRoomManager {
-  private readonly rooms: RoomMap = new Map();
-  private readonly userReady: Map<PlayerID, boolean> = new Map();
+  private readonly roomEngines: Map<string, RoomEngine> = new Map();
+  // roomCode -> RoomEngine
 
   constructor(private readonly socketManager: SocketManager) {}
 
-  addClient(roomId: string, socket: WsClient, userId?: string) {
-    this.socketManager.joinRoom(roomId, socket, userId);
+  private warnNoExistingRoom(roomCode: string, userId: PlayerID) {
+    console.warn('[GameRoomManager] Non-existing room', {
+      roomCode,
+      userId,
+    });
   }
 
-  removeClient(socket: WsClient) {
-    this.socketManager.leave(socket);
+  private warnNonParticipant(roomCode: string, userId: PlayerID) {
+    console.warn('[GameRoomManager] Non-participant sent message', {
+      roomCode,
+      userId,
+    });
+  }
+
+  private async getValidRoomOrWarn(
+    roomCode: string,
+    playerId: PlayerID,
+  ): Promise<RoomEngine | null> {
+    const room = await this.ensureRoom(roomCode);
+    if (!room) {
+      this.warnNoExistingRoom(roomCode, playerId);
+      return null;
+    }
+    if (!room.players.includes(playerId)) {
+      this.warnNonParticipant(roomCode, playerId);
+      return null;
+    }
+    return room;
   }
 
   async handleReady(
-    roomId: string,
-    payload: ReadyPayload & { userId: PlayerID },
+    socket: SocketClient,
+    payload: ReadyPayload,
   ): Promise<void> {
-    const room = await this.ensureRoom(roomId);
-    if (!room) return;
-    this.userReady.set(payload.userId, true);
-    console.log('준비완료 메시지 수신', roomId, this.userReady);
+    const { roomCode, userId } = payload;
 
-    if (this.userReady.size === room.players.length) {
+    // 1) DB에서 방 정보를 조회해 참가자(호스트/게스트)인지 먼저 검증
+    const roomRow: RoomRow | null = await roomsService.byCode(roomCode);
+    if (!roomRow) {
+      this.warnNoExistingRoom(roomCode, userId);
+      return;
+    }
+    const isParticipant =
+      roomRow.host_id === userId ||
+      (!!roomRow.guest_id && roomRow.guest_id === userId);
+    if (!isParticipant) {
+      this.warnNonParticipant(roomCode, userId);
+      return;
+    }
+
+    // 2) 유효한 참가자에 대해서만 엔진/RoomEngine 생성
+    // ensureRoom 함수 내부에서 DB를 조회해 players 배열도 추가함
+    const room = await this.ensureRoom(roomCode, roomRow);
+    if (!room) return;
+
+    // 유효한 참가자만 WS 방에 참여시키고 메타데이터 설정
+    socket.userId = userId;
+    socket.roomCode = roomCode;
+    this.socketManager.joinRoom(roomCode, socket, userId);
+
+    room.readyPlayers.add(userId as PlayerID);
+    console.log(
+      '[GameRoomManager] 준비완료 메시지 수신',
+      roomCode,
+      Array.from(room.readyPlayers),
+    );
+
+    if (room.readyPlayers.size === room.players.length) {
       await room.engine.markReady();
     }
   }
 
   async handlePlayerAction(
-    roomId: string,
+    roomCode: string,
     playerId: PlayerID,
     action: PlayerActionPayload,
   ): Promise<void> {
-    const room = await this.ensureRoom(roomId);
+    const room = await this.getValidRoomOrWarn(roomCode, playerId);
     if (!room) return;
     await room.engine.handlePlayerAction(playerId, action);
   }
 
   async handleAnswerMulligan(
-    roomId: string,
+    roomCode: string,
     playerId: PlayerID,
     payload: AnswerMulliganPayload,
   ): Promise<void> {
-    const room = await this.ensureRoom(roomId);
+    const room = await this.getValidRoomOrWarn(roomCode, playerId);
     if (!room) return;
     await room.engine.handleAnswerMulligan(playerId, payload);
   }
 
   async handlePlayerInput(
-    roomId: string,
+    roomCode: string,
     playerId: PlayerID,
     payload: PlayerInputPayload,
   ): Promise<void> {
-    const room = await this.ensureRoom(roomId);
+    const room = await this.getValidRoomOrWarn(roomCode, playerId);
     if (!room) return;
     await room.engine.handlePlayerInput(playerId, payload);
   }
 
-  private async ensureRoom(roomId: string): Promise<RoomEngine | null> {
-    const existing = this.rooms.get(roomId);
+  // roomEngine 있으면 반환, 없으면 초기화 후 반환
+  // 1) gameState 초기화
+  // 2) 엔진에 콜백함수 붙여주기
+  private async ensureRoom(
+    roomCode: string,
+    roomRowCache?: RoomRow,
+  ): Promise<RoomEngine | null> {
+    const existing = this.roomEngines.get(roomCode);
     if (existing) return existing;
 
-    const roomRow = await roomsService.byCode(roomId);
+    let roomRow: RoomRow | undefined | null = roomRowCache;
+
+    if (!roomRow) {
+      roomRow = await roomsService.byCode(roomCode);
+    }
     if (!roomRow) return null;
 
     const players: PlayerID[] = [roomRow.host_id];
@@ -136,115 +199,131 @@ export class GameRoomManager {
     );
     const ctx = await buildEngineContextFromDecks(deckConfigs);
 
-    const engine = GameEngine.create({
-      roomId,
-      players,
-      initialState,
-      ctx,
-    });
-
     const roomEngine: RoomEngine = {
-      roomId,
-      engine,
+      roomCode,
+      engine: GameEngine.create({
+        roomCode,
+        players,
+        initialState,
+        ctx,
+      }),
       players,
       initializedPlayers: new Set<PlayerID>(),
+      readyPlayers: new Set<PlayerID>(),
     };
     this.attachEngineCallbacks(roomEngine);
-    this.rooms.set(roomId, roomEngine);
+    this.roomEngines.set(roomCode, roomEngine);
     return roomEngine;
   }
 
   private attachEngineCallbacks(room: RoomEngine) {
-    const { roomId, engine } = room;
+    const { roomCode, engine } = room;
 
-    engine.onStatePatch((targetPlayer, payload) => {
-      const msg: ServerToClientMessage = {
-        event: 'state_patch',
-        data: payload,
+    const sendInitIfNeeded = (
+      pid: PlayerID,
+      payload: StatePatchPayload,
+    ): boolean => {
+      if (room.initializedPlayers.has(pid)) return false;
+      const initMsg: ServerToClientMessage = {
+        event: 'game_init',
+        data: {
+          state: payload.fogged_state,
+          version: payload.version,
+        },
       };
       console.log(
-        `[onStatePatch] roomId=${roomId} targetPlayer=${targetPlayer ?? 'ALL'} version=${payload.version}`,
+        `[onStatePatch] Sending game_init to player ${pid} in room ${roomCode}`,
       );
-      if (targetPlayer) {
-        if (!room.initializedPlayers.has(targetPlayer)) {
-          const initMsg: ServerToClientMessage = {
-            event: 'game_init',
-            data: {
-              state: payload.fogged_state,
-              version: payload.version,
-            },
-          };
+      this.socketManager.sendTo(roomCode, pid, initMsg);
+      room.initializedPlayers.add(pid);
+      return true;
+    };
+
+    // 엔진의 state_patch에 대해
+    // 초기화 메시지면 game_init 전송
+    // 아니면 state_patch 전송
+    engine.onStatePatch(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: StatePatchPayload,
+      ) => {
+        const msg: ServerToClientMessage = {
+          event: 'state_patch',
+          data: payload,
+        };
+        if (targetPlayer) {
+          if (sendInitIfNeeded(targetPlayer, payload)) return;
           console.log(
-            `[onStatePatch] Sending game_init to player ${targetPlayer} in room ${roomId}`,
+            `[onStatePatch] Sending state_patch to player ${targetPlayer} in room ${roomCode}`,
           );
-          this.socketManager.sendTo(roomId, targetPlayer, initMsg);
-          room.initializedPlayers.add(targetPlayer);
+          this.socketManager.sendTo(roomCode, targetPlayer, msg);
+          return;
         }
-        console.log(
-          `[onStatePatch] Sending state_patch to player ${targetPlayer} in room ${roomId}`,
-        );
-        this.socketManager.sendTo(roomId, targetPlayer, msg);
-      } else {
+
+        // 모든 플레이어에 대해 전송
         room.players.forEach((pid) => {
-          if (!room.initializedPlayers.has(pid)) {
-            const initMsg: ServerToClientMessage = {
-              event: 'game_init',
-              data: {
-                state: payload.fogged_state,
-                version: payload.version,
-              },
-            };
-            console.log(
-              `[onStatePatch] Broadcasting game_init to player ${pid} in room ${roomId}`,
-            );
-            this.socketManager.sendTo(roomId, pid, initMsg);
-            room.initializedPlayers.add(pid);
-          }
+          sendInitIfNeeded(pid, payload);
         });
+        this.socketManager.broadcast(roomCode, msg);
         console.log(
-          `[onStatePatch] Broadcasting state_patch to all players in room ${roomId}`,
+          `[onStatePatch] Broadcasting state_patch to all players in room ${roomCode}`,
         );
-        this.socketManager.broadcast(roomId, msg);
-      }
-    });
+        return;
+      },
+    );
 
-    engine.onAskMulligan((targetPlayer, payload) => {
-      if (!targetPlayer) return;
-      const msg: ServerToClientMessage = {
-        event: 'ask_mulligan',
-        data: payload,
-      };
-      console.log(
-        `[onAskMulligan] Sending ask_mulligan to player ${targetPlayer} in room ${roomId}`,
-      );
-      this.socketManager.sendTo(roomId, targetPlayer, msg);
-    });
+    engine.onAskMulligan(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: AskMulliganPayload,
+      ) => {
+        if (!targetPlayer) return;
+        const msg: ServerToClientMessage = {
+          event: 'ask_mulligan',
+          data: payload,
+        };
+        console.log(
+          `[onAskMulligan] Sending ask_mulligan to player ${targetPlayer} in room ${roomCode}`,
+        );
+        this.socketManager.sendTo(roomCode, targetPlayer, msg);
+      },
+    );
 
-    engine.onRequestInput((targetPlayer, payload) => {
-      if (!targetPlayer) return;
-      const msg: ServerToClientMessage = {
-        event: 'request_input',
-        data: payload,
-      };
-      this.socketManager.sendTo(roomId, targetPlayer, msg);
-    });
+    engine.onRequestInput(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: RequestInputPayload,
+      ) => {
+        if (!targetPlayer) return;
+        const msg: ServerToClientMessage = {
+          event: 'request_input',
+          data: payload,
+        };
+        this.socketManager.sendTo(roomCode, targetPlayer, msg);
+      },
+    );
 
-    engine.onGameOver((payload) => {
+    engine.onGameOver((payload: GameOverPayload) => {
       const msg: ServerToClientMessage = {
         event: 'game_over',
         data: payload,
       };
-      this.socketManager.broadcast(roomId, msg);
-      this.rooms.delete(roomId);
+      this.socketManager.broadcast(roomCode, msg);
+      this.roomEngines.delete(roomCode);
     });
 
-    engine.onInvalidAction((targetPlayer, payload) => {
-      if (!targetPlayer) return;
-      const msg: ServerToClientMessage = {
-        event: 'invalid_action',
-        data: payload,
-      };
-      this.socketManager.sendTo(roomId, targetPlayer, msg);
-    });
+    engine.onInvalidAction(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: InvalidActionPayload,
+      ) => {
+        if (!targetPlayer) return;
+        const msg: ServerToClientMessage = {
+          event: 'invalid_action',
+          data: payload,
+        };
+        this.socketManager.sendTo(roomCode, targetPlayer, msg);
+      },
+    );
   }
 }

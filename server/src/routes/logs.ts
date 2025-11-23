@@ -7,17 +7,17 @@ export const logsRouter = Router();
 
 // 6.1 게임 결과 생성 (서버 전용)
 logsRouter.post('/result', requireInternal, (req, res) => {
-  const { roomId, startedAt } = req.body as {
-    roomId?: string;
+  const { roomCode, startedAt } = req.body as {
+    roomCode?: string;
     startedAt?: string;
   };
-  if (!roomId || !startedAt) {
+  if (!roomCode || !startedAt) {
     return res
       .status(HttpStatus.BAD_REQUEST)
-      .json({ message: 'roomId and startedAt required' });
+      .json({ message: 'roomCode and startedAt required' });
   }
   (async () => {
-    const r = await logsService.createGameResult(roomId, startedAt);
+    const r = await logsService.createGameResult(roomCode, startedAt);
     return res.status(HttpStatus.CREATED).json(r);
   })().catch((e) => {
     const code = (e as any).code;
@@ -32,7 +32,7 @@ logsRouter.post('/result', requireInternal, (req, res) => {
 
 // 6.2 게임 결과 업데이트 (서버 전용)
 logsRouter.patch('/result/:roomId', requireInternal, (req, res) => {
-  const { roomId } = req.params as { roomId: string };
+  const { roomCode } = req.params as { roomCode: string };
   const { result, endedAt } = req.body as {
     result?: 'p1' | 'p2' | 'draw';
     endedAt?: string;
@@ -43,7 +43,7 @@ logsRouter.patch('/result/:roomId', requireInternal, (req, res) => {
       .json({ message: 'result and endedAt required' });
   }
   (async () => {
-    const r = await logsService.updateGameResult(roomId, result, endedAt);
+    const r = await logsService.updateGameResult(roomCode, result, endedAt);
     return res.status(HttpStatus.OK).json(r);
   })().catch((e) => {
     const code = (e as any).code;
@@ -57,10 +57,10 @@ logsRouter.patch('/result/:roomId', requireInternal, (req, res) => {
 });
 
 // 6.3 게임 결과 조회 (클라이언트용, finished만 허용)
-logsRouter.get('/result/:roomId', requireAuthOrInternal, (req, res) => {
-  const { roomId } = req.params as { roomId: string };
+logsRouter.get('/result/:roomCode', requireAuthOrInternal, (req, res) => {
+  const { roomCode } = req.params as { roomCode: string };
   (async () => {
-    const data = await logsService.getFinishedGameResult(roomId);
+    const data = await logsService.getFinishedGameResult(roomCode);
     return res.status(HttpStatus.OK).json(data);
   })().catch((e) => {
     const code = (e as any).code;
@@ -101,10 +101,10 @@ logsRouter.post('/log', requireInternal, (req, res) => {
 });
 
 // 6.5 게임 로그 조회 (클라이언트/서버 공용)
-logsRouter.get('/log/:roomId', requireAuthOrInternal, (req, res) => {
-  const { roomId } = req.params as { roomId: string };
+logsRouter.get('/log/:roomCode', requireAuthOrInternal, (req, res) => {
+  const { roomCode } = req.params as { roomCode: string };
   (async () => {
-    const { roomExists, logs } = await logsService.getLogs(roomId);
+    const { roomExists, logs } = await logsService.getLogs(roomCode);
     if (!roomExists) {
       return res
         .status(HttpStatus.NOT_FOUND)
@@ -113,7 +113,7 @@ logsRouter.get('/log/:roomId', requireAuthOrInternal, (req, res) => {
     if (logs.length === 0) {
       return res.status(HttpStatus.NO_CONTENT).end();
     }
-    return res.status(HttpStatus.OK).json({ roomId, logs });
+    return res.status(HttpStatus.OK).json({ roomCode, logs });
   })().catch((e) =>
     res
       .status(HttpStatus.INTERNAL_SERVER_ERROR)

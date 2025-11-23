@@ -49,7 +49,7 @@ export interface GameEngineInstanceConfig extends EngineConfig {
 
 export class GameEngine {
   private readonly core: GameEngineCore;
-  readonly roomId: string;
+  readonly roomCode: string;
   readonly players: PlayerID[];
 
   private handlers: GameEngineEventHandlers = {};
@@ -58,7 +58,7 @@ export class GameEngine {
 
   private constructor(core: GameEngineCore) {
     this.core = core;
-    this.roomId = core.roomId;
+    this.roomCode = core.roomCode;
     this.players = core.players;
   }
 

@@ -18,7 +18,7 @@ async function buildStateResponse(roomCode: string) {
       : Promise.resolve(null),
   ]);
   return {
-    roomId: room.code,
+    roomCode: room.code,
     host: host
       ? {
           id: host.id,
@@ -45,7 +45,7 @@ matchRouter.post('/create', (req, res) => {
     const room = await roomsService.create(userId);
     const host = await usersService.findById(userId);
     return res.status(HttpStatus.CREATED).json({
-      roomId: room.code,
+      roomCode: room.code,
       host: host ? { id: host.id, username: host.username } : { id: userId },
       status: room.status,
     });
@@ -57,22 +57,22 @@ matchRouter.post('/create', (req, res) => {
 // 4.2 방 참가
 matchRouter.post('/join', (req, res) => {
   const userId = (req as any).user.id as string;
-  const { roomId } = req.body as { roomId?: string };
-  if (!roomId) {
+  const { roomCode } = req.body as { roomCode?: string };
+  if (!roomCode) {
     return res
       .status(HttpStatus.BAD_REQUEST)
-      .json({ message: 'roomId required' });
+      .json({ message: 'roomCode required' });
   }
 
   (async () => {
-    const result = await roomsService.join(roomId, userId);
+    const result = await roomsService.join(roomCode, userId);
     if (result.notFound)
       return res
         .status(HttpStatus.NOT_FOUND)
         .json({ message: 'room not found' });
     if (result.full)
       return res.status(HttpStatus.CONFLICT).json({ message: 'room full' });
-    const state = await buildStateResponse(roomId);
+    const state = await buildStateResponse(roomCode);
     return res.status(HttpStatus.OK).json(state);
   })().catch((e) =>
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
@@ -82,11 +82,14 @@ matchRouter.post('/join', (req, res) => {
 // 4.3 덱 제출
 matchRouter.patch('/deck', (req, res) => {
   const userId = (req as any).user.id as string;
-  const { roomId, deckId } = req.body as { roomId?: string; deckId?: string };
-  if (!roomId || !deckId)
+  const { roomCode, deckId } = req.body as {
+    roomCode?: string;
+    deckId?: string;
+  };
+  if (!roomCode || !deckId)
     return res
       .status(HttpStatus.BAD_REQUEST)
-      .json({ message: 'roomId and deckId required' });
+      .json({ message: 'roomCode and deckId required' });
 
   (async () => {
     // 덱 소유권 및 상태 확인
@@ -104,14 +107,18 @@ matchRouter.patch('/deck', (req, res) => {
         .status(HttpStatus.FORBIDDEN)
         .json({ message: 'forbidden: not owner' });
 
-    const result = await roomsService.submitDeckByCode(roomId, userId, deckId);
+    const result = await roomsService.submitDeckByCode(
+      roomCode,
+      userId,
+      deckId,
+    );
     if ((result as any).notFound)
       return res
         .status(HttpStatus.NOT_FOUND)
         .json({ message: 'room not found' });
     if ((result as any).forbidden)
       return res.status(HttpStatus.FORBIDDEN).json({ message: 'forbidden' });
-    const state = await buildStateResponse(roomId);
+    const state = await buildStateResponse(roomCode);
     return res.status(HttpStatus.OK).json(state);
   })().catch((e) =>
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
@@ -119,10 +126,10 @@ matchRouter.patch('/deck', (req, res) => {
 });
 
 // 4.4 방 상태 조회 (폴링)
-matchRouter.get('/:roomId', (req, res) => {
-  const { roomId } = req.params as { roomId: string };
+matchRouter.get('/:roomCode', (req, res) => {
+  const { roomCode } = req.params as { roomCode: string };
   (async () => {
-    const state = await buildStateResponse(roomId);
+    const state = await buildStateResponse(roomCode);
     if (!state)
       return res.status(HttpStatus.NOT_FOUND).json({ message: 'not found' });
     return res.status(HttpStatus.OK).json(state);
@@ -134,35 +141,35 @@ matchRouter.get('/:roomId', (req, res) => {
 // 4.5 참가자 이탈
 matchRouter.post('/leave', (req, res) => {
   const userId = (req as any).user.id as string;
-  const { roomId } = req.body as { roomId?: string };
-  if (!roomId)
+  const { roomCode } = req.body as { roomCode?: string };
+  if (!roomCode)
     return res
       .status(HttpStatus.BAD_REQUEST)
-      .json({ message: 'roomId required' });
+      .json({ message: 'roomCode required' });
   (async () => {
-    const room = await roomsService.byCode(roomId);
+    const room = await roomsService.byCode(roomCode);
     if (!room)
       return res.status(HttpStatus.NOT_FOUND).json({ message: 'not found' });
     if (room.host_id !== userId && room.guest_id !== userId)
       return res.status(HttpStatus.FORBIDDEN).json({ message: 'forbidden' });
-    await roomsService.finishByCode(roomId);
-    return res.status(HttpStatus.OK).json({ roomId, status: 'finished' });
+    await roomsService.finishByCode(roomCode);
+    return res.status(HttpStatus.OK).json({ roomCode, status: 'finished' });
   })().catch((e) =>
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
   );
 });
 
 // 4.6 방 삭제 (방장 전용)
-matchRouter.delete('/:roomId', (req, res) => {
+matchRouter.delete('/:roomCode', (req, res) => {
   const userId = (req as any).user.id as string;
-  const { roomId } = req.params as { roomId: string };
+  const { roomCode } = req.params as { roomCode: string };
   (async () => {
-    const result = await roomsService.finishByCodeIfHost(roomId, userId);
+    const result = await roomsService.finishByCodeIfHost(roomCode, userId);
     if (result.notFound)
       return res.status(HttpStatus.NOT_FOUND).json({ message: 'not found' });
     if (result.forbidden)
       return res.status(HttpStatus.FORBIDDEN).json({ message: 'forbidden' });
-    return res.status(HttpStatus.OK).json({ roomId, status: 'finished' });
+    return res.status(HttpStatus.OK).json({ roomCode, status: 'finished' });
   })().catch((e) =>
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
   );

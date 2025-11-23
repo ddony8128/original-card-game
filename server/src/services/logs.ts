@@ -63,7 +63,7 @@ export const logsService = {
   async createGameResult(
     roomCode: string,
     startedAt: string,
-  ): Promise<{ resultId: string; roomId: string }> {
+  ): Promise<{ resultId: string; roomCode: string }> {
     const room = await this.findRoomByCode(roomCode);
     if (!room)
       throw Object.assign(new Error('room not found'), { code: 'NOT_FOUND' });
@@ -90,14 +90,18 @@ export const logsService = {
       .select('id')
       .single();
     if (error) throw error;
-    return { resultId: (data as any).id, roomId: room.code };
+    return { resultId: (data as any).id, roomCode: room.code };
   },
 
   async updateGameResult(
     roomCode: string,
     result: 'p1' | 'p2' | 'draw',
     endedAt: string,
-  ) {
+  ): Promise<{
+    roomCode: string;
+    result: 'p1' | 'p2' | 'draw';
+    status: 'finished';
+  }> {
     const room = await this.findRoomByCode(roomCode);
     if (!room)
       throw Object.assign(new Error('room not found'), { code: 'NOT_FOUND' });
@@ -131,7 +135,7 @@ export const logsService = {
       .eq('id', room.id);
     if (roomErr) throw roomErr;
 
-    return { roomId: room.code, result, status: 'finished' as const };
+    return { roomCode: room.code, result, status: 'finished' as const };
   },
 
   async getFinishedGameResult(roomCode: string) {
@@ -155,7 +159,7 @@ export const logsService = {
       });
 
     return {
-      roomId: room.code,
+      roomCode: room.code,
       player1Id: (gr as any).player1_id,
       player2Id: (gr as any).player2_id,
       result: (gr as any).result,
@@ -173,9 +177,7 @@ export const logsService = {
     if (error) throw error;
   },
 
-  async getLogs(
-    roomCode: string,
-  ): Promise<{
+  async getLogs(roomCode: string): Promise<{
     roomExists: boolean;
     logs: Array<{ turn: number; text: string }>;
   }> {

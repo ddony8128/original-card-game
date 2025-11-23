@@ -50,12 +50,12 @@ export interface EngineResult {
 }
 
 export interface EngineConfig {
-  roomId: string;
+  roomCode: string;
   players: PlayerID[];
 }
 
 export class GameEngineCore {
-  readonly roomId: string;
+  readonly roomCode: string;
   readonly players: PlayerID[];
   readonly ctx: Required<EngineContext>;
   private bottomSidePlayerId: PlayerID | null = null;
@@ -77,13 +77,13 @@ export class GameEngineCore {
   constructor(
     initialState: GameState,
     ctx: EngineContext,
-    roomId: string,
+    roomCode: string,
     players: PlayerID[],
   ) {
     this.state = initialState;
     this.effectStack = new EffectStack();
     this.observers = new ObserverRegistry();
-    this.roomId = roomId;
+    this.roomCode = roomCode;
     this.players = players;
 
     this.ctx = {
@@ -99,7 +99,12 @@ export class GameEngineCore {
     ctx: EngineContext,
     config: EngineConfig,
   ): GameEngineCore {
-    return new GameEngineCore(initialState, ctx, config.roomId, config.players);
+    return new GameEngineCore(
+      initialState,
+      ctx,
+      config.roomCode,
+      config.players,
+    );
   }
 
   markReady(): EngineResult[] {
@@ -356,9 +361,13 @@ export class GameEngineCore {
       // 설치 가능한 위치 계산 → request_input (좌표는 플레이어 시점 기준으로 변환)
       const absOptions = this.computeInstallPositions(playerId);
       const options = absOptions.map((pos) => this.toViewerPos(pos, playerId));
+      const requestKind: RequestInputKind = {
+        type: 'map',
+        kind: 'select_install_position',
+      };
       this.pendingInput = {
         playerId,
-        kind: 'select_install_position',
+        kind: requestKind,
         type: 'install_position',
         cardId,
       };
@@ -367,7 +376,7 @@ export class GameEngineCore {
           kind: 'request_input',
           targetPlayer: playerId,
           requestInput: {
-            kind: 'select_install_position',
+            kind: requestKind,
             options,
           },
         },

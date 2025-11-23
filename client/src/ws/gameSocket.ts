@@ -17,7 +17,7 @@ type EventHandler<E extends ServerToClientEvent> = (
 export type GameSocketStatus = 'idle' | 'connecting' | 'open' | 'closed' | 'error';
 
 export interface GameSocketOptions {
-  roomId: string;
+  roomCode: string;
   userId?: string;
   token?: string;
 }
@@ -70,7 +70,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
       const readyPayload: WsClientToServerMessage = {
         event: 'ready',
         data: {
-          roomId: options.roomId,
+          roomCode: options.roomCode,
           userId: options.userId,
         },
       };
@@ -129,7 +129,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
 
   const sendReady = (payload?: Partial<ReadyPayload>) => {
     const base: ReadyPayload = {
-      roomId: options.roomId,
+      roomCode: options.roomCode,
       userId: options.userId,
     };
     send({ event: 'ready', data: { ...base, ...payload } });

@@ -414,7 +414,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-001' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -436,7 +436,7 @@ describe('GameEngineCore card simulation', () => {
     state.board.wizards[P2] = { r: 3, c: 2 };
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -454,7 +454,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-003' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -471,7 +471,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-004' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -493,7 +493,7 @@ describe('GameEngineCore card simulation', () => {
     // 거리 2 테스트: 기본 위치(4,2)와 (2,2) → 거리 2
     state.board.wizards[P2] = { r: 2, c: 2 };
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -523,7 +523,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-007' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -544,7 +544,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -566,7 +566,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-008' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -594,7 +594,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-009' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -618,7 +618,7 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -643,7 +643,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P2].hp = 20;
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -661,7 +661,7 @@ describe('GameEngineCore card simulation', () => {
     state.catastropheDeck = [{ id: 'c01-901-x', cardId: 'c01-901-x' }];
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 
@@ -678,7 +678,7 @@ describe('GameEngineCore card simulation', () => {
     state.players[P2].hp = 5;
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
     const diff = { animations: [], log: [] };
@@ -694,7 +694,7 @@ describe('GameEngineCore card simulation', () => {
     stateA.players[P1].deck = [];
 
     const engineA = GameEngineCore.create(stateA, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
     let diff: any = { animations: [], log: [] };
@@ -710,7 +710,7 @@ describe('GameEngineCore card simulation', () => {
     ];
 
     const engineB = GameEngineCore.create(stateB, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
     diff = { animations: [], log: [] };
@@ -729,7 +729,7 @@ describe('GameEngineCore card simulation', () => {
     ];
 
     const engineA = GameEngineCore.create(stateA, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
     let diff: any = { animations: [], log: [] };
@@ -750,7 +750,7 @@ describe('GameEngineCore card simulation', () => {
     ];
 
     const engineB = GameEngineCore.create(stateB, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
     diff = { animations: [], log: [] };
@@ -787,7 +787,7 @@ describe('GameEngineCore card simulation', () => {
     );
 
     const engine = GameEngineCore.create(state, ctx, {
-      roomId: 'test',
+      roomCode: 'test',
       players: [P1, P2],
     });
 

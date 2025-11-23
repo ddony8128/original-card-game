@@ -25,7 +25,7 @@ import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 
 export default function Game() {
   const navigate = useNavigate();
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId: roomCode } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
   const fogged = useGameFogStore((s) => s.fogged);
   const lastDiff = useGameFogStore((s) => s.lastDiff);
@@ -44,7 +44,7 @@ export default function Game() {
     sendPlayerAction,
     status: wsStatus,
   } = useGameSocket({
-    roomId: roomId ?? '',
+    roomCode: roomCode ?? '',
     userId: me?.id,
   });
 
@@ -180,19 +180,35 @@ export default function Game() {
     }) ?? [];
 
   const currentRequest: InputRequest | null = requestInput
-    ? {
-        type: requestInput.kind.startsWith('choose_')
-          ? 'move'
-          : requestInput.kind === 'choose_discard'
-            ? 'discard'
-            : requestInput.kind === 'choose_burn'
-              ? 'burn'
-              : requestInput.kind === 'select_install_position'
-                ? 'ritual_placement'
-                : 'target',
-        prompt: `입력이 필요합니다: ${requestInput.kind}`,
-        options: requestInput.options as InputOption[],
-      }
+    ? (() => {
+        const kind = requestInput.kind;
+        const kindId = kind.kind;
+
+        let type: InputRequest['type'];
+        switch (kindId) {
+          case 'choose_discard':
+            type = 'discard';
+            break;
+          case 'choose_burn':
+            type = 'burn';
+            break;
+          case 'select_install_position':
+            type = 'ritual_placement';
+            break;
+          case 'choose_move':
+          case 'choose_move_direction':
+            type = 'move';
+            break;
+          default:
+            type = 'target';
+        }
+
+        return {
+          type,
+          prompt: `입력이 필요합니다: ${kindId}`,
+          options: requestInput.options as InputOption[],
+        };
+      })()
     : null;
 
   const activeRequest = mulliganRequest ?? currentRequest;
@@ -209,7 +225,7 @@ export default function Game() {
           <div className="text-muted-foreground min-w-[200px] text-right text-xs">
             WS 상태: {wsStatus}
           </div>
-          <div className="text-muted-foreground text-sm">방 코드: {roomId ?? '-'}</div>
+          <div className="text-muted-foreground text-sm">방 코드: {roomCode ?? '-'}</div>
         </div>
 
         {/* Turn Header */}

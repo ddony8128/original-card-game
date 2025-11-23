@@ -334,7 +334,7 @@ function applyDiscard(effect: EffectConfig, ctx: ExecuteContext) {
     const options = [...target.hand];
     (ctx.engine as any).pendingInput = {
       playerId: targetId,
-      kind: 'choose_discard' as any,
+      kind: { type: 'option', kind: 'choose_discard' },
       type: 'hand_discard',
       count: e.value,
     };

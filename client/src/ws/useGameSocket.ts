@@ -11,11 +11,11 @@ import type {
 } from '@/shared/types/ws';
 
 interface UseGameSocketParams {
-  roomId: string;
+  roomCode: string;
   userId?: string;
 }
 
-export function useGameSocket({ roomId, userId }: UseGameSocketParams) {
+export function useGameSocket({ roomCode, userId }: UseGameSocketParams) {
   const setFromGameInit = useGameFogStore((s) => s.setFromGameInit);
   const applyStatePatch = useGameFogStore((s) => s.applyStatePatch);
   const setRequestInput = useGameFogStore((s) => s.setRequestInput);
@@ -25,10 +25,10 @@ export function useGameSocket({ roomId, userId }: UseGameSocketParams) {
   const socket: GameSocket = useMemo(
     () =>
       createGameSocket({
-        roomId,
+        roomCode,
         userId,
       }),
-    [roomId, userId],
+    [roomCode, userId],
   );
 
   useEffect(() => {

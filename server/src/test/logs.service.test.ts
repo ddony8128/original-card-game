@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
 import { logsService } from '../services/logs';
 import { __getTables } from './__mocks__/supabase.js';
+vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
 
 describe('logsService', () => {
   it('createGameResult and updateGameResult, getFinishedGameResult', async () => {
@@ -36,7 +36,7 @@ describe('logsService', () => {
 
     const startedAt = new Date().toISOString();
     const created = await logsService.createGameResult(room.code, startedAt);
-    expect(created.roomId).toBe(room.code);
+    expect(created.roomCode).toBe(room.code);
 
     const endedAt = new Date().toISOString();
     const updated = await logsService.updateGameResult(
@@ -51,7 +51,7 @@ describe('logsService', () => {
     });
 
     const got = await logsService.getFinishedGameResult(room.code);
-    expect(got.roomId).toBe(room.code);
+    expect(got.roomCode).toBe(room.code);
     expect(got.result).toBe('p1');
   });
 

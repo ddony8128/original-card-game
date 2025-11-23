@@ -31,15 +31,15 @@ Base URL: `/api`
 - Match (`/api/match`) [인증 필요]
 
   - POST `/create` → 방 생성(코드 반환)
-  - POST `/join` body: `{ roomId }` → 방 참가
-  - PATCH `/deck` body: `{ roomId, deckId }` → 덱 제출
-  - GET `/:roomId` → 방 상태 조회(폴링)
-  - POST `/leave` body: `{ roomId }` → 참가자 이탈
-  - DELETE `/:roomId` → 방장 방 삭제
+  - POST `/join` body: `{ roomCode }` → 방 참가
+  - PATCH `/deck` body: `{ roomCode, deckId }` → 덱 제출
+  - GET `/:roomCode` → 방 상태 조회(폴링)
+  - POST `/leave` body: `{ roomCode }` → 참가자 이탈
+  - DELETE `/:roomCode` → 방장 방 삭제
 
 - Logs (`/api/game`)
-  - GET `/result/:roomId` [인증 또는 내부] → 완료된 게임 결과 조회
-  - GET `/log/:roomId` [인증 또는 내부] → 턴 로그 조회 (로그 없으면 204)
+  - GET `/result/:roomCode` [인증 또는 내부] → 완료된 게임 결과 조회
+  - GET `/log/:roomCode` [인증 또는 내부] → 턴 로그 조회 (로그 없으면 204)
   - POST/PUT(내부용) 엔드포인트는 서버 내부 연동용 비공개
 
 인증: httpOnly 쿠키(`auth_token`) 또는 `Authorization: Bearer <token>`. 클라이언트는 쿠키 기반 사용 권장(모든 요청에 `credentials: "include"`).

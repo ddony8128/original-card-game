@@ -9,7 +9,8 @@ import type {
   AnswerMulliganPayload,
   PlayerInputPayload,
 } from '../type/wsProtocol';
-import { GameRoomManager, type WsClient } from './gameRoomManager';
+import { GameRoomManager } from './gameRoomManager';
+import type { SocketClient } from './socketManager';
 
 export type WsApi = {
   broadcast: (roomCode: string, data: unknown) => void;
@@ -19,18 +20,18 @@ export type WsApi = {
 export function attachWebSocket(server: http.Server): WsApi {
   const wss = new WebSocketServer({ server, path: '/api/match/socket' });
 
-  const manager = new SocketManager();
-  const roomManager = new GameRoomManager(manager);
+  const socketManager = new SocketManager();
+  const roomManager = new GameRoomManager(socketManager);
 
   function broadcast(roomCode: string, data: unknown) {
-    manager.broadcast(roomCode, data);
+    socketManager.broadcast(roomCode, data);
   }
 
   function sendTo(roomCode: string, userId: string, data: unknown) {
-    manager.sendTo(roomCode, userId, data);
+    socketManager.sendTo(roomCode, userId, data);
   }
 
-  wss.on('connection', (socket: WsClient) => {
+  wss.on('connection', (socket: SocketClient) => {
     socket.on('message', (buf) => {
       try {
         const raw = JSON.parse(buf.toString()) as
@@ -44,15 +45,18 @@ export function attachWebSocket(server: http.Server): WsApi {
         const data = (raw as ClientToServerMessage).data;
 
         if (event === 'ready') {
-          const { roomId, userId } = data as ReadyPayload;
-          if (!roomId || !userId) return;
-          socket.userId = userId;
-          socket.roomCode = roomId;
-          roomManager.addClient(roomId, socket, userId);
-          void roomManager.handleReady(roomId, {
-            roomId,
-            userId,
-          });
+          const { roomCode, userId } = data as ReadyPayload;
+          if (!roomCode || !userId) return;
+          // 참가자 여부 검증 및 방 참여/ready 처리는 GameRoomManager에서 수행
+          void roomManager
+            .handleReady(socket, { roomCode, userId })
+            .catch((err) =>
+              console.error('[WS] handleReady error', {
+                err,
+                roomCode,
+                userId,
+              }),
+            );
           return;
         }
 
@@ -63,17 +67,41 @@ export function attachWebSocket(server: http.Server): WsApi {
         switch (event) {
           case 'player_action': {
             const action = data as PlayerActionPayload;
-            void roomManager.handlePlayerAction(roomCode, userId, action);
+            void roomManager
+              .handlePlayerAction(roomCode, userId, action)
+              .catch((err) =>
+                console.error('[WS] handlePlayerAction error', {
+                  err,
+                  roomCode,
+                  userId,
+                }),
+              );
             break;
           }
           case 'answer_mulligan': {
             const payload = data as AnswerMulliganPayload;
-            void roomManager.handleAnswerMulligan(roomCode, userId, payload);
+            void roomManager
+              .handleAnswerMulligan(roomCode, userId, payload)
+              .catch((err) =>
+                console.error('[WS] handleAnswerMulligan error', {
+                  err,
+                  roomCode,
+                  userId,
+                }),
+              );
             break;
           }
           case 'player_input': {
             const payload = data as PlayerInputPayload;
-            void roomManager.handlePlayerInput(roomCode, userId, payload);
+            void roomManager
+              .handlePlayerInput(roomCode, userId, payload)
+              .catch((err) =>
+                console.error('[WS] handlePlayerInput error', {
+                  err,
+                  roomCode,
+                  userId,
+                }),
+              );
             break;
           }
           default:
@@ -85,7 +113,7 @@ export function attachWebSocket(server: http.Server): WsApi {
     });
 
     socket.on('close', () => {
-      roomManager.removeClient(socket);
+      socketManager.leave(socket);
     });
   });
 
