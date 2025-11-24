@@ -14,7 +14,7 @@ import type {
 import type { DeckList } from '../type/deck';
 import { roomsService, type RoomRow } from '../services/rooms';
 import { decksService } from '../services/decks';
-import { GameEngine } from '../type/gameEngine';
+import { GameEngineAdapter } from '../type/gameEngine';
 import {
   buildEngineContextFromDecks,
   createInitialGameState,
@@ -24,7 +24,7 @@ import type { SocketManager, SocketClient } from './socketManager';
 
 type RoomEngine = {
   roomCode: string;
-  engine: GameEngine;
+  engine: GameEngineAdapter;
   players: PlayerID[];
   initializedPlayers: Set<PlayerID>;
   // game_init 메시지 전송 여부 확인 용도
@@ -201,7 +201,7 @@ export class GameRoomManager {
 
     const roomEngine: RoomEngine = {
       roomCode,
-      engine: GameEngine.create({
+      engine: GameEngineAdapter.create({
         roomCode,
         players,
         initialState,

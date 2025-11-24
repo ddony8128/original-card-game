@@ -47,14 +47,12 @@ export interface GameEngineInstanceConfig extends EngineConfig {
   ctx: EngineContext;
 }
 
-export class GameEngine {
+export class GameEngineAdapter {
   private readonly core: GameEngineCore;
   readonly roomCode: string;
   readonly players: PlayerID[];
 
   private handlers: GameEngineEventHandlers = {};
-  private readyPlayers: boolean = false; // 모든 플레이어가 ready 되었는지 확인
-  private started: boolean = false;
 
   private constructor(core: GameEngineCore) {
     this.core = core;
@@ -62,10 +60,20 @@ export class GameEngine {
     this.players = core.players;
   }
 
-  static create(config: GameEngineInstanceConfig): GameEngine {
+  static create(config: GameEngineInstanceConfig): GameEngineAdapter {
     const { initialState, ctx, ...engineConfig } = config;
     const core = GameEngineCore.create(initialState, ctx, engineConfig);
-    return new GameEngine(core);
+    return new GameEngineAdapter(core);
+  }
+
+  // read-only 노출
+
+  get state(): GameState {
+    return this.core.state;
+  }
+
+  getCore(): GameEngineCore {
+    return this.core;
   }
 
   // ---- 콜백 등록 ----
@@ -94,15 +102,9 @@ export class GameEngine {
 
   /**
    * 플레이어가 ready 를 눌렀을 때 호출.
-   * 내부적으로 모든 플레이어가 ready 가 되면 초기화 + 멀리건 요청/상태 패치를 발생시킨다.
    */
   async markReady(): Promise<void> {
-    if (this.started || this.readyPlayers) return;
-
-    console.log('모든 플레이어가 ready 되었습니다.', this.players);
-    this.readyPlayers = true;
     const results = this.core.markReady();
-    this.started = true;
     this.dispatchResults(results);
   }
 
@@ -113,6 +115,7 @@ export class GameEngine {
     playerId: PlayerID,
     action: PlayerActionPayload,
   ): Promise<void> {
+    console.log('[GameEngine] handlePlayerAction', playerId, action);
     const results = await this.core.handlePlayerAction(playerId, action);
     this.dispatchResults(results);
   }
@@ -136,6 +139,7 @@ export class GameEngine {
     playerId: PlayerID,
     payload: PlayerInputPayload,
   ): Promise<void> {
+    console.log('[GameEngine] handlePlayerInput', playerId, payload);
     const results = await this.core.handlePlayerInput(playerId, payload);
     this.dispatchResults(results);
   }
@@ -147,16 +151,31 @@ export class GameEngine {
       switch (r.kind) {
         case 'state_patch':
           if (r.statePatch && this.handlers.onStatePatch) {
+            console.log(
+              '[GameEngine] dispatchResults state_patch',
+              r.targetPlayer,
+              r.statePatch,
+            );
             this.handlers.onStatePatch(r.targetPlayer ?? null, r.statePatch);
           }
           break;
         case 'ask_mulligan':
           if (r.askMulligan && this.handlers.onAskMulligan) {
+            console.log(
+              '[GameEngine] dispatchResults ask_mulligan',
+              r.targetPlayer,
+              r.askMulligan,
+            );
             this.handlers.onAskMulligan(r.targetPlayer ?? null, r.askMulligan);
           }
           break;
         case 'request_input':
           if (r.requestInput && this.handlers.onRequestInput) {
+            console.log(
+              '[GameEngine] dispatchResults request_input',
+              r.targetPlayer,
+              r.requestInput,
+            );
             this.handlers.onRequestInput(
               r.targetPlayer ?? null,
               r.requestInput,
@@ -165,11 +184,17 @@ export class GameEngine {
           break;
         case 'game_over':
           if (r.gameOver && this.handlers.onGameOver) {
+            console.log('[GameEngine] dispatchResults game_over', r.gameOver);
             this.handlers.onGameOver(r.gameOver);
           }
           break;
         case 'invalid_action':
           if (this.handlers.onInvalidAction) {
+            console.log(
+              '[GameEngine] dispatchResults invalid_action',
+              r.targetPlayer,
+              r.invalidReason,
+            );
             const payload: InvalidActionPayload = {
               reason: (r.invalidReason ??
                 'invalid_action') as InvalidActionPayload['reason'],
