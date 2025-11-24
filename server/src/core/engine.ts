@@ -185,13 +185,13 @@ export class GameEngineCore {
 
     switch (act) {
       case 'move':
-        return this.handleMove(playerId, {
+        return await this.handleMove(playerId, {
           to: (action as any).to as [number, number],
         });
       case 'end_turn':
-        return this.handleEndTurn(playerId);
+        return await this.handleEndTurn(playerId);
       case 'use_card':
-        return this.handleUseCard(
+        return await this.handleUseCard(
           playerId,
           (action as any).cardInstance as CardInstance,
           (action as any).target as [number, number] | undefined,
@@ -218,10 +218,10 @@ export class GameEngineCore {
 
   // ---- 개별 액션 처리 ----
 
-  private handleMove(
+  private async handleMove(
     playerId: PlayerID,
     payload: { to: [number, number] },
-  ): EngineResult[] {
+  ): Promise<EngineResult[]> {
     const me = this.state.board.wizards[playerId];
     if (!me) {
       return [
@@ -278,11 +278,11 @@ export class GameEngineCore {
     };
 
     this.effectStack.push(effect);
-    const results = this.stepUntilStable();
+    const results = await this.stepUntilStable();
     return results;
   }
 
-  private handleEndTurn(playerId: PlayerID): EngineResult[] {
+  private async handleEndTurn(playerId: PlayerID): Promise<EngineResult[]> {
     if (this.state.activePlayer !== playerId) {
       return [
         {
@@ -297,7 +297,7 @@ export class GameEngineCore {
       owner: playerId,
     };
     this.effectStack.push(effect);
-    return this.stepUntilStable();
+    return await this.stepUntilStable();
   }
 
   private async handleUseCard(
@@ -332,7 +332,7 @@ export class GameEngineCore {
     const usedInstance = playerState.hand[handIndex];
     const cardId = usedInstance.cardId;
 
-    const meta = this.ctx.lookupCard(cardId);
+    const meta = await this.ctx.lookupCard(cardId);
     if (!meta) {
       return [
         {
@@ -343,7 +343,8 @@ export class GameEngineCore {
       ];
     }
 
-    if (playerState.mana < meta.manaCost) {
+    const manaCost = meta.mana ?? 0;
+    if (playerState.mana < manaCost) {
       return [
         {
           kind: 'invalid_action',
@@ -354,10 +355,10 @@ export class GameEngineCore {
     }
 
     // 마나 차감 및 손에서 제거
-    playerState.mana -= meta.manaCost;
+    playerState.mana -= manaCost;
     playerState.hand.splice(handIndex, 1);
 
-    if (meta.kind === 'ritual') {
+    if (meta.type === 'ritual') {
       // 설치 가능한 위치 계산 → request_input (좌표는 플레이어 시점 기준으로 변환)
       const absOptions = this.computeInstallPositions(playerId);
       const options = absOptions.map((pos) => this.toViewerPos(pos, playerId));
@@ -390,7 +391,7 @@ export class GameEngineCore {
       cardId,
     };
     this.effectStack.push(effect);
-    const results = this.stepUntilStable();
+    const results = await this.stepUntilStable();
 
     // burn되지 않은 instant 카드는 사용 후 grave로 이동
     if (!this.burnedThisAction.has(cardId)) {
@@ -448,7 +449,7 @@ export class GameEngineCore {
     };
     this.effectStack.push(effect);
     this.state.phase = GamePhase.WAITING_FOR_PLAYER_ACTION;
-    return this.stepUntilStable();
+    return await this.stepUntilStable();
   }
 
   async handlePlayerInput(
@@ -501,7 +502,7 @@ export class GameEngineCore {
         pos: { r, c },
       };
       this.effectStack.push(effect);
-      return this.stepUntilStable();
+      return await this.stepUntilStable();
     }
 
     if (pending.type === 'hand_discard') {
@@ -518,7 +519,7 @@ export class GameEngineCore {
           }
         });
       }
-      return this.stepUntilStable();
+      return await this.stepUntilStable();
     }
 
     // TODO: cast_target 등 다른 입력 타입 처리
@@ -527,14 +528,14 @@ export class GameEngineCore {
 
   // ---- 메인 스택 처리 루프 ----
 
-  private stepUntilStable(): EngineResult[] {
+  private async stepUntilStable(): Promise<EngineResult[]> {
     const results: EngineResult[] = [];
     const localDiff: DiffPatch = { animations: [], log: [] };
 
     while (!this.effectStack.isEmpty()) {
       const effect = this.effectStack.pop();
       if (!effect) break;
-      this.resolveEffect(effect, localDiff);
+      await this.resolveEffect(effect, localDiff);
       if (this.checkGameOver()) {
         const gameOver = this.buildGameOver();
         results.push({
@@ -555,7 +556,7 @@ export class GameEngineCore {
     return results;
   }
 
-  private resolveEffect(effect: Effect, diff: DiffPatch) {
+  private async resolveEffect(effect: Effect, diff: DiffPatch) {
     switch (effect.type) {
       case 'MOVE': {
         const move = effect as MoveEffect;
@@ -580,11 +581,16 @@ export class GameEngineCore {
         const turnEnd = effect as TurnEndEffect;
         diff.log.push(`플레이어 ${turnEnd.owner} 턴 종료`);
         // 리추얼 onTurnEnd 트리거 실행
-        this.state.board.rituals
-          .filter((r) => r.owner === turnEnd.owner)
-          .forEach((r) => {
-            this.executeCardTrigger(r.cardId, 'onTurnEnd', turnEnd.owner, diff);
-          });
+        for (const r of this.state.board.rituals.filter(
+          (r) => r.owner === turnEnd.owner,
+        )) {
+          await this.executeCardTrigger(
+            r.cardId,
+            'onTurnEnd',
+            turnEnd.owner,
+            diff,
+          );
+        }
         // 다음 턴 플레이어로 변경
         {
           const currentIdx = this.players.indexOf(this.state.activePlayer);
@@ -642,7 +648,7 @@ export class GameEngineCore {
           `플레이어 ${inst.owner}가 (${inst.pos.r},${inst.pos.c}) 위치에 리추얼을 설치`,
         );
         // 리추얼 카드의 onTurnEnd/onDestroy 트리거를 ObserverRegistry에 등록 (필요 시)
-        const meta = this.ctx.lookupCard(inst.cardId);
+        const meta = await this.ctx.lookupCard(inst.cardId);
         if (meta && meta.effectJson) {
           const parsed = parseCardEffectJson(meta.effectJson);
           if (parsed) {
@@ -667,7 +673,7 @@ export class GameEngineCore {
           `플레이어 ${cast.owner}가 인스턴트 카드를 사용 (id=${cast.cardId})`,
         );
         // effect_json의 onCast 트리거 실행
-        this.executeCardTrigger(cast.cardId, 'onCast', cast.owner, diff);
+        await this.executeCardTrigger(cast.cardId, 'onCast', cast.owner, diff);
         break;
       }
       case 'TRIGGERED_EFFECT': {
@@ -922,13 +928,13 @@ export class GameEngineCore {
     }
   }
 
-  private executeCardTrigger(
+  private async executeCardTrigger(
     cardId: CardID,
     trigger: EffectTrigger,
     actor: PlayerID,
     diff: DiffPatch,
   ) {
-    const meta = this.ctx.lookupCard(cardId);
+    const meta = await this.ctx.lookupCard(cardId);
     if (!meta || !meta.effectJson) return;
     const parsed = parseCardEffectJson(meta.effectJson);
     if (!parsed) return;

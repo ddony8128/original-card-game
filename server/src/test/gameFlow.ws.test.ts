@@ -45,6 +45,8 @@ vi.mock('../services/cards', () => {
   return {
     cardsService: {
       listAll: vi.fn(async () => []),
+      getByIds: vi.fn(async (ids: string[]) => []),
+      getById: vi.fn(async (id: string) => null),
     },
   };
 });

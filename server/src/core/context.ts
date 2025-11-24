@@ -1,18 +1,20 @@
 import type { CardID, PlayerID } from '../type/gameState';
-
-export type CardKind = 'instant' | 'ritual';
+import type { DeckCardType } from '../type/deck';
 
 export interface CardMeta {
   id: CardID;
-  name: string;
-  manaCost: number;
-  kind: CardKind;
-  // RDB에 저장된 effect JSON (엔진은 구조만 알고 내용은 해석하지 않음)
+  name_dev: string;
+  name_ko: string;
+  description_ko: string | null;
+  type: DeckCardType;
+  mana: number | null;
+  token: boolean;
+  // RDB에 저장된 effect JSON (런타임에 parseCardEffectJson 함수로 파싱하여 사용)
   effectJson: unknown;
 }
 
-// 엔진 코어는 동기 조회를 가정하고, 외부에서 미리 캐시/로딩해 주는 형태로 사용한다.
-export type LookupCardFn = (id: CardID) => CardMeta | null;
+// 엔진 코어는 비동기 조회를 사용하며, 내부적으로 캐시를 먼저 확인하고 없으면 DB에서 조회한다.
+export type LookupCardFn = (id: CardID) => Promise<CardMeta | null>;
 
 export interface EngineContext {
   lookupCard: LookupCardFn;
@@ -31,5 +33,3 @@ export interface EngineContext {
    */
   log?: (playerId: PlayerID | null, message: string) => void;
 }
-
-

@@ -8,7 +8,7 @@ import {
 } from '../type/gameState';
 import type { DeckList } from '../type/deck';
 import type { EngineContext, CardMeta } from '../core/context';
-import { cardsService } from '../services/cards';
+import { cardsService, type CardRow } from '../services/cards';
 
 const BOARD_WIDTH = 5;
 const BOARD_HEIGHT = 5;
@@ -110,23 +110,49 @@ export async function buildEngineContextFromDecks(
     cfg.cata.forEach((entry) => neededCardIds.add(entry.id));
   });
 
-  const allRows = await cardsService.listAll();
+  // 필요한 카드만 조회 (getByIds 사용)
+  const neededCardIdsArray = Array.from(neededCardIds);
+  const cardRows: CardRow[] = await cardsService.getByIds(neededCardIdsArray);
+
   const metaById = new Map<CardID, CardMeta>();
-  for (const row of allRows) {
-    if (!neededCardIds.has(row.id)) continue;
-    const kind = row.type === 'ritual' ? 'ritual' : 'instant';
-    const name = row.name_ko || row.name_dev;
+  for (const row of cardRows) {
     metaById.set(row.id as CardID, {
       id: row.id as CardID,
-      name,
-      manaCost: row.mana ?? 0,
-      kind,
+      name_dev: row.name_dev,
+      name_ko: row.name_ko,
+      description_ko: row.description_ko,
+      type: row.type,
+      mana: row.mana,
+      token: row.token,
       effectJson: row.effect_json,
     });
   }
 
   const ctx: EngineContext = {
-    lookupCard: (id) => metaById.get(id) ?? null,
+    lookupCard: async (id: CardID) => {
+      // 먼저 캐시에서 확인
+      const cached = metaById.get(id);
+      if (cached) return cached;
+
+      // 캐시에 없으면 DB에서 조회 (비동기 fallback)
+      const row = await cardsService.getById(id);
+      if (!row) return null;
+
+      const meta: CardMeta = {
+        id: row.id as CardID,
+        name_dev: row.name_dev,
+        name_ko: row.name_ko,
+        description_ko: row.description_ko,
+        type: row.type,
+        mana: row.mana,
+        token: row.token,
+        effectJson: row.effect_json,
+      };
+
+      // 캐시에 추가 (다음 조회는 동기로 가능)
+      metaById.set(id, meta);
+      return meta;
+    },
   };
 
   return ctx;

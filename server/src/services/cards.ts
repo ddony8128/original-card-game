@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { Json, coerceJson } from '../type/json';
+import { CardID } from '../type/gameState';
 
 export type CardRow = {
   id: string;
@@ -22,7 +23,7 @@ export const cardsService = {
     return rows.map((r) => ({ ...r, effect_json: coerceJson(r.effect_json) }));
   },
 
-  async getById(id: string): Promise<CardRow | null> {
+  async getById(id: CardID): Promise<CardRow | null> {
     const { data, error } = await supabase
       .from('cards')
       .select('*')
@@ -32,6 +33,19 @@ export const cardsService = {
     if (!data) return null;
     const row = data as Omit<CardRow, 'effect_json'> & { effect_json: unknown };
     return { ...row, effect_json: coerceJson(row.effect_json) };
+  },
+
+  async getByIds(ids: CardID[]): Promise<CardRow[]> {
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from('cards')
+      .select('*')
+      .in('id', ids);
+    if (error) throw error;
+    const rows = (data ?? []) as Array<
+      Omit<CardRow, 'effect_json'> & { effect_json: unknown }
+    >;
+    return rows.map((r) => ({ ...r, effect_json: coerceJson(r.effect_json) }));
   },
 
   async list(params: {

@@ -62,9 +62,12 @@ function createEmptyState(): GameState {
 const dummyCards: Record<CardID, CardMeta> = {
   'c01-001': {
     id: 'c01-001',
-    name: '마나 보조 배터리',
-    manaCost: 0,
-    kind: 'instant',
+    name_dev: 'mana_battery',
+    name_ko: '마나 보조 배터리',
+    description_ko: null,
+    type: 'instant',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -77,9 +80,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-002': {
     id: 'c01-002',
-    name: '마나가 담긴 찌르기',
-    manaCost: 0,
-    kind: 'instant',
+    name_dev: 'pierce_with_mana',
+    name_ko: '마나가 담긴 찌르기',
+    description_ko: null,
+    type: 'instant',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -94,9 +100,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-003': {
     id: 'c01-003',
-    name: '운기조식',
-    manaCost: 0,
-    kind: 'instant',
+    name_dev: 'breath_focus',
+    name_ko: '운기조식',
+    description_ko: null,
+    type: 'instant',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -109,9 +118,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-004': {
     id: 'c01-004',
-    name: '각력 강화',
-    manaCost: 0,
-    kind: 'instant',
+    name_dev: 'leg_muscle_boost',
+    name_ko: '각력 강화',
+    description_ko: null,
+    type: 'instant',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -131,9 +143,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-005': {
     id: 'c01-005',
-    name: '침입자 감지',
-    manaCost: 0,
-    kind: 'ritual',
+    name_dev: 'intruder_sensor',
+    name_ko: '침입자 감지',
+    description_ko: null,
+    type: 'ritual',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'ritual',
       install: { range: 2 },
@@ -150,9 +165,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-006': {
     id: 'c01-006',
-    name: '마력탄',
-    manaCost: 1,
-    kind: 'instant',
+    name_dev: 'magic_bolt',
+    name_ko: '마력탄',
+    description_ko: null,
+    type: 'instant',
+    mana: 1,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -167,9 +185,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-007': {
     id: 'c01-007',
-    name: '치킨 게임',
-    manaCost: 1,
-    kind: 'instant',
+    name_dev: 'chicken_game',
+    name_ko: '치킨 게임',
+    description_ko: null,
+    type: 'instant',
+    mana: 1,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -194,9 +215,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-008': {
     id: 'c01-008',
-    name: '독서의 시간',
-    manaCost: 1,
-    kind: 'instant',
+    name_dev: 'reading_time',
+    name_ko: '독서의 시간',
+    description_ko: null,
+    type: 'instant',
+    mana: 1,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -217,9 +241,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-009': {
     id: 'c01-009',
-    name: '마력 저격',
-    manaCost: 1,
-    kind: 'instant',
+    name_dev: 'magic_sniper',
+    name_ko: '마력 저격',
+    description_ko: null,
+    type: 'instant',
+    mana: 1,
+    token: false,
     effectJson: {
       type: 'instant',
       triggers: [
@@ -234,9 +261,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-010': {
     id: 'c01-010',
-    name: '설치형 저주인형',
-    manaCost: 1,
-    kind: 'ritual',
+    name_dev: 'installed_voodoo_doll',
+    name_ko: '설치형 저주인형',
+    description_ko: null,
+    type: 'ritual',
+    mana: 1,
+    token: false,
     effectJson: {
       type: 'ritual',
       install: { range: 2 },
@@ -254,9 +284,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-030': {
     id: 'c01-030',
-    name: '궁극의 흑마법',
-    manaCost: 5,
-    kind: 'ritual',
+    name_dev: 'ultimate_dark_magic',
+    name_ko: '궁극의 흑마법',
+    description_ko: null,
+    type: 'ritual',
+    mana: 5,
+    token: false,
     effectJson: {
       type: 'ritual',
       install: { range: 3 },
@@ -282,9 +315,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-901': {
     id: 'c01-901',
-    name: '이건 그냥 장난일 뿐이야',
-    manaCost: 0,
-    kind: 'ritual',
+    name_dev: 'just_a_prank',
+    name_ko: '이건 그냥 장난일 뿐이야',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'catastrophe',
       triggers: [
@@ -305,9 +341,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-902': {
     id: 'c01-902',
-    name: '해치웠나!?',
-    manaCost: 0,
-    kind: 'ritual',
+    name_dev: 'did_i_get_it',
+    name_ko: '해치웠나!?',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'catastrophe',
       triggers: [
@@ -320,9 +359,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-903': {
     id: 'c01-903',
-    name: '브레스! 피해욧!',
-    manaCost: 0,
-    kind: 'ritual',
+    name_dev: 'breath_damage',
+    name_ko: '브레스! 피해욧!',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'catastrophe',
       triggers: [
@@ -349,9 +391,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-904': {
     id: 'c01-904',
-    name: '쓰레기! 버려욧!',
-    manaCost: 0,
-    kind: 'ritual',
+    name_dev: 'trash_discard',
+    name_ko: '쓰레기! 버려욧!',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'catastrophe',
       triggers: [
@@ -379,9 +424,12 @@ const dummyCards: Record<CardID, CardMeta> = {
   },
   'c01-905': {
     id: 'c01-905',
-    name: '마력 역류',
-    manaCost: 0,
-    kind: 'ritual',
+    name_dev: 'mana_backflow',
+    name_ko: '마력 역류',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
     effectJson: {
       type: 'catastrophe',
       triggers: [
@@ -403,7 +451,7 @@ const dummyCards: Record<CardID, CardMeta> = {
 };
 
 const ctx: EngineContext = {
-  lookupCard: (id) => dummyCards[id] ?? null,
+  lookupCard: async (id) => Promise.resolve(dummyCards[id] ?? null),
 };
 
 describe('GameEngineCore card simulation', () => {
@@ -562,7 +610,7 @@ describe('GameEngineCore card simulation', () => {
 
     const diff = { animations: [], log: [] };
     // destroy 트리거 수동 실행 (실제 게임에서는 리추얼 파괴 시점에서 호출될 예정)
-    (engine as any).executeCardTrigger('c01-005', 'onDestroy', P1, diff);
+    await (engine as any).executeCardTrigger('c01-005', 'onDestroy', P1, diff);
 
     // discard 이후에도 최소 한 장은 손에 남아 있어야 한다 (구체 동작은 엔진 구현에 위임)
     expect(engine.state.players[P1].hand.length).toBeGreaterThanOrEqual(1);
@@ -663,7 +711,12 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const diff = { animations: [], log: [] };
-    (engine as any).executeCardTrigger('c01-030', 'onUsePerTurn', P1, diff);
+    await (engine as any).executeCardTrigger(
+      'c01-030',
+      'onUsePerTurn',
+      P1,
+      diff,
+    );
 
     expect(engine.state.players[P1].deck.length).toBe(1);
     expect(engine.state.players[P1].grave.length).toBe(5);
@@ -681,7 +734,7 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const diff = { animations: [], log: [] };
-    (engine as any).executeCardTrigger('c01-901', 'onDrawn', P1, diff);
+    await (engine as any).executeCardTrigger('c01-901', 'onDrawn', P1, diff);
 
     expect(engine.state.players[P1].hp).toBe(9);
     expect(engine.state.catastropheDeck.length).toBe(0);
@@ -698,7 +751,7 @@ describe('GameEngineCore card simulation', () => {
     });
     const diff = { animations: [], log: [] };
 
-    (engine as any).executeCardTrigger('c01-902', 'onDrawn', P1, diff);
+    await (engine as any).executeCardTrigger('c01-902', 'onDrawn', P1, diff);
 
     expect(engine.state.players[P2].hp).toBe(10);
   });
@@ -713,7 +766,7 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     let diff: any = { animations: [], log: [] };
-    (engineA as any).executeCardTrigger('c01-903', 'onDrawn', P1, diff);
+    await (engineA as any).executeCardTrigger('c01-903', 'onDrawn', P1, diff);
     expect(engineA.state.players[P1].hp).toBe(7);
     expect(engineA.state.players[P1].deck.length).toBe(0);
 
@@ -729,7 +782,7 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     diff = { animations: [], log: [] };
-    (engineB as any).executeCardTrigger('c01-903', 'onDrawn', P1, diff);
+    await (engineB as any).executeCardTrigger('c01-903', 'onDrawn', P1, diff);
     expect(engineB.state.players[P1].hp).toBe(10);
     expect(engineB.state.players[P1].deck.length).toBe(1);
   });
@@ -748,7 +801,7 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     let diff: any = { animations: [], log: [] };
-    (engineA as any).executeCardTrigger('c01-904', 'onDrawn', P1, diff);
+    await (engineA as any).executeCardTrigger('c01-904', 'onDrawn', P1, diff);
     expect(engineA.state.players[P1].deck.length).toBe(1);
     expect(engineA.state.players[P1].grave.length).toBe(2);
 
@@ -769,7 +822,7 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     diff = { animations: [], log: [] };
-    (engineB as any).executeCardTrigger('c01-904', 'onDrawn', P1, diff);
+    await (engineB as any).executeCardTrigger('c01-904', 'onDrawn', P1, diff);
     expect(engineB.state.players[P1].hand.length).toBe(1);
     expect(engineB.state.players[P1].grave.length).toBe(2);
   });
@@ -807,7 +860,7 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const diff = { animations: [], log: [] };
-    (engine as any).executeCardTrigger('c01-905', 'onDrawn', P1, diff);
+    await (engine as any).executeCardTrigger('c01-905', 'onDrawn', P1, diff);
 
     expect(engine.state.players[P1].hp).toBe(17);
   });
