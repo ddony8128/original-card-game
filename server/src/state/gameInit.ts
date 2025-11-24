@@ -17,6 +17,7 @@ const INITIAL_MAX_HP = 20;
 const INITIAL_MANA = 0;
 const INITIAL_MAX_MANA = 0;
 const INITIAL_HAND_LIMIT = 6;
+export const MOVE_MANA_COST = 1;
 
 export interface PlayerDeckConfig {
   playerId: PlayerID;

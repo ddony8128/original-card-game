@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type {
   GameState,
   PlayerID,
@@ -8,6 +8,13 @@ import type {
 import { GamePhase } from '../../type/gameState';
 import { GameEngineCore } from '../engine';
 import type { EngineContext, CardMeta } from '../context';
+
+// supabase 클라이언트를 실제로 만들지 않도록, 다른 테스트들과 동일한 mock을 사용한다.
+// (gameInit.ts가 cardsService를 import하면서 supabase를 끌고 들어오기 때문에 필요)
+vi.mock(
+  '../../lib/supabase',
+  async () => await import('../../test/__mocks__/supabase.js'),
+);
 
 const P1: PlayerID = 'p1';
 const P2: PlayerID = 'p2';

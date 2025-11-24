@@ -31,6 +31,7 @@ import type { RequestInputKind } from '../type/wsProtocol';
 import { ObserverRegistry } from './observers';
 import { parseCardEffectJson, type EffectTrigger } from './effects/schema';
 import { executeEffects } from './effects/executor';
+import { MOVE_MANA_COST } from '../state/gameInit';
 
 export type EngineResultKind =
   | 'state_patch'
@@ -71,6 +72,7 @@ export class GameEngineCore {
     kind: RequestInputKind;
     cardId?: CardID;
     count?: number;
+    installRange?: number;
   } | null = null;
 
   constructor(
@@ -147,14 +149,14 @@ export class GameEngineCore {
 
     // 각 플레이어 덱 셔플 및 초기 드로우
     this.players.forEach((pid, idx) => {
-      const ps = this.state.players[pid];
-      this.shuffle(ps.deck);
+      const playerState = this.state.players[pid];
+      this.shuffle(playerState.deck);
       this.shuffle(this.state.catastropheDeck);
       const drawCount = idx === firstIdx ? 2 : 3;
       for (let i = 0; i < drawCount; i += 1) {
         this.bringCardToHand(pid);
       }
-      ps.mulliganSelected = false;
+      playerState.mulliganSelected = false;
     });
   }
 
@@ -192,9 +194,9 @@ export class GameEngineCore {
       ];
     }
 
-    const act = action.action;
+    const actionType = action.action;
 
-    switch (act) {
+    switch (actionType) {
       case 'move':
         return await this.handleMove(playerId, {
           to: (action as any).to as [number, number],
@@ -227,7 +229,32 @@ export class GameEngineCore {
     }
   }
 
-  // ---- Phase 체크 헬퍼 함수 ----
+  // ---- 검증 헬퍼 함수 ----
+
+  /**
+   * invalid_action EngineResult 생성
+   */
+  private invalidAction(playerId: PlayerID, reason: string): EngineResult[] {
+    return [
+      {
+        kind: 'invalid_action',
+        targetPlayer: playerId,
+        invalidReason: reason,
+      },
+    ];
+  }
+
+  /**
+   * 조건이 false면 invalid_action 반환, true면 null 반환
+   * @returns null이면 통과, 아니면 invalid_action EngineResult 반환
+   */
+  private require(
+    condition: boolean,
+    playerId: PlayerID,
+    reason: string,
+  ): EngineResult[] | null {
+    return condition ? null : this.invalidAction(playerId, reason);
+  }
 
   /**
    * 현재 phase가 예상한 phase인지 확인
@@ -238,16 +265,11 @@ export class GameEngineCore {
     playerId: PlayerID,
     invalidReason: string,
   ): EngineResult[] | null {
-    if (this.state.phase !== expectedPhase) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason,
-        },
-      ];
-    }
-    return null;
+    return this.require(
+      this.state.phase === expectedPhase,
+      playerId,
+      invalidReason,
+    );
   }
 
   /**
@@ -259,16 +281,11 @@ export class GameEngineCore {
     playerId: PlayerID,
     invalidReason: string,
   ): EngineResult[] | null {
-    if (unexpectedPhases.includes(this.state.phase)) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason,
-        },
-      ];
-    }
-    return null;
+    return this.require(
+      !unexpectedPhases.includes(this.state.phase),
+      playerId,
+      invalidReason,
+    );
   }
 
   // ---- 개별 액션 처리 ----
@@ -277,54 +294,38 @@ export class GameEngineCore {
     playerId: PlayerID,
     payload: { to: [number, number] },
   ): Promise<EngineResult[]> {
-    const me = this.state.board.wizards[playerId];
-    if (!me) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'no_wizard',
-        },
-      ];
-    }
+    const wizard = this.state.board.wizards[playerId];
+    const checkWizardExists = this.require(!!wizard, playerId, 'no_wizard');
+    if (checkWizardExists) return checkWizardExists;
 
     const [toR, toC] = payload.to;
-    if (!this.isInsideBoard(toR, toC)) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'out_of_board',
-        },
-      ];
-    }
+    const checkPositionValid = this.require(
+      this.isInsideBoard(toR, toC),
+      playerId,
+      'out_of_board',
+    );
+    if (checkPositionValid) return checkPositionValid;
 
     // 상대 마법사가 있는 칸으로 이동 금지
     const occupiedByOtherWizard = Object.entries(this.state.board.wizards).some(
       ([pid, pos]) => pid !== playerId && pos.r === toR && pos.c === toC,
     );
-    if (occupiedByOtherWizard) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'cell_occupied',
-        },
-      ];
-    }
+    const checkCellNotOccupied = this.require(
+      !occupiedByOtherWizard,
+      playerId,
+      'cell_occupied',
+    );
+    if (checkCellNotOccupied) return checkCellNotOccupied;
 
     const playerState = this.state.players[playerId];
-    if (playerState.mana < 1) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'not_enough_mana',
-        },
-      ];
-    }
+    const checkManaSufficient = this.require(
+      playerState.mana >= MOVE_MANA_COST,
+      playerId,
+      'not_enough_mana',
+    );
+    if (checkManaSufficient) return checkManaSufficient;
 
-    playerState.mana -= 1;
+    playerState.mana -= MOVE_MANA_COST;
 
     const effect: MoveEffect = {
       type: 'MOVE',
@@ -338,15 +339,12 @@ export class GameEngineCore {
   }
 
   private async handleEndTurn(playerId: PlayerID): Promise<EngineResult[]> {
-    if (this.state.activePlayer !== playerId) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'not_your_turn',
-        },
-      ];
-    }
+    const checkIsActivePlayer = this.require(
+      this.state.activePlayer === playerId,
+      playerId,
+      'not_your_turn',
+    );
+    if (checkIsActivePlayer) return checkIsActivePlayer;
     const effect: TurnEndEffect = {
       type: 'TURN_END',
       owner: playerId,
@@ -361,61 +359,51 @@ export class GameEngineCore {
     _target: [number, number] | undefined,
   ): Promise<EngineResult[]> {
     const playerState = this.state.players[playerId];
-    if (!playerState) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'unknown_player',
-        },
-      ];
-    }
+    const checkPlayerExists = this.require(
+      !!playerState,
+      playerId,
+      'unknown_player',
+    );
+    if (checkPlayerExists) return checkPlayerExists;
 
     const handIndex = playerState.hand.findIndex(
       (ci) => ci.id === cardInstance.id,
     );
-    if (handIndex === -1) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'card_not_in_hand',
-        },
-      ];
-    }
+    const checkCardInHand = this.require(
+      handIndex !== -1,
+      playerId,
+      'card_not_in_hand',
+    );
+    if (checkCardInHand) return checkCardInHand;
 
     const usedInstance = playerState.hand[handIndex];
     const cardId = usedInstance.cardId;
 
     const meta = await this.ctx.lookupCard(cardId);
-    if (!meta) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'unknown_card',
-        },
-      ];
-    }
+    const checkCardMetaExists = this.require(!!meta, playerId, 'unknown_card');
+    if (checkCardMetaExists) return checkCardMetaExists;
+    // require 체크 후에는 meta가 null이 아님을 보장
+    if (!meta) return this.invalidAction(playerId, 'unknown_card');
 
     const manaCost = meta.mana ?? 0;
-    if (playerState.mana < manaCost) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'not_enough_mana',
-        },
-      ];
-    }
+    const checkManaSufficient = this.require(
+      playerState.mana >= manaCost,
+      playerId,
+      'not_enough_mana',
+    );
+    if (checkManaSufficient) return checkManaSufficient;
 
     // 마나 차감 및 손에서 제거
     playerState.mana -= manaCost;
     playerState.hand.splice(handIndex, 1);
 
     if (meta.type === 'ritual') {
+      // 카드 효과 JSON 파싱하여 install.range 확인
+      const parsed = parseCardEffectJson(meta.effectJson);
+      const installRange = parsed?.install?.range;
+
       // 설치 가능한 위치 계산 → request_input (좌표는 플레이어 시점 기준으로 변환)
-      const absOptions = this.computeInstallPositions(playerId);
+      const absOptions = this.computeInstallPositions(playerId, installRange);
       const options = absOptions.map((pos) => this.toViewerPos(pos, playerId));
       const requestKind: RequestInputKind = {
         type: 'map',
@@ -425,6 +413,7 @@ export class GameEngineCore {
         playerId,
         kind: requestKind,
         cardId,
+        installRange,
       };
       this.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
       return [
@@ -457,7 +446,7 @@ export class GameEngineCore {
     return results;
   }
 
-  // ---- 멀리건 입력 처리 (스켈레톤) ----
+  // ---- 멀리건 입력 처리 ----
 
   async handleAnswerMulligan(
     playerId: PlayerID,
@@ -470,15 +459,12 @@ export class GameEngineCore {
     );
     if (phaseCheck) return phaseCheck;
     const playerState = this.state.players[playerId];
-    if (!playerState) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'unknown_player',
-        },
-      ];
-    }
+    const checkPlayerExists = this.require(
+      !!playerState,
+      playerId,
+      'unknown_player',
+    );
+    if (checkPlayerExists) return checkPlayerExists;
 
     // 선택한 손패를 덱으로 돌려보내고 다시 섞은 뒤 동일 개수 드로우
     const indices = [...payload.replaceIndices].sort((a, b) => b - a);
@@ -492,7 +478,7 @@ export class GameEngineCore {
     playerState.deck.push(...returned);
     this.shuffle(playerState.deck);
     for (let i = 0; i < returned.length; i += 1) {
-      this.drawCardNoTriggers(playerId);
+      this.bringCardToHand(playerId);
     }
     playerState.mulliganSelected = true;
 
@@ -523,15 +509,15 @@ export class GameEngineCore {
       'not_input_phase',
     );
     if (phaseCheck) return phaseCheck;
-    if (!this.pendingInput || this.pendingInput.playerId !== playerId) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'no_pending_input',
-        },
-      ];
-    }
+    const checkPendingInputExists = this.require(
+      !!this.pendingInput && this.pendingInput.playerId === playerId,
+      playerId,
+      'no_pending_input',
+    );
+    if (checkPendingInputExists) return checkPendingInputExists;
+    // require 체크 후에는 pendingInput이 null이 아님을 보장
+    if (!this.pendingInput)
+      return this.invalidAction(playerId, 'no_pending_input');
 
     const pending = this.pendingInput;
     this.pendingInput = null;
@@ -544,31 +530,29 @@ export class GameEngineCore {
       const viewR = Array.isArray(pos) ? pos[0] : pos.r;
       const viewC = Array.isArray(pos) ? pos[1] : pos.c;
       const { r, c } = this.fromViewerPos({ r: viewR, c: viewC }, playerId);
-      if (!this.isInsideBoard(r, c)) {
-        return [
-          {
-            kind: 'invalid_action',
-            targetPlayer: playerId,
-            invalidReason: 'invalid_position',
-          },
-        ];
-      }
 
       const cardId = pending.cardId;
-      if (!cardId) {
-        return [
-          {
-            kind: 'invalid_action',
-            targetPlayer: playerId,
-            invalidReason: 'invalid_card',
-          },
-        ];
-      }
+      const checkCardIdExists = this.require(
+        !!cardId,
+        playerId,
+        'invalid_card',
+      );
+      if (checkCardIdExists) return checkCardIdExists;
+      // require 체크 후에는 cardId가 undefined가 아님을 보장
+      if (!cardId) return this.invalidAction(playerId, 'invalid_card');
+
+      // 설치 가능한 위치인지 검증 (canInstallAt 사용)
+      const checkCanInstall = this.require(
+        this.canInstallAt(playerId, { r, c }, pending.installRange),
+        playerId,
+        'invalid_position',
+      );
+      if (checkCanInstall) return checkCanInstall;
 
       const effect: InstallAfterSelectionEffect = {
         type: 'INSTALL_AFTER_SELECTION',
         owner: playerId,
-        cardId,
+        cardId: cardId, // 타입 가드로 인해 string으로 좁혀짐
         pos: { r, c },
       };
       this.effectStack.push(effect);
@@ -692,19 +676,19 @@ export class GameEngineCore {
         break;
       }
       case 'TURN_START': {
-        const ts = effect as TurnStartEffect;
-        const p = this.state.players[ts.owner];
+        const turnStart = effect as TurnStartEffect;
+        const player = this.state.players[turnStart.owner];
         // 최대 마나 증가 및 현재 마나 회복 (간단한 규칙)
-        p.maxMana += 1;
-        p.mana = p.maxMana;
+        player.maxMana += 1;
+        player.mana = player.maxMana;
         diff.log.push(
-          `플레이어 ${ts.owner} 턴 시작 (마나 ${p.mana}/${p.maxMana})`,
+          `플레이어 ${turnStart.owner} 턴 시작 (마나 ${player.mana}/${player.maxMana})`,
         );
         // 일반 드로우 1장
-        this.drawCardNoTriggers(ts.owner, diff);
+        this.drawCardNoTriggers(turnStart.owner, diff);
         // onTurnStart 트리거 호출
         this.enqueueTriggeredEffects('onTurnStart', {
-          playerId: ts.owner,
+          playerId: turnStart.owner,
         });
         break;
       }
@@ -971,35 +955,141 @@ export class GameEngineCore {
   private drawCardNoTriggers(playerId: PlayerID, diff?: DiffPatch) {
     const p = this.state.players[playerId];
     if (!p) return;
-    if (p.deck.length === 0) {
-      // TODO: discard → deck 리셔플 및 catastrophe 드로우 처리
-      return;
+
+    // 먼저 일반 덱에서 시도
+    let card = this.bringCardToHand(playerId);
+
+    // 덱이 비어있으면 덱을 복원한 후 재앙덱에서 드로우
+    if (!card) {
+      if (p.grave.length > 0) {
+        this.shuffle(p.grave);
+        p.deck = p.grave.splice(0, p.grave.length);
+        // diff?.animations.push({ kind: 'shuffle', player: playerId });
+        diff?.log.push(`플레이어 ${playerId}의 덱을 묘지에서 복원`);
+      }
+
+      // 재앙덱이 비어있으면 재앙 묘지에서 셔플하여 재앙덱으로 복원
+      if (this.state.catastropheDeck.length === 0) {
+        if (this.state.catastropheGrave.length > 0) {
+          this.shuffle(this.state.catastropheGrave);
+          this.state.catastropheDeck = this.state.catastropheGrave.splice(
+            0,
+            this.state.catastropheGrave.length,
+          );
+          // diff?.animations.push({ kind: 'shuffle_catastrophe', player: playerId });
+          diff?.log.push(`재앙 덱을 묘지에서 복원`);
+        }
+      }
+
+      const catastropheCard = this.state.catastropheDeck.shift();
+      if (catastropheCard) {
+        // 재앙 카드는 손패에 넣음
+        // -> TODO : 재앙 카드의 onDrawn 트리거가 실행된 후 바로 묘지로 이동하도록 수정.
+        p.hand.push(catastropheCard);
+        card = catastropheCard;
+        if (diff) {
+          diff.log.push(
+            `플레이어 ${playerId}가 재앙 카드를 뽑았습니다. (${catastropheCard.cardId})`,
+          );
+        }
+      }
     }
-    const card = p.deck.shift()!;
-    p.hand.push(card);
-    if (diff) {
+
+    if (card && diff) {
       diff.animations.push({ kind: 'draw', player: playerId });
       diff.log.push(`플레이어 ${playerId} 드로우`);
     }
   }
 
+  /**
+   * 설치 가능한 위치 목록 계산
+   * @param playerId 설치하는 플레이어 ID
+   * @param range 택시 거리 제한 (선택적). 제공되면 플레이어 마법사로부터 range 이하인 위치만 반환
+   * @returns 설치 가능한 위치 배열
+   */
   private computeInstallPositions(
     playerId: PlayerID,
+    range?: number,
   ): { r: number; c: number }[] {
     const positions: { r: number; c: number }[] = [];
-    const { width, height, rituals } = this.state.board;
+    const { width, height, rituals, wizards } = this.state.board;
     const occupied = new Set<string>();
+
+    // 리추얼이 설치된 위치 제외
     rituals.forEach((r) => {
       occupied.add(`${r.pos.r},${r.pos.c}`);
     });
+
+    // 상대 마법사가 위치한 곳 제외
+    Object.entries(wizards).forEach(([pid, pos]) => {
+      if (pid !== playerId) {
+        occupied.add(`${pos.r},${pos.c}`);
+      }
+    });
+
+    // 플레이어 마법사 위치 (range 체크용)
+    const playerWizard = wizards[playerId];
+
     for (let r = 0; r < height; r += 1) {
       for (let c = 0; c < width; c += 1) {
         const key = `${r},${c}`;
         if (occupied.has(key)) continue;
+
+        // range가 제공되면 택시 거리 체크
+        if (range !== undefined && playerWizard) {
+          const taxiDistance =
+            Math.abs(playerWizard.r - r) + Math.abs(playerWizard.c - c);
+          if (taxiDistance > range) continue;
+        }
+
         positions.push({ r, c });
       }
     }
     return positions;
+  }
+
+  /**
+   * 특정 위치에 설치 가능한지 확인
+   * @param playerId 설치하는 플레이어 ID
+   * @param pos 확인할 위치
+   * @param range 택시 거리 제한 (선택적). 제공되면 플레이어 마법사로부터 range 이하인 위치만 유효
+   * @returns 설치 가능 여부
+   */
+  private canInstallAt(
+    playerId: PlayerID,
+    pos: { r: number; c: number },
+    range?: number,
+  ): boolean {
+    const { width, height, rituals, wizards } = this.state.board;
+
+    // 보드 범위 체크
+    if (pos.r < 0 || pos.r >= height || pos.c < 0 || pos.c >= width) {
+      return false;
+    }
+
+    // 리추얼이 설치된 위치인지 확인
+    const hasRitual = rituals.some(
+      (r) => r.pos.r === pos.r && r.pos.c === pos.c,
+    );
+    if (hasRitual) return false;
+
+    // 상대 마법사가 위치한 곳인지 확인
+    const occupiedByOtherWizard = Object.entries(wizards).some(
+      ([pid, wizardPos]) =>
+        pid !== playerId && wizardPos.r === pos.r && wizardPos.c === pos.c,
+    );
+    if (occupiedByOtherWizard) return false;
+
+    // range가 제공되면 택시 거리 체크
+    if (range !== undefined) {
+      const playerWizard = wizards[playerId];
+      if (!playerWizard) return false;
+      const taxiDistance =
+        Math.abs(playerWizard.r - pos.r) + Math.abs(playerWizard.c - pos.c);
+      if (taxiDistance > range) return false;
+    }
+
+    return true;
   }
 
   private enqueueTriggeredEffects(trigger: string, context: unknown) {
