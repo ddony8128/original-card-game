@@ -34,6 +34,7 @@ export type ClientSideActionLog = {
 
 export interface FoggedGameState {
   phase:
+    | 'INITIALIZING'
     | 'WAITING_FOR_MULLIGAN'
     | 'RESOLVING'
     | 'WAITING_FOR_PLAYER_ACTION'

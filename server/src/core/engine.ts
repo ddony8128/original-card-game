@@ -64,12 +64,11 @@ export class GameEngineCore {
   private readonly effectStack: EffectStack;
   private readonly observers: ObserverRegistry;
   private burnedThisAction = new Set<CardID>();
-  private version = 1;
-  private readyPlayers = false; // 모든 플레이어가 ready 되었는지 확인
+  private version = 1; // state patch마다 1씩 증가
+  private initialized = false; // 게임 초기화 여부, 중복 초기화 방지
   private pendingInput: {
     playerId: PlayerID;
     kind: RequestInputKind;
-    type: 'install_position' | 'cast_target' | 'hand_discard';
     cardId?: CardID;
     count?: number;
   } | null = null;
@@ -100,7 +99,7 @@ export class GameEngineCore {
     config: EngineConfig,
   ): GameEngineCore {
     return new GameEngineCore(
-      initialState,
+      initialState, // GamePhase.INITIALIZING
       ctx,
       config.roomCode,
       config.players,
@@ -109,8 +108,10 @@ export class GameEngineCore {
 
   markReady(): EngineResult[] {
     // 모든 플레이어 ready → 게임 초기화
-    if (this.readyPlayers) return [];
+
+    if (this.initialized) return [];
     this.initializeGame();
+    this.initialized = true;
 
     this.state.phase = GamePhase.WAITING_FOR_MULLIGAN;
 
@@ -161,16 +162,26 @@ export class GameEngineCore {
     playerId: PlayerID,
     action: PlayerActionPayload,
   ): Promise<EngineResult[]> {
-    if (this.state.phase === GamePhase.GAME_OVER) {
-      return [
-        {
-          kind: 'invalid_action',
-          targetPlayer: playerId,
-          invalidReason: 'game_over',
-        },
-      ];
-    }
+    const gameOverCheck = this.checkPhaseNot(
+      [GamePhase.GAME_OVER],
+      playerId,
+      'game_over',
+    );
+    if (gameOverCheck) return gameOverCheck;
 
+    const notStartedCheck = this.checkPhaseNot(
+      [GamePhase.INITIALIZING, GamePhase.WAITING_FOR_MULLIGAN],
+      playerId,
+      'game_not_started',
+    );
+    if (notStartedCheck) return notStartedCheck;
+
+    const invalidPhaseCheck = this.checkPhase(
+      GamePhase.WAITING_FOR_PLAYER_ACTION,
+      playerId,
+      'invalid_phase',
+    );
+    if (invalidPhaseCheck) return invalidPhaseCheck;
     if (this.state.activePlayer !== playerId) {
       return [
         {
@@ -214,6 +225,50 @@ export class GameEngineCore {
           },
         ];
     }
+  }
+
+  // ---- Phase 체크 헬퍼 함수 ----
+
+  /**
+   * 현재 phase가 예상한 phase인지 확인
+   * @returns null이면 통과, 아니면 invalid_action EngineResult 반환
+   */
+  private checkPhase(
+    expectedPhase: GamePhase,
+    playerId: PlayerID,
+    invalidReason: string,
+  ): EngineResult[] | null {
+    if (this.state.phase !== expectedPhase) {
+      return [
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason,
+        },
+      ];
+    }
+    return null;
+  }
+
+  /**
+   * 현재 phase가 예상하지 않은 phase 중 하나인지 확인
+   * @returns null이면 통과, 아니면 invalid_action EngineResult 반환
+   */
+  private checkPhaseNot(
+    unexpectedPhases: GamePhase[],
+    playerId: PlayerID,
+    invalidReason: string,
+  ): EngineResult[] | null {
+    if (unexpectedPhases.includes(this.state.phase)) {
+      return [
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason,
+        },
+      ];
+    }
+    return null;
   }
 
   // ---- 개별 액션 처리 ----
@@ -369,9 +424,9 @@ export class GameEngineCore {
       this.pendingInput = {
         playerId,
         kind: requestKind,
-        type: 'install_position',
         cardId,
       };
+      this.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
       return [
         {
           kind: 'request_input',
@@ -402,12 +457,18 @@ export class GameEngineCore {
     return results;
   }
 
-  // ---- 멀리건 / 입력 처리 (스켈레톤) ----
+  // ---- 멀리건 입력 처리 (스켈레톤) ----
 
   async handleAnswerMulligan(
     playerId: PlayerID,
     payload: AnswerMulliganPayload,
   ): Promise<EngineResult[]> {
+    const phaseCheck = this.checkPhase(
+      GamePhase.WAITING_FOR_MULLIGAN,
+      playerId,
+      'not_mulligan_phase',
+    );
+    if (phaseCheck) return phaseCheck;
     const playerState = this.state.players[playerId];
     if (!playerState) {
       return [
@@ -448,7 +509,7 @@ export class GameEngineCore {
       owner: this.state.activePlayer,
     };
     this.effectStack.push(effect);
-    this.state.phase = GamePhase.WAITING_FOR_PLAYER_ACTION;
+    // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
     return await this.stepUntilStable();
   }
 
@@ -456,6 +517,12 @@ export class GameEngineCore {
     playerId: PlayerID,
     payload: PlayerInputPayload,
   ): Promise<EngineResult[]> {
+    const phaseCheck = this.checkPhase(
+      GamePhase.WAITING_FOR_PLAYER_INPUT,
+      playerId,
+      'not_input_phase',
+    );
+    if (phaseCheck) return phaseCheck;
     if (!this.pendingInput || this.pendingInput.playerId !== playerId) {
       return [
         {
@@ -469,7 +536,10 @@ export class GameEngineCore {
     const pending = this.pendingInput;
     this.pendingInput = null;
 
-    if (pending.type === 'install_position') {
+    if (
+      pending.kind.type === 'map' &&
+      pending.kind.kind === 'select_install_position'
+    ) {
       const pos = payload.answer as { r: number; c: number } | [number, number];
       const viewR = Array.isArray(pos) ? pos[0] : pos.r;
       const viewC = Array.isArray(pos) ? pos[1] : pos.c;
@@ -502,10 +572,14 @@ export class GameEngineCore {
         pos: { r, c },
       };
       this.effectStack.push(effect);
+      // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
       return await this.stepUntilStable();
     }
 
-    if (pending.type === 'hand_discard') {
+    if (
+      pending.kind.type === 'option' &&
+      pending.kind.kind === 'choose_discard'
+    ) {
       const answerIds = Array.isArray(payload.answer)
         ? (payload.answer as CardID[])
         : [payload.answer as CardID];
@@ -519,6 +593,7 @@ export class GameEngineCore {
           }
         });
       }
+      // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
       return await this.stepUntilStable();
     }
 
@@ -531,6 +606,12 @@ export class GameEngineCore {
   private async stepUntilStable(): Promise<EngineResult[]> {
     const results: EngineResult[] = [];
     const localDiff: DiffPatch = { animations: [], log: [] };
+
+    // effect stack이 비어있지 않으면 RESOLVING 상태로 시작
+    const wasResolving = !this.effectStack.isEmpty();
+    if (wasResolving) {
+      this.state.phase = GamePhase.RESOLVING;
+    }
 
     while (!this.effectStack.isEmpty()) {
       const effect = this.effectStack.pop();
@@ -545,6 +626,12 @@ export class GameEngineCore {
         this.state.phase = GamePhase.GAME_OVER;
         break;
       }
+    }
+
+    // effect stack 처리가 끝났고, 게임이 끝나지 않았으면
+    // pendingInput이 없으면 WAITING_FOR_PLAYER_ACTION으로 복귀
+    if (this.state.phase !== GamePhase.GAME_OVER && !this.pendingInput) {
+      this.state.phase = GamePhase.WAITING_FOR_PLAYER_ACTION;
     }
 
     if (localDiff.animations.length > 0 || localDiff.log.length > 0) {
@@ -750,7 +837,7 @@ export class GameEngineCore {
     return results;
   }
 
-  // ---- FoggedGameState 변환 (간단 버전) ----
+  // ---- FoggedGameState 변환 ----
 
   private toFoggedState(viewer: PlayerID): FoggedGameState {
     const meState = this.state.players[viewer];

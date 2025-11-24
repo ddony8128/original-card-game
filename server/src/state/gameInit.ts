@@ -83,7 +83,7 @@ export function createInitialGameState(
   }
 
   return {
-    phase: GamePhase.WAITING_FOR_PLAYER_ACTION,
+    phase: GamePhase.INITIALIZING,
     turn: 1,
     activePlayer: playerDeckConfigs[0]?.playerId ?? 'player1',
     // 실제 첫 턴은 GameEnginCore가 랜덤으로 결정함

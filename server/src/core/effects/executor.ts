@@ -1,4 +1,5 @@
 import type { PlayerID } from '../../type/gameState';
+import { GamePhase } from '../../type/gameState';
 import type { DiffPatch } from '../../type/wsProtocol';
 import type { GameEngineCore } from '../engine';
 import type {
@@ -335,9 +336,9 @@ function applyDiscard(effect: EffectConfig, ctx: ExecuteContext) {
     (ctx.engine as any).pendingInput = {
       playerId: targetId,
       kind: { type: 'option', kind: 'choose_discard' },
-      type: 'hand_discard',
       count: e.value,
     };
+    (ctx.engine as any).state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
     diff.log.push('손패에서 버릴 카드를 선택하세요.');
     // 실제 request_input 결과는 GameEngineCore.stepUntilStable 이후
     // EngineResult로 전달된다.
