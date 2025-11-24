@@ -53,12 +53,12 @@ describe('Game logs/results routes', () => {
     const created = await request(app)
       .post('/api/match/create')
       .set('Cookie', host.cookie);
-    const roomId = created.body.roomId as string;
+    const roomCode = created.body.roomCode as string;
 
     await request(app)
       .post('/api/match/join')
       .set('Cookie', guest.cookie)
-      .send({ roomId });
+      .send({ roomCode });
 
     // submit decks
     seedDeck(host.userId, 'deck-hx');
@@ -67,25 +67,25 @@ describe('Game logs/results routes', () => {
     await request(app)
       .patch('/api/match/deck')
       .set('Cookie', host.cookie)
-      .send({ roomId, deckId: 'deck-hx' });
+      .send({ roomCode, deckId: 'deck-hx' });
     await request(app)
       .patch('/api/match/deck')
       .set('Cookie', guest.cookie)
-      .send({ roomId, deckId: 'deck-gx' });
+      .send({ roomCode, deckId: 'deck-gx' });
 
     // create result
     const start = new Date().toISOString();
     const createdRes = await request(app)
       .post('/api/game/result')
       .set(INTERNAL)
-      .send({ roomId, startedAt: start });
+      .send({ roomCode, startedAt: start });
 
     expect(createdRes.status).toBe(201);
     expect(createdRes.body).toHaveProperty('resultId');
 
     // get result before finished -> 403
     const getBefore = await request(app)
-      .get(`/api/game/result/${roomId}`)
+      .get(`/api/game/result/${roomCode}`)
       .set('Cookie', host.cookie);
     expect(getBefore.status).toBe(403);
   });
@@ -94,12 +94,12 @@ describe('Game logs/results routes', () => {
     const created = await request(app)
       .post('/api/match/create')
       .set('Cookie', host.cookie);
-    const roomId = created.body.roomId as string;
+    const roomCode = created.body.roomCode as string;
 
     await request(app)
       .post('/api/match/join')
       .set('Cookie', guest.cookie)
-      .send({ roomId });
+      .send({ roomCode });
 
     seedDeck(host.userId, 'deck-h2');
     seedDeck(guest.userId, 'deck-g2');
@@ -107,34 +107,34 @@ describe('Game logs/results routes', () => {
     await request(app)
       .patch('/api/match/deck')
       .set('Cookie', host.cookie)
-      .send({ roomId, deckId: 'deck-h2' });
+      .send({ roomCode, deckId: 'deck-h2' });
     await request(app)
       .patch('/api/match/deck')
       .set('Cookie', guest.cookie)
-      .send({ roomId, deckId: 'deck-g2' });
+      .send({ roomCode, deckId: 'deck-g2' });
 
     const start = new Date().toISOString();
     const createdRes = await request(app)
       .post('/api/game/result')
       .set(INTERNAL)
-      .send({ roomId, startedAt: start });
+      .send({ roomCode, startedAt: start });
     expect(createdRes.status).toBe(201);
 
     const endedAt = new Date().toISOString();
     const patched = await request(app)
-      .patch(`/api/game/result/${roomId}`)
+      .patch(`/api/game/result/${roomCode}`)
       .set(INTERNAL)
       .send({ result: 'p1', endedAt });
 
     expect(patched.status).toBe(200);
     expect(patched.body).toMatchObject({
-      roomId,
+      roomCode,
       result: 'p1',
       status: 'finished',
     });
 
     const getAfter = await request(app)
-      .get(`/api/game/result/${roomId}`)
+      .get(`/api/game/result/${roomCode}`)
       .set('Cookie', host.cookie);
 
     expect(getAfter.status).toBe(200);
@@ -148,18 +148,18 @@ describe('Game logs/results routes', () => {
     const created = await request(app)
       .post('/api/match/create')
       .set('Cookie', host.cookie);
-    const roomId = created.body.roomId as string;
+    const roomCode = created.body.roomCode as string;
 
     await request(app)
       .post('/api/match/join')
       .set('Cookie', guest.cookie)
-      .send({ roomId });
+      .send({ roomCode });
 
     const start = new Date().toISOString();
     const createdRes = await request(app)
       .post('/api/game/result')
       .set(INTERNAL)
-      .send({ roomId, startedAt: start });
+      .send({ roomCode, startedAt: start });
     const resultId = createdRes.body.resultId as string;
 
     await request(app)
@@ -172,7 +172,7 @@ describe('Game logs/results routes', () => {
       .send({ resultId, turn: 2, text: 't2' });
 
     const got = await request(app)
-      .get(`/api/game/log/${roomId}`)
+      .get(`/api/game/log/${roomCode}`)
       .set('Cookie', host.cookie);
 
     expect(got.status).toBe(200);
@@ -185,10 +185,10 @@ describe('Game logs/results routes', () => {
     const created = await request(app)
       .post('/api/match/create')
       .set('Cookie', host.cookie);
-    const roomId = created.body.roomId as string;
+    const roomCode = created.body.roomCode as string;
 
     const res204 = await request(app)
-      .get(`/api/game/log/${roomId}`)
+      .get(`/api/game/log/${roomCode}`)
       .set('Cookie', host.cookie);
     expect(res204.status).toBe(204);
 

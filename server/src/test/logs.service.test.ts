@@ -45,7 +45,7 @@ describe('logsService', () => {
       endedAt,
     );
     expect(updated).toMatchObject({
-      roomId: room.code,
+      roomCode: room.code,
       result: 'p1',
       status: 'finished',
     });
