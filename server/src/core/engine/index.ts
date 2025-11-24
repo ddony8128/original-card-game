@@ -1,0 +1,642 @@
+import {
+  GamePhase,
+  type GameState,
+  type PlayerID,
+  type CardID,
+  type CardInstance,
+} from '../../type/gameState';
+import type {
+  DiffPatch,
+  GameOverPayload,
+  RequestInputPayload,
+  StatePatchPayload,
+  AskMulliganPayload,
+  AnswerMulliganPayload,
+  PlayerActionPayload,
+  PlayerInputPayload,
+} from '../../type/wsProtocol';
+import type { EngineContext } from '../context';
+import { EffectStack } from '../effectStack';
+import type {
+  Effect,
+  TurnStartEffect,
+  InstallAfterSelectionEffect,
+} from '../effectTypes';
+import type { RequestInputKind } from '../../type/wsProtocol';
+import { ObserverRegistry } from '../observers';
+import { parseCardEffectJson, type EffectTrigger } from '../effects/schema';
+import { executeEffects } from '../effects/executor';
+import { fromViewerPos, shuffle, canInstallAt } from './boardUtils';
+import { buildStatePatchForAllView } from './view';
+import {
+  handleMoveAction,
+  handleEndTurnAction,
+  handleUseCardAction,
+} from './actionHandlers';
+import { resolveEffectInternal } from './effectResolver';
+
+export type EngineResultKind =
+  | 'state_patch'
+  | 'request_input'
+  | 'ask_mulligan'
+  | 'game_over'
+  | 'invalid_action';
+
+export interface EngineResult {
+  kind: EngineResultKind;
+  targetPlayer?: PlayerID | null;
+  statePatch?: StatePatchPayload;
+  requestInput?: RequestInputPayload;
+  askMulligan?: AskMulliganPayload;
+  gameOver?: GameOverPayload;
+  invalidReason?: string;
+}
+
+export interface EngineConfig {
+  roomCode: string;
+  players: PlayerID[];
+}
+
+export class GameEngineCore {
+  readonly roomCode: string;
+  readonly players: PlayerID[];
+  readonly ctx: Required<EngineContext>;
+  bottomSidePlayerId: PlayerID | null = null;
+
+  state: GameState;
+  readonly effectStack: EffectStack;
+  readonly observers: ObserverRegistry;
+  burnedThisAction = new Set<CardID>();
+  private version = 1; // state patch마다 1씩 증가
+  private initialized = false; // 게임 초기화 여부, 중복 초기화 방지
+  pendingInput: {
+    playerId: PlayerID;
+    kind: RequestInputKind;
+    cardId?: CardID;
+    count?: number;
+    installRange?: number;
+  } | null = null;
+
+  constructor(
+    initialState: GameState,
+    ctx: EngineContext,
+    roomCode: string,
+    players: PlayerID[],
+  ) {
+    this.state = initialState;
+    this.effectStack = new EffectStack();
+    this.observers = new ObserverRegistry();
+    this.roomCode = roomCode;
+    this.players = players;
+
+    this.ctx = {
+      lookupCard: ctx.lookupCard,
+      random: ctx.random ?? Math.random,
+      now: ctx.now ?? Date.now,
+      log: ctx.log ?? (() => {}),
+    };
+  }
+
+  static create(
+    initialState: GameState,
+    ctx: EngineContext,
+    config: EngineConfig,
+  ): GameEngineCore {
+    return new GameEngineCore(
+      initialState, // GamePhase.INITIALIZING
+      ctx,
+      config.roomCode,
+      config.players,
+    );
+  }
+
+  markReady(): EngineResult[] {
+    // 모든 플레이어 ready → 게임 초기화
+
+    if (this.initialized) return [];
+    this.initializeGame();
+    this.initialized = true;
+
+    this.state.phase = GamePhase.WAITING_FOR_MULLIGAN;
+
+    const results: EngineResult[] = [];
+
+    // 초기 상태 패치
+    results.push(...this.buildStatePatchForAll());
+    this.players.forEach((pid) => {
+      const player = this.state.players[pid];
+      const initialHand = [...player.hand];
+      const payload: AskMulliganPayload = {
+        initialHand,
+      };
+      results.push({
+        kind: 'ask_mulligan',
+        targetPlayer: pid,
+        askMulligan: payload,
+      });
+    });
+
+    return results;
+  }
+
+  private initializeGame() {
+    // 선후공 랜덤 결정
+    const firstIdx = Math.floor(this.ctx.random() * this.players.length);
+    const firstPlayer = this.players[firstIdx];
+    // 화면 기준 아래쪽 플레이어는 항상 players[0]으로 고정
+    // (호스트를 항상 아래에서 보게 하기 위함)
+    this.bottomSidePlayerId = this.players[0] ?? firstPlayer;
+    this.state.turn = 1;
+    this.state.activePlayer = firstPlayer;
+
+    // 각 플레이어 덱 셔플 및 초기 드로우
+    this.players.forEach((pid, idx) => {
+      const playerState = this.state.players[pid];
+      shuffle(playerState.deck, this.ctx.random);
+      shuffle(this.state.catastropheDeck, this.ctx.random);
+      const drawCount = idx === firstIdx ? 2 : 3;
+      for (let i = 0; i < drawCount; i += 1) {
+        this.bringCardToHand(pid);
+      }
+      playerState.mulliganSelected = false;
+    });
+  }
+
+  async handlePlayerAction(
+    playerId: PlayerID,
+    action: PlayerActionPayload,
+  ): Promise<EngineResult[]> {
+    const gameOverCheck = this.checkPhaseNot(
+      [GamePhase.GAME_OVER],
+      playerId,
+      'game_over',
+    );
+    if (gameOverCheck) return gameOverCheck;
+
+    const notStartedCheck = this.checkPhaseNot(
+      [GamePhase.INITIALIZING, GamePhase.WAITING_FOR_MULLIGAN],
+      playerId,
+      'game_not_started',
+    );
+    if (notStartedCheck) return notStartedCheck;
+
+    const invalidPhaseCheck = this.checkPhase(
+      GamePhase.WAITING_FOR_PLAYER_ACTION,
+      playerId,
+      'invalid_phase',
+    );
+    if (invalidPhaseCheck) return invalidPhaseCheck;
+    if (this.state.activePlayer !== playerId) {
+      return [
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'not_your_turn',
+        },
+      ];
+    }
+
+    const actionType = action.action;
+
+    switch (actionType) {
+      case 'move':
+        return await this.handleMove(playerId, {
+          to: (action as any).to as [number, number],
+        });
+      case 'end_turn':
+        return await this.handleEndTurn(playerId);
+      case 'use_card':
+        return await this.handleUseCard(
+          playerId,
+          (action as any).cardInstance as CardInstance,
+          (action as any).target as [number, number] | undefined,
+        );
+      case 'use_ritual':
+        // TODO: 카드 메타/ritual 효과 이용한 install/cast/use_ritual 구현
+        return [
+          {
+            kind: 'invalid_action',
+            targetPlayer: playerId,
+            invalidReason: 'not_implemented',
+          },
+        ];
+      default:
+        return [
+          {
+            kind: 'invalid_action',
+            targetPlayer: playerId,
+            invalidReason: 'unknown_action',
+          },
+        ];
+    }
+  }
+
+  // ---- 검증 헬퍼 함수 ----
+
+  /**
+   * invalid_action EngineResult 생성
+   */
+  invalidAction(playerId: PlayerID, reason: string): EngineResult[] {
+    return [
+      {
+        kind: 'invalid_action',
+        targetPlayer: playerId,
+        invalidReason: reason,
+      },
+    ];
+  }
+
+  /**
+   * 조건이 false면 invalid_action 반환, true면 null 반환
+   * @returns null이면 통과, 아니면 invalid_action EngineResult 반환
+   */
+  require(
+    condition: boolean,
+    playerId: PlayerID,
+    reason: string,
+  ): EngineResult[] | null {
+    return condition ? null : this.invalidAction(playerId, reason);
+  }
+
+  /**
+   * 현재 phase가 예상한 phase인지 확인
+   * @returns null이면 통과, 아니면 invalid_action EngineResult 반환
+   */
+  checkPhase(
+    expectedPhase: GamePhase,
+    playerId: PlayerID,
+    invalidReason: string,
+  ): EngineResult[] | null {
+    return this.require(
+      this.state.phase === expectedPhase,
+      playerId,
+      invalidReason,
+    );
+  }
+
+  /**
+   * 현재 phase가 예상하지 않은 phase 중 하나인지 확인
+   * @returns null이면 통과, 아니면 invalid_action EngineResult 반환
+   */
+  checkPhaseNot(
+    unexpectedPhases: GamePhase[],
+    playerId: PlayerID,
+    invalidReason: string,
+  ): EngineResult[] | null {
+    return this.require(
+      !unexpectedPhases.includes(this.state.phase),
+      playerId,
+      invalidReason,
+    );
+  }
+
+  // ---- 개별 액션 처리 ----
+
+  private async handleMove(
+    playerId: PlayerID,
+    payload: { to: [number, number] },
+  ): Promise<EngineResult[]> {
+    return handleMoveAction(this, playerId, payload);
+  }
+
+  private async handleEndTurn(playerId: PlayerID): Promise<EngineResult[]> {
+    return handleEndTurnAction(this, playerId);
+  }
+
+  private async handleUseCard(
+    playerId: PlayerID,
+    cardInstance: CardInstance,
+    _target: [number, number] | undefined,
+  ): Promise<EngineResult[]> {
+    return handleUseCardAction(this, playerId, cardInstance, _target);
+  }
+
+  // ---- 멀리건 입력 처리 ----
+
+  async handleAnswerMulligan(
+    playerId: PlayerID,
+    payload: AnswerMulliganPayload,
+  ): Promise<EngineResult[]> {
+    const phaseCheck = this.checkPhase(
+      GamePhase.WAITING_FOR_MULLIGAN,
+      playerId,
+      'not_mulligan_phase',
+    );
+    if (phaseCheck) return phaseCheck;
+    const playerState = this.state.players[playerId];
+    const checkPlayerExists = this.require(
+      !!playerState,
+      playerId,
+      'unknown_player',
+    );
+    if (checkPlayerExists) return checkPlayerExists;
+
+    // 선택한 손패를 덱으로 돌려보내고 다시 섞은 뒤 동일 개수 드로우
+    const indices = [...payload.replaceIndices].sort((a, b) => b - a);
+    const returned: typeof playerState.hand = [];
+    indices.forEach((idx) => {
+      if (idx >= 0 && idx < playerState.hand.length) {
+        const [card] = playerState.hand.splice(idx, 1);
+        returned.push(card);
+      }
+    });
+    playerState.deck.push(...returned);
+    shuffle(playerState.deck, this.ctx.random);
+    for (let i = 0; i < returned.length; i += 1) {
+      this.bringCardToHand(playerId);
+    }
+    playerState.mulliganSelected = true;
+
+    const allDone = this.players.every(
+      (pid) => this.state.players[pid].mulliganSelected,
+    );
+    if (!allDone) {
+      return this.buildStatePatchForAll();
+    }
+
+    // 모든 플레이어 멀리건 종료 → 첫 턴 시작
+    const effect: TurnStartEffect = {
+      type: 'TURN_START',
+      owner: this.state.activePlayer,
+    };
+    this.effectStack.push(effect);
+    // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
+    return await this.stepUntilStable();
+  }
+
+  async handlePlayerInput(
+    playerId: PlayerID,
+    payload: PlayerInputPayload,
+  ): Promise<EngineResult[]> {
+    const phaseCheck = this.checkPhase(
+      GamePhase.WAITING_FOR_PLAYER_INPUT,
+      playerId,
+      'not_input_phase',
+    );
+    if (phaseCheck) return phaseCheck;
+    const checkPendingInputExists = this.require(
+      !!this.pendingInput && this.pendingInput.playerId === playerId,
+      playerId,
+      'no_pending_input',
+    );
+    if (checkPendingInputExists) return checkPendingInputExists;
+    // require 체크 후에는 pendingInput이 null이 아님을 보장
+    if (!this.pendingInput)
+      return this.invalidAction(playerId, 'no_pending_input');
+
+    const pending = this.pendingInput;
+    this.pendingInput = null;
+
+    if (
+      pending.kind.type === 'map' &&
+      pending.kind.kind === 'select_install_position'
+    ) {
+      const pos = payload.answer as { r: number; c: number } | [number, number];
+      const viewR = Array.isArray(pos) ? pos[0] : pos.r;
+      const viewC = Array.isArray(pos) ? pos[1] : pos.c;
+      const { r, c } = fromViewerPos(
+        this.state.board,
+        this.bottomSidePlayerId,
+        { r: viewR, c: viewC },
+        playerId,
+      );
+
+      const cardId = pending.cardId;
+      const checkCardIdExists = this.require(
+        !!cardId,
+        playerId,
+        'invalid_card',
+      );
+      if (checkCardIdExists) return checkCardIdExists;
+      // require 체크 후에는 cardId가 undefined가 아님을 보장
+      if (!cardId) return this.invalidAction(playerId, 'invalid_card');
+
+      // 설치 가능한 위치인지 검증 (canInstallAt 사용)
+      const checkCanInstall = this.require(
+        canInstallAt(
+          this.state.board,
+          playerId,
+          { r, c },
+          pending.installRange,
+        ),
+        playerId,
+        'invalid_position',
+      );
+      if (checkCanInstall) return checkCanInstall;
+
+      const effect: InstallAfterSelectionEffect = {
+        type: 'INSTALL_AFTER_SELECTION',
+        owner: playerId,
+        cardId: cardId, // 타입 가드로 인해 string으로 좁혀짐
+        pos: { r, c },
+      };
+      this.effectStack.push(effect);
+      // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
+      return await this.stepUntilStable();
+    }
+
+    if (
+      pending.kind.type === 'option' &&
+      pending.kind.kind === 'choose_discard'
+    ) {
+      const answerIds = Array.isArray(payload.answer)
+        ? (payload.answer as CardID[])
+        : [payload.answer as CardID];
+      const player = this.state.players[playerId];
+      if (player) {
+        answerIds.forEach((cid) => {
+          const idx = player.hand.findIndex((ci) => ci.cardId === cid);
+          if (idx >= 0) {
+            const [card] = player.hand.splice(idx, 1);
+            player.grave.push(card);
+          }
+        });
+      }
+      // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
+      return await this.stepUntilStable();
+    }
+
+    // TODO: cast_target 등 다른 입력 타입 처리
+    return this.buildStatePatchForAll();
+  }
+
+  // ---- 메인 스택 처리 루프 ----
+
+  async stepUntilStable(): Promise<EngineResult[]> {
+    const results: EngineResult[] = [];
+    const localDiff: DiffPatch = { animations: [], log: [] };
+
+    // effect stack이 비어있지 않으면 RESOLVING 상태로 시작
+    const wasResolving = !this.effectStack.isEmpty();
+    if (wasResolving) {
+      this.state.phase = GamePhase.RESOLVING;
+    }
+
+    while (!this.effectStack.isEmpty()) {
+      const effect = this.effectStack.pop();
+      if (!effect) break;
+      await this.resolveEffect(effect, localDiff);
+      if (this.checkGameOver()) {
+        const gameOver = this.buildGameOver();
+        results.push({
+          kind: 'game_over',
+          gameOver,
+        });
+        this.state.phase = GamePhase.GAME_OVER;
+        break;
+      }
+    }
+
+    // effect stack 처리가 끝났고, 게임이 끝나지 않았으면
+    // pendingInput이 없으면 WAITING_FOR_PLAYER_ACTION으로 복귀
+    if (this.state.phase !== GamePhase.GAME_OVER && !this.pendingInput) {
+      this.state.phase = GamePhase.WAITING_FOR_PLAYER_ACTION;
+    }
+
+    if (localDiff.animations.length > 0 || localDiff.log.length > 0) {
+      results.push(...this.buildStatePatchForAll(localDiff));
+    } else {
+      results.push(...this.buildStatePatchForAll());
+    }
+
+    return results;
+  }
+
+  async resolveEffect(effect: Effect, diff: DiffPatch) {
+    await resolveEffectInternal(this, effect, diff);
+  }
+
+  private checkGameOver(): boolean {
+    const alive = Object.entries(this.state.players).filter(
+      ([_, p]) => p.hp > 0,
+    );
+    if (alive.length <= 1) {
+      this.state.phase = GamePhase.GAME_OVER;
+      this.state.winner = alive[0]?.[0] ?? null;
+      return true;
+    }
+    return false;
+  }
+
+  private buildGameOver(): GameOverPayload {
+    return {
+      winner: this.state.winner ?? null,
+      reason: 'hp_zero',
+    };
+  }
+
+  private buildStatePatchForAll(diff?: DiffPatch): EngineResult[] {
+    const { nextVersion, patches } = buildStatePatchForAllView({
+      state: this.state,
+      players: this.players,
+      version: this.version,
+      bottomSidePlayerId: this.bottomSidePlayerId,
+      diff,
+    });
+    this.version = nextVersion;
+
+    return patches.map((p) => ({
+      kind: 'state_patch',
+      targetPlayer: p.playerId,
+      statePatch: p.statePatch,
+    }));
+  }
+
+  // ---- 유틸리티 ----
+
+  // 덱에서 순서대로 카드를 가져오는 행위, 드로우가 아님 (멀리건 / 드로우 내부에서 활용)
+  private bringCardToHand(playerId: PlayerID): CardInstance | null {
+    const p = this.state.players[playerId];
+    if (!p) return null;
+    if (p.deck.length === 0) return null;
+    const card = p.deck.shift()!;
+    p.hand.push(card);
+    return card;
+  }
+
+  drawCardNoTriggers(playerId: PlayerID, diff?: DiffPatch) {
+    const p = this.state.players[playerId];
+    if (!p) return;
+
+    // 먼저 일반 덱에서 시도
+    let card = this.bringCardToHand(playerId);
+
+    // 덱이 비어있으면 덱을 복원한 후 재앙덱에서 드로우
+    if (!card) {
+      if (p.grave.length > 0) {
+        shuffle(p.grave, this.ctx.random);
+        p.deck = p.grave.splice(0, p.grave.length);
+        // diff?.animations.push({ kind: 'shuffle', player: playerId });
+        diff?.log.push(`플레이어 ${playerId}의 덱을 묘지에서 복원`);
+      }
+
+      // 재앙덱이 비어있으면 재앙 묘지에서 셔플하여 재앙덱으로 복원
+      if (this.state.catastropheDeck.length === 0) {
+        if (this.state.catastropheGrave.length > 0) {
+          shuffle(this.state.catastropheGrave, this.ctx.random);
+          this.state.catastropheDeck = this.state.catastropheGrave.splice(
+            0,
+            this.state.catastropheGrave.length,
+          );
+          // diff?.animations.push({ kind: 'shuffle_catastrophe', player: playerId });
+          diff?.log.push(`재앙 덱을 묘지에서 복원`);
+        }
+      }
+
+      const catastropheCard = this.state.catastropheDeck.shift();
+      if (catastropheCard) {
+        // 재앙 카드는 손패에 넣음
+        // -> TODO : 재앙 카드의 onDrawn 트리거가 실행된 후 바로 묘지로 이동하도록 수정.
+        p.hand.push(catastropheCard);
+        card = catastropheCard;
+        if (diff) {
+          diff.log.push(
+            `플레이어 ${playerId}가 재앙 카드를 뽑았습니다. (${catastropheCard.cardId})`,
+          );
+        }
+      }
+    }
+
+    if (card && diff) {
+      diff.animations.push({ kind: 'draw', player: playerId });
+      diff.log.push(`플레이어 ${playerId} 드로우`);
+    }
+  }
+
+  enqueueTriggeredEffects(trigger: string, context: unknown) {
+    const effects = this.observers.collectTriggeredEffects(
+      trigger as any,
+      {
+        playerId: (context as any).playerId,
+        ...((context as any) ?? {}),
+      } as any,
+    );
+    if (effects.length > 0) {
+      this.effectStack.push(effects);
+    }
+  }
+
+  async executeCardTrigger(
+    cardId: CardID,
+    trigger: EffectTrigger,
+    actor: PlayerID,
+    diff: DiffPatch,
+  ) {
+    const meta = await this.ctx.lookupCard(cardId);
+    if (!meta || !meta.effectJson) return;
+    const parsed = parseCardEffectJson(meta.effectJson);
+    if (!parsed) return;
+    const t = parsed.triggers.find((tr) => tr.trigger === trigger);
+    if (!t) return;
+    executeEffects(
+      t.effects,
+      {
+        engine: this,
+        actor,
+        source: parsed,
+        diff,
+      } as any,
+      cardId,
+    );
+  }
+}
