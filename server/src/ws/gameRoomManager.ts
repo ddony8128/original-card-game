@@ -11,7 +11,6 @@ import type {
   GameOverPayload,
   InvalidActionPayload,
 } from '../type/wsProtocol';
-import type { DeckList } from '../type/deck';
 import { roomsService, type RoomRow } from '../services/rooms';
 import { decksService } from '../services/decks';
 import { GameEngineAdapter } from '../type/gameEngine';
@@ -162,16 +161,12 @@ export class GameRoomManager {
 
     if (players.length === 0) return null;
 
-    const decksByPlayer = new Map<PlayerID, DeckList>();
-    const cataByPlayer = new Map<PlayerID, DeckList>();
-    const deckConfigs: PlayerDeckConfig[] = [];
+    const playerDeckConfigs: PlayerDeckConfig[] = [];
 
     if (roomRow.host_deck_id) {
       const hostDeck = await decksService.getById(roomRow.host_deck_id);
       if (hostDeck) {
-        decksByPlayer.set(roomRow.host_id, hostDeck.main_cards);
-        cataByPlayer.set(roomRow.host_id, hostDeck.cata_cards);
-        deckConfigs.push({
+        playerDeckConfigs.push({
           playerId: roomRow.host_id,
           main: hostDeck.main_cards,
           cata: hostDeck.cata_cards,
@@ -182,9 +177,7 @@ export class GameRoomManager {
     if (roomRow.guest_id && roomRow.guest_deck_id) {
       const guestDeck = await decksService.getById(roomRow.guest_deck_id);
       if (guestDeck) {
-        decksByPlayer.set(roomRow.guest_id, guestDeck.main_cards);
-        cataByPlayer.set(roomRow.guest_id, guestDeck.cata_cards);
-        deckConfigs.push({
+        playerDeckConfigs.push({
           playerId: roomRow.guest_id,
           main: guestDeck.main_cards,
           cata: guestDeck.cata_cards,
@@ -192,12 +185,8 @@ export class GameRoomManager {
       }
     }
 
-    const initialState: GameState = createInitialGameState(
-      players,
-      decksByPlayer,
-      cataByPlayer,
-    );
-    const ctx = await buildEngineContextFromDecks(deckConfigs);
+    const initialState: GameState = createInitialGameState(playerDeckConfigs);
+    const ctx = await buildEngineContextFromDecks(playerDeckConfigs);
 
     const roomEngine: RoomEngine = {
       roomCode,

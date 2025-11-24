@@ -10,75 +10,87 @@ import type { DeckList } from '../type/deck';
 import type { EngineContext, CardMeta } from '../core/context';
 import { cardsService } from '../services/cards';
 
+const BOARD_WIDTH = 5;
+const BOARD_HEIGHT = 5;
+const INITIAL_HP = 20;
+const INITIAL_MAX_HP = 20;
+const INITIAL_MANA = 0;
+const INITIAL_MAX_MANA = 0;
+const INITIAL_HAND_LIMIT = 6;
+
 export interface PlayerDeckConfig {
   playerId: PlayerID;
   main: DeckList;
   cata: DeckList;
 }
 
-export function createInitialGameState(
-  players: PlayerID[],
-  decks: Map<PlayerID, DeckList>,
-  cataDecks: Map<PlayerID, DeckList>,
-): GameState {
-  const boardWidth = 5;
-  const boardHeight = 5;
+function buildCardInstancesForPlayer(
+  playerId: PlayerID,
+  deck: DeckList,
+  kind: 'main' | 'cata',
+): CardInstance[] {
+  const instances: CardInstance[] = [];
 
-  const playerStates: Record<PlayerID, PlayerState> = {} as any;
+  deck.forEach((entry) => {
+    for (let i = 0; i < entry.count; i += 1) {
+      instances.push({
+        id: `${kind}_${playerId}_${entry.id}_${i}`,
+        cardId: entry.id as CardID,
+      });
+    }
+  });
+
+  return instances;
+}
+
+export function createInitialGameState(
+  playerDeckConfigs: PlayerDeckConfig[],
+): GameState {
+  const playerStates: Record<PlayerID, PlayerState> = {};
   const catastropheDeck: CardInstance[] = [];
 
-  players.forEach((pid, index) => {
-    const main = decks.get(pid) ?? [];
-    const cata = cataDecks.get(pid) ?? [];
-
-    const deck: CardInstance[] = [];
-    main.forEach((entry) => {
-      for (let i = 0; i < entry.count; i += 1) {
-        deck.push({
-          id: `main_${pid}_${entry.id}_${i}`,
-          cardId: entry.id,
-        });
-      }
-    });
-
-    cata.forEach((entry) => {
-      for (let i = 0; i < entry.count; i += 1) {
-        catastropheDeck.push({
-          id: `cata_${pid}_${entry.id}_${i}`,
-          cardId: entry.id,
-        });
-      }
-    });
-
-    playerStates[pid] = {
-      hp: 20,
-      maxHp: 20,
-      maxMana: 0,
-      mana: 0,
+  playerDeckConfigs.forEach((cfg) => {
+    const deck = buildCardInstancesForPlayer(cfg.playerId, cfg.main, 'main');
+    const cata = buildCardInstancesForPlayer(cfg.playerId, cfg.cata, 'cata');
+    catastropheDeck.push(...cata);
+    playerStates[cfg.playerId] = {
+      hp: INITIAL_HP,
+      maxHp: INITIAL_MAX_HP,
+      maxMana: INITIAL_MAX_MANA,
+      mana: INITIAL_MANA,
       deck,
       grave: [],
       hand: [],
-      handLimit: 6,
+      handLimit: INITIAL_HAND_LIMIT,
       mulliganSelected: false,
     };
   });
 
-  const wizards: GameState['board']['wizards'] = {} as any;
-  if (players[0]) {
-    wizards[players[0]] = { r: boardHeight - 1, c: Math.floor(boardWidth / 2) };
+  const wizards: GameState['board']['wizards'] = {};
+  const first = playerDeckConfigs[0];
+  const second = playerDeckConfigs[1];
+  if (first) {
+    wizards[first.playerId] = {
+      r: BOARD_HEIGHT - 1,
+      c: Math.floor(BOARD_WIDTH / 2),
+    };
   }
-  if (players[1]) {
-    wizards[players[1]] = { r: 0, c: Math.floor(boardWidth / 2) };
+  if (second) {
+    wizards[second.playerId] = {
+      r: 0,
+      c: Math.floor(BOARD_WIDTH / 2),
+    };
   }
 
   return {
     phase: GamePhase.WAITING_FOR_PLAYER_ACTION,
     turn: 1,
-    activePlayer: players[0] ?? 'player1',
+    activePlayer: playerDeckConfigs[0]?.playerId ?? 'player1',
+    // 실제 첫 턴은 GameEnginCore가 랜덤으로 결정함
     winner: null,
     board: {
-      width: boardWidth,
-      height: boardHeight,
+      width: BOARD_WIDTH,
+      height: BOARD_HEIGHT,
       wizards,
       rituals: [],
     },

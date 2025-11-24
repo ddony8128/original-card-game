@@ -31,7 +31,7 @@ logsRouter.post('/result', requireInternal, (req, res) => {
 });
 
 // 6.2 게임 결과 업데이트 (서버 전용)
-logsRouter.patch('/result/:roomId', requireInternal, (req, res) => {
+logsRouter.patch('/result/:roomCode', requireInternal, (req, res) => {
   const { roomCode } = req.params as { roomCode: string };
   const { result, endedAt } = req.body as {
     result?: 'p1' | 'p2' | 'draw';
