@@ -22,6 +22,7 @@ import { useGameSocket } from '@/ws/useGameSocket';
 import { useMulliganRequest } from '@/components/game/useMulliganRequest';
 import { cn } from '@/shared/lib/utils';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
+import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
 
 export default function Game() {
   const navigate = useNavigate();
@@ -65,8 +66,56 @@ export default function Game() {
     sendAnswerMulligan,
   });
 
+  // ---- request_input 해석 ----
+
+  const isMapRequest = (
+    kind: RequestInputKind,
+  ): kind is Extract<RequestInputKind, { type: 'map' }> => kind.type === 'map';
+
+  const isOptionRequest = (
+    kind: RequestInputKind,
+  ): kind is Extract<RequestInputKind, { type: 'option' }> => kind.type === 'option';
+
+  const mapRequest: RequestInputPayload | null =
+    requestInput && isMapRequest(requestInput.kind) ? requestInput : null;
+
+  const optionRequest: RequestInputPayload | null =
+    requestInput && isOptionRequest(requestInput.kind) ? requestInput : null;
+
+  // map 타입 요청일 때, 서버가 내려준 좌표 목록을 보드 기준 (x, y) 로 변환
+  const mapHighlightPositions: BoardPosition[] =
+    mapRequest?.options
+      ?.map((opt) => {
+        if (opt && typeof opt === 'object') {
+          const o = opt as Record<string, unknown>;
+          if (typeof o.x === 'number' && typeof o.y === 'number') {
+            return { x: o.x, y: o.y } as BoardPosition;
+          }
+          if (typeof o.r === 'number' && typeof o.c === 'number') {
+            // 서버는 { r, c } (행, 열) 기준으로 내려주므로 보드 좌표로 변환
+            return { x: o.c, y: o.r } as BoardPosition;
+          }
+        }
+        return null;
+      })
+      .filter((p): p is BoardPosition => p !== null) ?? [];
+
   const handleBoardCellClick = (position: BoardPosition) => {
     setSelectedBoardPosition(position);
+
+    // 1) map 타입 request_input 처리: 하이라이트된 칸만 선택 허용
+    if (mapRequest) {
+      const isAllowed = mapHighlightPositions.some((p) => p.x === position.x && p.y === position.y);
+      if (!isAllowed) return;
+
+      // 서버는 viewer 기준 { r, c } 또는 [r, c] 를 허용한다. 여기서는 [r, c] 형태로 보낸다.
+      const answer: [number, number] = [position.y, position.x];
+      sendPlayerInput({ answer });
+      setRequestInput(null);
+      return;
+    }
+
+    // 2) 일반 이동 액션 처리 (request_input 이 아닐 때)
 
     // 상대 마법사가 있는 칸으로는 이동하지 않도록 클라이언트에서 차단
     if (position.x === opponentPosition.x && position.y === opponentPosition.y) {
@@ -179,37 +228,32 @@ export default function Game() {
       }
     }) ?? [];
 
-  const currentRequest: InputRequest | null = requestInput
-    ? (() => {
-        const kind = requestInput.kind;
-        const kindId = kind.kind;
+  // option 타입 request_input 만 모달로 표시 (map/text 는 모달 사용 안 함)
+  const currentRequest: InputRequest | null =
+    optionRequest && optionRequest.kind.type === 'option'
+      ? (() => {
+          const kind = optionRequest.kind;
+          const kindId = kind.kind;
 
-        let type: InputRequest['type'];
-        switch (kindId) {
-          case 'choose_discard':
-            type = 'discard';
-            break;
-          case 'choose_burn':
-            type = 'burn';
-            break;
-          case 'select_install_position':
-            type = 'ritual_placement';
-            break;
-          case 'choose_move':
-          case 'choose_move_direction':
-            type = 'move';
-            break;
-          default:
-            type = 'target';
-        }
+          let type: InputRequest['type'];
+          switch (kindId) {
+            case 'choose_discard':
+              type = 'discard';
+              break;
+            case 'choose_burn':
+              type = 'burn';
+              break;
+            default:
+              type = 'target';
+          }
 
-        return {
-          type,
-          prompt: `입력이 필요합니다: ${kindId}`,
-          options: requestInput.options as InputOption[],
-        };
-      })()
-    : null;
+          return {
+            type,
+            prompt: `입력이 필요합니다: ${kindId}`,
+            options: optionRequest.options as InputOption[],
+          };
+        })()
+      : null;
 
   const activeRequest = mulliganRequest ?? currentRequest;
 
@@ -265,6 +309,7 @@ export default function Game() {
             playerPosition={playerPosition}
             opponentPosition={opponentPosition}
             selectedPosition={selectedBoardPosition}
+            highlightPositions={mapHighlightPositions}
             onCellClick={handleBoardCellClick}
           />
         </div>

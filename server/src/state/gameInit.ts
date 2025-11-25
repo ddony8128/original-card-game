@@ -64,6 +64,7 @@ export function createInitialGameState(
       hand: [],
       handLimit: INITIAL_HAND_LIMIT,
       mulliganSelected: false,
+      resolveStack: [],
     };
   });
 

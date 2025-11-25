@@ -17,16 +17,14 @@ import type {
 } from '../../type/wsProtocol';
 import type { EngineContext } from '../context';
 import { EffectStack } from '../effects/effectStack';
-import type {
-  TurnStartEffect,
-  InstallAfterSelectionEffect,
-} from '../effects/effectTypes';
+import type { TurnStartEffect, InstallEffect } from '../effects/effectTypes';
 import type { RequestInputKind } from '../../type/wsProtocol';
 import { ObserverRegistry } from '../observers';
 import {
   parseCardEffectJson,
   type EffectTrigger,
   buildEffectsFromConfigs,
+  type BuildEffectsOptions,
 } from '../effects/schema';
 import { fromViewerPos, shuffle, canInstallAt } from './boardUtils';
 import { buildStatePatchForAllView } from './view';
@@ -68,15 +66,22 @@ export class GameEngineCore {
   state: GameState;
   readonly effectStack: EffectStack;
   readonly observers: ObserverRegistry;
-  burnedThisAction = new Set<CardID>();
   private version = 1; // state patch마다 1씩 증가
   private initialized = false; // 게임 초기화 여부, 중복 초기화 방지
   pendingInput: {
     playerId: PlayerID;
     kind: RequestInputKind;
     cardId?: CardID;
+    cardInstance?: CardInstance;
     count?: number;
     installRange?: number;
+    /** 선택형 damage 용: 데미지 수치 */
+    damageValue?: number | string;
+    /**
+     * request_input 으로 클라이언트에 전달할 선택지 목록.
+     * (예: discard 대상 카드 id 리스트, 설치 가능 좌표 등)
+     */
+    options?: unknown[];
   } | null = null;
 
   constructor(
@@ -406,10 +411,15 @@ export class GameEngineCore {
       );
       if (checkCanInstall) return checkCanInstall;
 
-      const effect: InstallAfterSelectionEffect = {
-        type: 'INSTALL_AFTER_SELECTION',
+      const effect: InstallEffect = {
+        type: 'INSTALL',
         owner: playerId,
-        cardId: cardId, // 타입 가드로 인해 string으로 좁혀짐
+        object:
+          pending.cardInstance ??
+          ({
+            id: `install_${playerId}_${cardId}`,
+            cardId,
+          } as CardInstance),
         pos: { r, c },
       };
       this.effectStack.push(effect);
@@ -417,29 +427,16 @@ export class GameEngineCore {
       return await this.stepUntilStable();
     }
 
-    if (
-      pending.kind.type === 'option' &&
-      pending.kind.kind === 'choose_discard'
-    ) {
-      const answerIds = Array.isArray(payload.answer)
-        ? (payload.answer as CardID[])
-        : [payload.answer as CardID];
-      const player = this.state.players[playerId];
-      if (player) {
-        answerIds.forEach((cid) => {
-          const idx = player.hand.findIndex((ci) => ci.cardId === cid);
-          if (idx >= 0) {
-            const [card] = player.hand.splice(idx, 1);
-            player.grave.push(card);
-          }
-        });
-      }
-      // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
-      return await this.stepUntilStable();
-    }
-
-    // TODO: cast_target 등 다른 입력 타입 처리
-    return this.buildStatePatchForAll();
+    // 이 이하의 입력 종류는 모두 "입력 해석 전용 이펙트"로 변환하여
+    // 실제 상태 변경은 resolveEffect 에서만 일어나도록 통일한다.
+    this.effectStack.push({
+      type: 'RESOLVE_PLAYER_INPUT',
+      owner: playerId,
+      kind: pending.kind as any,
+      answer: payload.answer,
+      meta: pending,
+    } as any);
+    return await this.stepUntilStable();
   }
 
   // ---- 메인 스택 처리 루프 ----
@@ -467,6 +464,11 @@ export class GameEngineCore {
         this.state.phase = GamePhase.GAME_OVER;
         break;
       }
+      // 효과 처리 중에 플레이어 입력 대기 상태로 전환되면
+      // 즉시 스택 처리를 중단하고 request_input 을 돌려준다.
+      if (this.pendingInput) {
+        break;
+      }
     }
 
     // effect stack 처리가 끝났고, 게임이 끝나지 않았으면
@@ -479,6 +481,20 @@ export class GameEngineCore {
       results.push(...this.buildStatePatchForAll(localDiff));
     } else {
       results.push(...this.buildStatePatchForAll());
+    }
+
+    // 효과 처리 도중 플레이어 입력이 필요한 상황이 발생했다면
+    // 별도의 request_input 이벤트를 발생시킨다.
+    if (this.pendingInput) {
+      const { playerId, kind, options } = this.pendingInput;
+      results.push({
+        kind: 'request_input',
+        targetPlayer: playerId,
+        requestInput: {
+          kind,
+          options: options ?? [],
+        },
+      });
     }
 
     return results;
@@ -501,6 +517,74 @@ export class GameEngineCore {
       winner: this.state.winner ?? 'draw',
       reason: 'hp_zero',
     };
+  }
+
+  /**
+   * 리추얼 하나가 파괴될 때 호출되는 헬퍼.
+   *
+   * - 보드에서 해당 리추얼 제거
+   * - owner 의 resolveStack 에 카드 인스턴스 적재
+   * - onDestroy 트리거 이펙트들을 effectStack 에 올림
+   * - 마지막에 THROW_RESOLVE_STACK 가 카드의 최종 목적지를 결정하도록 한다.
+   *
+   * actor: 트리거를 누구 관점에서 실행할지 (예: 상대 마법사가 밟아서 파괴된 경우)
+   * invertSelfEnemy: true 이면, 효과 내부의 target 이 self/enemy 일 때 서로 뒤집어서 실행
+   */
+  async destroyRitual(params: {
+    owner: PlayerID;
+    ritualId: string;
+    diff: DiffPatch;
+    actor: PlayerID;
+    invertSelfEnemy?: boolean;
+  }): Promise<void> {
+    const { owner, ritualId, diff, actor, invertSelfEnemy } = params;
+    const rituals = this.state.board.rituals;
+    const idx = rituals.findIndex(
+      (r) => r.id === ritualId && r.owner === owner,
+    );
+    if (idx < 0) return;
+
+    const ritual = rituals[idx];
+    rituals.splice(idx, 1);
+
+    const ownerState = this.state.players[owner];
+    if (!ownerState) return;
+
+    // owner 의 resolveStack 에 카드 인스턴스를 적재 (dest 미지정)
+    ownerState.resolveStack.push({
+      card: {
+        id: ritual.id,
+        cardId: ritual.cardId,
+      },
+    });
+
+    // onDestroy 트리거 이펙트들을 enqueue (필요 시 self/enemy 타겟 뒤집기)
+    const meta = await this.ctx.lookupCard(ritual.cardId);
+    if (meta && meta.effectJson) {
+      const parsed = parseCardEffectJson(meta.effectJson);
+      if (parsed) {
+        const t = parsed.triggers.find((tr) => tr.trigger === 'onDestroy');
+        if (t) {
+          const effects = buildEffectsFromConfigs(
+            t.effects,
+            actor,
+            ritual.cardId,
+            {
+              invertSelfEnemy: !!invertSelfEnemy,
+            },
+          );
+          if (effects.length > 0) {
+            this.effectStack.push(effects);
+          }
+        }
+      }
+    }
+
+    // 마지막에 THROW_RESOLVE_STACK 가 ritual 카드를 무덤으로 보낸다.
+    this.effectStack.push({
+      type: 'THROW_RESOLVE_STACK',
+      owner,
+    } as any);
   }
 
   private buildStatePatchForAll(diff?: DiffPatch): EngineResult[] {
@@ -599,6 +683,7 @@ export class GameEngineCore {
     trigger: EffectTrigger,
     actor: PlayerID,
     diff: DiffPatch,
+    options?: BuildEffectsOptions,
   ) {
     const meta = await this.ctx.lookupCard(cardId);
     if (!meta || !meta.effectJson) return;
@@ -607,7 +692,7 @@ export class GameEngineCore {
     const t = parsed.triggers.find((tr) => tr.trigger === trigger);
     if (!t) return;
 
-    const effects = buildEffectsFromConfigs(t.effects, actor, cardId);
+    const effects = buildEffectsFromConfigs(t.effects, actor, cardId, options);
     if (effects.length > 0) {
       this.effectStack.push(effects);
     }

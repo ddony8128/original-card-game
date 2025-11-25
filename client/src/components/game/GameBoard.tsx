@@ -9,6 +9,12 @@ interface GameBoardProps {
   playerPosition: BoardPosition;
   opponentPosition: BoardPosition;
   selectedPosition: BoardPosition | null;
+  /**
+   * 서버에서 내려온 map 타입 request_input 에 대해
+   * 선택 가능한 좌표들을 하이라이트하기 위한 옵션.
+   * 없거나 비어 있으면 기존 인접 칸 하이라이트 로직을 사용한다.
+   */
+  highlightPositions?: BoardPosition[];
   onCellClick: (position: BoardPosition) => void;
 }
 
@@ -16,6 +22,7 @@ export function GameBoard({
   playerPosition,
   opponentPosition,
   selectedPosition,
+  highlightPositions,
   onCellClick,
 }: GameBoardProps) {
   const isPlayerPosition = (x: number, y: number) =>
@@ -26,6 +33,11 @@ export function GameBoard({
 
   const isSelectedPosition = (x: number, y: number) =>
     selectedPosition?.x === x && selectedPosition?.y === y;
+
+  const hasHighlight = Array.isArray(highlightPositions) && highlightPositions.length > 0;
+
+  const isHighlightPosition = (x: number, y: number) =>
+    hasHighlight ? !!highlightPositions?.some((p) => p.x === x && p.y === y) : false;
 
   const isAdjacentToPlayer = (x: number, y: number) => {
     const dx = Math.abs(playerPosition.x - x);
@@ -42,6 +54,7 @@ export function GameBoard({
         const isOpponent = isOpponentPosition(x, y);
         const isSelected = isSelectedPosition(x, y);
         const isAdjacent = isAdjacentToPlayer(x, y);
+        const isHighlight = isHighlightPosition(x, y);
 
         return (
           <button
@@ -55,9 +68,16 @@ export function GameBoard({
               isOpponent &&
                 'border-red-400 bg-linear-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/50',
               !isPlayer && !isOpponent && isSelected && 'border-primary bg-primary/10',
+              // map 타입 request_input 이 있을 때는 서버가 준 좌표만 강하게 하이라이트
               !isPlayer &&
                 !isOpponent &&
                 !isSelected &&
+                isHighlight &&
+                'border-primary bg-primary/20',
+              !isPlayer &&
+                !isOpponent &&
+                !isSelected &&
+                !isHighlight &&
                 isAdjacent &&
                 'border-primary/30 bg-primary/5',
               !isPlayer && !isOpponent && !isSelected && !isAdjacent && 'border-border',

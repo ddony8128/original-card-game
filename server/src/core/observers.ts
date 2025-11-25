@@ -75,19 +75,20 @@ export class ObserverRegistry {
 
   /**
    * 현재로서는 ObserverEntry를 기반으로 `TRIGGERED_EFFECT` 타입의 Effect를 만들어 리턴한다.
-   * 실제 effectJson 실행은 `resolveEffect`에서 처리할 TODO로 남겨둔다.
+   * 실제 effectJson 실행은 effectStack에서 하나씩 꺼내 `resolveEffect`에서 처리한다.
    */
   collectTriggeredEffects(trigger: TriggerType, ctx: TriggerContext): Effect[] {
     const entries = this.getEntries(trigger);
-    return entries.map<Effect>((entry) => ({
-      type: 'TRIGGERED_EFFECT',
-      owner: entry.owner,
-      cardId: entry.cardId,
-      trigger,
-      effectRef: entry.effectRef,
-      context: ctx,
-    } as Effect));
+    return entries.map<Effect>(
+      (entry) =>
+        ({
+          type: 'TRIGGERED_EFFECT',
+          owner: entry.owner,
+          cardId: entry.cardId,
+          trigger,
+          effectRef: entry.effectRef,
+          context: ctx,
+        }) as Effect,
+    );
   }
 }
-
-

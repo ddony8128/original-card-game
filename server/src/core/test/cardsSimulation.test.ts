@@ -31,6 +31,7 @@ function createEmptyState(): GameState {
       hand: [] as CardInstance[],
       handLimit: 10,
       mulliganSelected: false,
+      resolveStack: [],
     },
     [P2]: {
       hp: 20,
@@ -42,6 +43,7 @@ function createEmptyState(): GameState {
       hand: [] as CardInstance[],
       handLimit: 10,
       mulliganSelected: false,
+      resolveStack: [],
     },
   };
 
@@ -455,6 +457,33 @@ const dummyCards: Record<CardID, CardMeta> = {
       ],
     },
   },
+  // 테스트용 재앙 카드들
+  cata1: {
+    id: 'cata1',
+    name_dev: 'test_catastrophe',
+    name_ko: '테스트 재앙',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
+    effectJson: {
+      type: 'catastrophe',
+      triggers: [],
+    },
+  },
+  'c01-901-x': {
+    id: 'c01-901-x',
+    name_dev: 'just_a_prank_x',
+    name_ko: '이건 그냥 장난일 뿐이야 (인스턴스)',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
+    effectJson: {
+      type: 'catastrophe',
+      triggers: [],
+    },
+  },
 };
 
 const ctx: EngineContext = {
@@ -539,10 +568,28 @@ describe('GameEngineCore card simulation', () => {
     const before = { ...engine.state.board.wizards[P1] };
     const cardInstance = engine.state.players[P1].hand[0];
 
+    // 카드 사용
     await engine.handlePlayerAction(P1, {
       action: 'use_card',
       cardInstance,
     } as any);
+
+    // 플레이어 입력이 필요한 경우 처리 (choose_move_direction)
+    if ((engine as any).pendingInput) {
+      const pendingInput = (engine as any).pendingInput;
+      if (
+        pendingInput.kind.type === 'map' &&
+        pendingInput.kind.kind === 'choose_move_direction'
+      ) {
+        // 전방(위)으로 이동: r을 1 감소시킨 위치 선택
+        // P1의 위치가 (4, 2)이므로 전방은 (3, 2)
+        const targetPos = { r: before.r - 1, c: before.c };
+        await engine.handlePlayerInput(P1, {
+          answer: [targetPos.r, targetPos.c],
+        } as any);
+      }
+    }
+
     const after = engine.state.board.wizards[P1];
 
     expect(after.c).toBe(before.c);
@@ -584,7 +631,7 @@ describe('GameEngineCore card simulation', () => {
       { id: 'd9', cardId: 'd9' },
       { id: 'd10', cardId: 'd10' },
     ];
-    state.catastropheDeck = [{ id: 'cata1', cardId: 'cata1' }];
+    state.catastropheDeck = [{ id: 'cata1', cardId: 'cata1' }]; // cata1은 dummyCards에 정의됨
     state.players[P1].hand = [{ id: 'ci1', cardId: 'c01-007' }];
 
     const engine = GameEngineCore.create(state, ctx, {
@@ -740,20 +787,20 @@ describe('GameEngineCore card simulation', () => {
   it('c01-901 이건 그냥 장난일 뿐이야: 1 피해 + 재앙덱 비어있지 않으면 재앙 1장 추가 발동', async () => {
     const state = createEmptyState();
     state.players[P1].hp = 10;
-    state.catastropheDeck = [{ id: 'c01-901-x', cardId: 'c01-901-x' }];
+    state.catastropheDeck = [{ id: 'c01-901-x', cardId: 'c01-901' }];
 
     const engine = GameEngineCore.create(state, ctx, {
       roomCode: 'test',
       players: [P1, P2],
     });
 
-    const diff = { animations: [], log: [] };
-    await (engine as any).enqueueCardTriggerEffects(
-      'c01-901',
-      'onDrawn',
-      P1,
-      diff,
-    );
+    // DRAW_CATA 효과를 통해 재앙 카드를 드로우 (resolveStack에 적재됨)
+    const drawCataEffect = {
+      type: 'DRAW_CATA',
+      owner: P1,
+      value: 1,
+    } as any;
+    engine.effectStack.push(drawCataEffect);
     await engine.stepUntilStable();
 
     expect(engine.state.players[P1].hp).toBe(9);

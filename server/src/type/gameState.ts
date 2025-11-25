@@ -24,6 +24,13 @@ export interface RitualInstance {
   usedThisTurn?: boolean;
 }
 
+export type ResolveDest = 'grave' | 'cata_grave' | 'board' | 'burn' | 'hand';
+
+export interface ResolveStackEntry {
+  card: CardInstance;
+  dest?: ResolveDest;
+}
+
 export interface PlayerState {
   hp: number;
   maxHp: number;
@@ -34,6 +41,11 @@ export interface PlayerState {
   hand: CardInstance[];
   handLimit: number;
   mulliganSelected?: boolean;
+  /**
+   * 현재 해석(Resolve) 중인 카드 인스턴스들을 임시로 쌓아 두는 스택.
+   * - THROW_RESOLVE_STACK 이펙트에서 pop 되어 최종 위치로 이동한다.
+   */
+  resolveStack: ResolveStackEntry[];
 }
 
 export interface GameState {
@@ -101,6 +113,8 @@ export interface FoggedGameState {
     handCount: number;
     deckCount: number;
     graveCount: number;
+    /** 현재 내 resolveStack (카드 인스턴스만 노출, dest 정보는 서버 전용) */
+    resolveStack: CardInstance[];
   };
   opponent: {
     hp: number;
@@ -110,6 +124,8 @@ export interface FoggedGameState {
     handCount: number;
     deckCount: number;
     graveCount: number;
+    /** 상대 resolveStack (카드 인스턴스만 노출) */
+    resolveStack: CardInstance[];
   };
   catastrophe: {
     deckCount: number;

@@ -85,6 +85,7 @@ export function toFoggedState(
       handCount: meState?.hand.length ?? 0,
       deckCount: meState?.deck.length ?? 0,
       graveCount: meState?.grave.length ?? 0,
+      resolveStack: meState?.resolveStack.map((e) => e.card) ?? [],
     },
     opponent: {
       hp: opponentState?.hp ?? 0,
@@ -94,6 +95,7 @@ export function toFoggedState(
       handCount: opponentState?.hand.length ?? 0,
       deckCount: opponentState?.deck.length ?? 0,
       graveCount: opponentState?.grave.length ?? 0,
+      resolveStack: opponentState?.resolveStack.map((e) => e.card) ?? [],
     },
     catastrophe: {
       deckCount: state.catastropheDeck.length,

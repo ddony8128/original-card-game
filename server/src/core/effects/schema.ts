@@ -1,4 +1,9 @@
-import type { CardID, PlayerID } from '../../type/gameState';
+import type {
+  CardID,
+  PlayerID,
+  CardInstance,
+  CardInstanceId,
+} from '../../type/gameState';
 import type {
   Effect,
   ManaGainEffect,
@@ -42,6 +47,8 @@ export interface DamageEffectConfig {
   target: 'enemy' | 'near_enemy' | 'self';
   range?: number;
   condition?: EffectCondition;
+  /** 선택형 타겟 모드 (예: select_damage_target 사용 시) */
+  selectMode?: 'choose_target';
 }
 
 export interface HealEffectConfig {
@@ -82,9 +89,19 @@ export interface DiscardEffectConfig {
 export interface BurnEffectConfig {
   type: 'burn';
   target: 'self' | 'enemy';
-  method?: 'deck_random' | 'deck_top' | 'this';
+  /**
+   * burn 동작 방식 (일반 모드)
+   * - deck_random / deck_top : 덱에서 N장 소멸
+   * - instance : 특정 인스턴스를 소멸 (엔진에서 instanceId 주입)
+   *
+   * burn this 와 같이 "이 카드 자신"을 태우는 경우에는
+   * object: 'this' 를 사용하고, method 는 생략해도 된다.
+   */
+  method?: 'deck_random' | 'deck_top' | 'instance';
   value?: number;
   condition?: EffectCondition;
+  /** burn this 패턴: object가 'this' 이면, 현재 카드 인스턴스를 대상으로 소멸 */
+  object?: 'this';
 }
 
 export interface InstallEffectConfig {
@@ -179,10 +196,20 @@ export function parseCardEffectJson(raw: unknown): CardEffectJson | null {
   };
 }
 
+export interface BuildEffectsOptions {
+  invertSelfEnemy?: boolean;
+  /**
+   * burn this / 기타 "this" 참조용:
+   * 현재 효과를 발생시킨 카드 인스턴스 id
+   */
+  sourceInstanceId?: CardInstanceId;
+}
+
 export function buildEffectsFromConfigs(
   configs: EffectConfig[],
   actor: PlayerID,
   cardId?: CardID,
+  options?: BuildEffectsOptions,
 ): Effect[] {
   const effects: Effect[] = [];
 
@@ -190,35 +217,54 @@ export function buildEffectsFromConfigs(
     switch (cfg.type) {
       case 'mana_gain': {
         const c = cfg as ManaGainEffectConfig;
+        const target =
+          options?.invertSelfEnemy && c.target === 'self'
+            ? 'enemy'
+            : options?.invertSelfEnemy && c.target === 'enemy'
+              ? 'self'
+              : c.target;
         const eff: ManaGainEffect = {
           type: 'MANA_GAIN',
           owner: actor,
           value: c.value,
-          target: c.target,
+          target,
         };
         effects.push(eff);
         break;
       }
       case 'damage': {
         const c = cfg as DamageEffectConfig;
+        const target =
+          options?.invertSelfEnemy && c.target === 'self'
+            ? 'enemy'
+            : options?.invertSelfEnemy && c.target === 'enemy'
+              ? 'self'
+              : c.target;
         const eff: DamageEffect = {
           type: 'DAMAGE',
           owner: actor,
           value: c.value,
-          target: c.target,
+          target,
           range: c.range,
           condition: c.condition,
+          selectMode: c.selectMode,
         };
         effects.push(eff);
         break;
       }
       case 'heal': {
         const c = cfg as HealEffectConfig;
+        const target =
+          options?.invertSelfEnemy && c.target === 'self'
+            ? 'enemy'
+            : options?.invertSelfEnemy && c.target === 'enemy'
+              ? 'self'
+              : c.target;
         const eff: HealEffect = {
           type: 'HEAL',
           owner: actor,
           value: c.value,
-          target: c.target,
+          target,
           condition: c.condition,
         };
         effects.push(eff);
@@ -226,11 +272,17 @@ export function buildEffectsFromConfigs(
       }
       case 'draw': {
         const c = cfg as DrawEffectConfig;
+        const target =
+          options?.invertSelfEnemy && c.target === 'self'
+            ? 'enemy'
+            : options?.invertSelfEnemy && c.target === 'enemy'
+              ? 'self'
+              : c.target;
         const eff: DrawEffect = {
           type: 'DRAW',
           owner: actor,
           value: c.value,
-          target: c.target,
+          target,
         };
         effects.push(eff);
         break;
@@ -248,11 +300,17 @@ export function buildEffectsFromConfigs(
       }
       case 'discard': {
         const c = cfg as DiscardEffectConfig;
+        const target =
+          options?.invertSelfEnemy && c.target === 'self'
+            ? 'enemy'
+            : options?.invertSelfEnemy && c.target === 'enemy'
+              ? 'self'
+              : c.target;
         const eff: DiscardEffect = {
           type: 'DISCARD',
           owner: actor,
           value: c.value,
-          target: c.target,
+          target,
           method: c.method,
           condition: c.condition,
         };
@@ -261,24 +319,46 @@ export function buildEffectsFromConfigs(
       }
       case 'burn': {
         const c = cfg as BurnEffectConfig;
+        const target =
+          options?.invertSelfEnemy && c.target === 'self'
+            ? 'enemy'
+            : options?.invertSelfEnemy && c.target === 'enemy'
+              ? 'self'
+              : c.target;
+        // 기본 method / instanceId
+        let method = c.method;
+        let instanceId: CardInstanceId | undefined;
+
+        // burn this: object === 'this' 이고, sourceInstanceId 가 주어지면
+        // 해당 인스턴스를 소멸 대상으로 지정한다.
+        if (c.object === 'this' && options?.sourceInstanceId) {
+          method = 'instance';
+          instanceId = options.sourceInstanceId;
+        }
+
         const eff: BurnEffect = {
           type: 'BURN',
           owner: actor,
-          target: c.target,
-          method: c.method,
+          target,
+          method,
           value: c.value,
           condition: c.condition,
           cardId,
+          instanceId,
         };
         effects.push(eff);
         break;
       }
       case 'install': {
         const c = cfg as InstallEffectConfig;
+        const dummyInstance: CardInstance = {
+          id: `install_${actor}_${c.object}`,
+          cardId: c.object as CardID,
+        };
         const eff: InstallEffect = {
           type: 'INSTALL',
           owner: actor,
-          object: c.object,
+          object: dummyInstance,
           range: c.range,
         };
         effects.push(eff);

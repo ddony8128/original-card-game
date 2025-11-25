@@ -1,19 +1,13 @@
 import type { PlayerID, CardInstance } from '../../type/gameState';
 import type { GameEngineCore, EngineResult } from './index';
 import { MOVE_MANA_COST } from '../rules/constants';
-import {
-  isInsideBoard,
-  computeInstallPositions,
-  toViewerPos,
-} from './boardUtils';
-import { parseCardEffectJson } from '../effects/schema';
-import type { RequestInputKind } from '../../type/wsProtocol';
-import { GamePhase } from '../../type/gameState';
+import { isInsideBoard } from './boardUtils';
 import type {
   MoveEffect,
   TurnEndEffect,
   CastExecuteEffect,
   ManaPayEffect,
+  ThrowResolveStackEffect,
 } from '../effects/effectTypes';
 
 export async function handleMoveAction(
@@ -131,44 +125,12 @@ export async function handleUseCardAction(
   // 손에서 카드는 즉시 제거하되, 마나 차감은 effectStack에서 처리
   playerState.hand.splice(handIndex, 1);
 
-  if (meta.type === 'ritual') {
-    // 카드 효과 JSON 파싱하여 install.range 확인
-    const parsed = parseCardEffectJson(meta.effectJson);
-    const installRange = parsed?.install?.range;
+  // 사용한 카드를 resolveStack 에 올려 두고,
+  // 이후 THROW_RESOLVE_STACK 이 최종 목적지로 이동시킨다.
+  playerState.resolveStack.push({ card: usedInstance });
 
-    // 설치 가능한 위치 계산 → request_input (좌표는 플레이어 시점 기준으로 변환)
-    const absOptions = computeInstallPositions(
-      engine.state.board,
-      playerId,
-      installRange,
-    );
-    const options = absOptions.map((pos) =>
-      toViewerPos(engine.state.board, engine.bottomSidePlayerId, pos, playerId),
-    );
-    const requestKind: RequestInputKind = {
-      type: 'map',
-      kind: 'select_install_position',
-    };
-    engine.pendingInput = {
-      playerId,
-      kind: requestKind,
-      cardId,
-      installRange,
-    };
-    engine.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
-    return [
-      {
-        kind: 'request_input',
-        targetPlayer: playerId,
-        requestInput: {
-          kind: requestKind,
-          options,
-        },
-      },
-    ];
-  }
-
-  // instant → 즉시 CAST_EXECUTE 효과만 push (타겟팅 등은 TODO)
+  // instant / ritual 공통: 마나 지불 후 CAST_EXECUTE 실행,
+  // 마지막에 THROW_RESOLVE_STACK 로 카드의 최종 위치 결정.
   const payEffect: ManaPayEffect = {
     type: 'MANA_PAY',
     owner: playerId,
@@ -178,16 +140,15 @@ export async function handleUseCardAction(
     type: 'CAST_EXECUTE',
     owner: playerId,
     cardId,
+    sourceInstanceId: usedInstance.id,
   };
-  // 코스트 지불 후 시전이 실행되도록, [MANA_PAY, CAST_EXECUTE] 순으로 전달한다.
-  engine.effectStack.push([payEffect, effect]);
+  const throwEffect: ThrowResolveStackEffect = {
+    type: 'THROW_RESOLVE_STACK',
+    owner: playerId,
+  };
+
+  // 코스트 지불 → CAST_EXECUTE → THROW_RESOLVE_STACK 순으로 실행되도록 push
+  engine.effectStack.push([payEffect, effect, throwEffect]);
   const results = await engine.stepUntilStable();
-
-  // burn되지 않은 instant 카드는 사용 후 grave로 이동
-  if (!engine.burnedThisAction.has(cardId)) {
-    playerState.grave.push(usedInstance);
-  }
-  engine.burnedThisAction.clear();
-
   return results;
 }
