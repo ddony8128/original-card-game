@@ -1,6 +1,6 @@
 import type { PlayerID, CardInstance } from '../../type/gameState';
 import type { GameEngineCore, EngineResult } from './index';
-import { MOVE_MANA_COST } from '../../state/gameInit';
+import { MOVE_MANA_COST } from '../rules/constants';
 import {
   isInsideBoard,
   computeInstallPositions,
@@ -13,7 +13,8 @@ import type {
   MoveEffect,
   TurnEndEffect,
   CastExecuteEffect,
-} from '../effectTypes';
+  ManaPayEffect,
+} from '../effects/effectTypes';
 
 export async function handleMoveAction(
   engine: GameEngineCore,
@@ -51,15 +52,19 @@ export async function handleMoveAction(
   );
   if (checkManaSufficient) return checkManaSufficient;
 
-  playerState.mana -= MOVE_MANA_COST;
-
+  const payEffect: ManaPayEffect = {
+    type: 'MANA_PAY',
+    owner: playerId,
+    amount: MOVE_MANA_COST,
+  };
   const effect: MoveEffect = {
     type: 'MOVE',
     owner: playerId,
     to: { r: toR, c: toC },
   };
 
-  engine.effectStack.push(effect);
+  // 코스트 지불 후 이동이 실행되도록, [MANA_PAY, MOVE] 순으로 전달한다.
+  engine.effectStack.push([payEffect, effect]);
   const results = await engine.stepUntilStable();
   return results;
 }
@@ -123,8 +128,7 @@ export async function handleUseCardAction(
   );
   if (checkManaSufficient) return checkManaSufficient;
 
-  // 마나 차감 및 손에서 제거
-  playerState.mana -= manaCost;
+  // 손에서 카드는 즉시 제거하되, 마나 차감은 effectStack에서 처리
   playerState.hand.splice(handIndex, 1);
 
   if (meta.type === 'ritual') {
@@ -165,12 +169,18 @@ export async function handleUseCardAction(
   }
 
   // instant → 즉시 CAST_EXECUTE 효과만 push (타겟팅 등은 TODO)
+  const payEffect: ManaPayEffect = {
+    type: 'MANA_PAY',
+    owner: playerId,
+    amount: manaCost,
+  };
   const effect: CastExecuteEffect = {
     type: 'CAST_EXECUTE',
     owner: playerId,
     cardId,
   };
-  engine.effectStack.push(effect);
+  // 코스트 지불 후 시전이 실행되도록, [MANA_PAY, CAST_EXECUTE] 순으로 전달한다.
+  engine.effectStack.push([payEffect, effect]);
   const results = await engine.stepUntilStable();
 
   // burn되지 않은 instant 카드는 사용 후 grave로 이동

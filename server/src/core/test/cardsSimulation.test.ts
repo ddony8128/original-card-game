@@ -617,7 +617,13 @@ describe('GameEngineCore card simulation', () => {
 
     const diff = { animations: [], log: [] };
     // destroy 트리거 수동 실행 (실제 게임에서는 리추얼 파괴 시점에서 호출될 예정)
-    await (engine as any).executeCardTrigger('c01-005', 'onDestroy', P1, diff);
+    await (engine as any).enqueueCardTriggerEffects(
+      'c01-005',
+      'onDestroy',
+      P1,
+      diff,
+    );
+    await engine.stepUntilStable();
 
     // discard 이후에도 최소 한 장은 손에 남아 있어야 한다 (구체 동작은 엔진 구현에 위임)
     expect(engine.state.players[P1].hand.length).toBeGreaterThanOrEqual(1);
@@ -718,12 +724,13 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const diff = { animations: [], log: [] };
-    await (engine as any).executeCardTrigger(
+    await (engine as any).enqueueCardTriggerEffects(
       'c01-030',
       'onUsePerTurn',
       P1,
       diff,
     );
+    await engine.stepUntilStable();
 
     expect(engine.state.players[P1].deck.length).toBe(1);
     expect(engine.state.players[P1].grave.length).toBe(5);
@@ -741,7 +748,13 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const diff = { animations: [], log: [] };
-    await (engine as any).executeCardTrigger('c01-901', 'onDrawn', P1, diff);
+    await (engine as any).enqueueCardTriggerEffects(
+      'c01-901',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engine.stepUntilStable();
 
     expect(engine.state.players[P1].hp).toBe(9);
     expect(engine.state.catastropheDeck.length).toBe(0);
@@ -758,7 +771,13 @@ describe('GameEngineCore card simulation', () => {
     });
     const diff = { animations: [], log: [] };
 
-    await (engine as any).executeCardTrigger('c01-902', 'onDrawn', P1, diff);
+    await (engine as any).enqueueCardTriggerEffects(
+      'c01-902',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engine.stepUntilStable();
 
     expect(engine.state.players[P2].hp).toBe(10);
   });
@@ -773,7 +792,13 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     let diff: any = { animations: [], log: [] };
-    await (engineA as any).executeCardTrigger('c01-903', 'onDrawn', P1, diff);
+    await (engineA as any).enqueueCardTriggerEffects(
+      'c01-903',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engineA.stepUntilStable();
     expect(engineA.state.players[P1].hp).toBe(7);
     expect(engineA.state.players[P1].deck.length).toBe(0);
 
@@ -789,7 +814,13 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     diff = { animations: [], log: [] };
-    await (engineB as any).executeCardTrigger('c01-903', 'onDrawn', P1, diff);
+    await (engineB as any).enqueueCardTriggerEffects(
+      'c01-903',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engineB.stepUntilStable();
     expect(engineB.state.players[P1].hp).toBe(10);
     expect(engineB.state.players[P1].deck.length).toBe(1);
   });
@@ -808,7 +839,13 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     let diff: any = { animations: [], log: [] };
-    await (engineA as any).executeCardTrigger('c01-904', 'onDrawn', P1, diff);
+    await (engineA as any).enqueueCardTriggerEffects(
+      'c01-904',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engineA.stepUntilStable();
     expect(engineA.state.players[P1].deck.length).toBe(1);
     expect(engineA.state.players[P1].grave.length).toBe(2);
 
@@ -829,7 +866,13 @@ describe('GameEngineCore card simulation', () => {
       players: [P1, P2],
     });
     diff = { animations: [], log: [] };
-    await (engineB as any).executeCardTrigger('c01-904', 'onDrawn', P1, diff);
+    await (engineB as any).enqueueCardTriggerEffects(
+      'c01-904',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engineB.stepUntilStable();
     expect(engineB.state.players[P1].hand.length).toBe(1);
     expect(engineB.state.players[P1].grave.length).toBe(2);
   });
@@ -867,7 +910,13 @@ describe('GameEngineCore card simulation', () => {
     });
 
     const diff = { animations: [], log: [] };
-    await (engine as any).executeCardTrigger('c01-905', 'onDrawn', P1, diff);
+    await (engine as any).enqueueCardTriggerEffects(
+      'c01-905',
+      'onDrawn',
+      P1,
+      diff,
+    );
+    await engine.stepUntilStable();
 
     expect(engine.state.players[P1].hp).toBe(17);
   });

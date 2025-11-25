@@ -1,5 +1,5 @@
 import type { PlayerID, CardID } from '../type/gameState';
-import type { Effect } from './effectTypes';
+import type { Effect } from './effects/effectTypes';
 
 // 엔진 내부에서 사용하는 트리거 종류
 export type TriggerType =

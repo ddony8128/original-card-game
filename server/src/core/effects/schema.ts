@@ -1,4 +1,16 @@
-import type { CardID } from '../../type/gameState';
+import type { CardID, PlayerID } from '../../type/gameState';
+import type {
+  Effect,
+  ManaGainEffect,
+  DamageEffect,
+  HealEffect,
+  DrawEffect,
+  DrawCataEffect,
+  DiscardEffect,
+  BurnEffect,
+  InstallEffect,
+  MoveEffect,
+} from './effectTypes';
 
 export type EffectTrigger =
   | 'onCast'
@@ -159,4 +171,127 @@ export function parseCardEffectJson(raw: unknown): CardEffectJson | null {
   };
 }
 
+export function buildEffectsFromConfigs(
+  configs: EffectConfig[],
+  actor: PlayerID,
+  cardId?: CardID,
+): Effect[] {
+  const effects: Effect[] = [];
 
+  configs.forEach((cfg) => {
+    switch (cfg.type) {
+      case 'mana_gain': {
+        const c = cfg as ManaGainEffectConfig;
+        const eff: ManaGainEffect = {
+          type: 'MANA_GAIN',
+          owner: actor,
+          value: c.value,
+          target: c.target,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'damage': {
+        const c = cfg as DamageEffectConfig;
+        const eff: DamageEffect = {
+          type: 'DAMAGE',
+          owner: actor,
+          value: c.value,
+          target: c.target,
+          range: c.range,
+          condition: c.condition,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'heal': {
+        const c = cfg as HealEffectConfig;
+        const eff: HealEffect = {
+          type: 'HEAL',
+          owner: actor,
+          value: c.value,
+          target: c.target,
+          condition: c.condition,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'draw': {
+        const c = cfg as DrawEffectConfig;
+        const eff: DrawEffect = {
+          type: 'DRAW',
+          owner: actor,
+          value: c.value,
+          target: c.target,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'draw_cata': {
+        const c = cfg as DrawCataEffectConfig;
+        const eff: DrawCataEffect = {
+          type: 'DRAW_CATA',
+          owner: actor,
+          value: c.value,
+          condition: c.condition,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'discard': {
+        const c = cfg as DiscardEffectConfig;
+        const eff: DiscardEffect = {
+          type: 'DISCARD',
+          owner: actor,
+          value: c.value,
+          target: c.target,
+          method: c.method,
+          condition: c.condition,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'burn': {
+        const c = cfg as BurnEffectConfig;
+        const eff: BurnEffect = {
+          type: 'BURN',
+          owner: actor,
+          target: c.target,
+          method: c.method,
+          value: c.value,
+          condition: c.condition,
+          cardId,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'install': {
+        const c = cfg as InstallEffectConfig;
+        const eff: InstallEffect = {
+          type: 'INSTALL',
+          owner: actor,
+          object: c.object,
+          range: c.range,
+        };
+        effects.push(eff);
+        break;
+      }
+      case 'move': {
+        const c = cfg as MoveEffectConfig;
+        // 현재는 forward 한 칸 이동만 지원 (기존 executor.applyMove와 동일한 제한)
+        const eff: MoveEffect = {
+          type: 'MOVE',
+          owner: actor,
+          direction: c.direction ?? 'forward',
+          value: c.value,
+        };
+        effects.push(eff);
+        break;
+      }
+      default:
+        break;
+    }
+  });
+
+  return effects;
+}

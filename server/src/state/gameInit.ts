@@ -9,15 +9,15 @@ import {
 import type { DeckList } from '../type/deck';
 import type { EngineContext, CardMeta } from '../core/context';
 import { cardsService, type CardRow } from '../services/cards';
-
-const BOARD_WIDTH = 5;
-const BOARD_HEIGHT = 5;
-const INITIAL_HP = 20;
-const INITIAL_MAX_HP = 20;
-const INITIAL_MANA = 0;
-const INITIAL_MAX_MANA = 0;
-const INITIAL_HAND_LIMIT = 6;
-export const MOVE_MANA_COST = 1;
+import {
+  BOARD_WIDTH,
+  BOARD_HEIGHT,
+  INITIAL_HP,
+  INITIAL_MAX_HP,
+  INITIAL_MANA,
+  INITIAL_MAX_MANA,
+  INITIAL_HAND_LIMIT,
+} from '../core/rules/constants';
 
 export interface PlayerDeckConfig {
   playerId: PlayerID;

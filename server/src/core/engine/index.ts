@@ -16,16 +16,18 @@ import type {
   PlayerInputPayload,
 } from '../../type/wsProtocol';
 import type { EngineContext } from '../context';
-import { EffectStack } from '../effectStack';
+import { EffectStack } from '../effects/effectStack';
 import type {
-  Effect,
   TurnStartEffect,
   InstallAfterSelectionEffect,
-} from '../effectTypes';
+} from '../effects/effectTypes';
 import type { RequestInputKind } from '../../type/wsProtocol';
 import { ObserverRegistry } from '../observers';
-import { parseCardEffectJson, type EffectTrigger } from '../effects/schema';
-import { executeEffects } from '../effects/executor';
+import {
+  parseCardEffectJson,
+  type EffectTrigger,
+  buildEffectsFromConfigs,
+} from '../effects/schema';
 import { fromViewerPos, shuffle, canInstallAt } from './boardUtils';
 import { buildStatePatchForAllView } from './view';
 import {
@@ -33,7 +35,7 @@ import {
   handleEndTurnAction,
   handleUseCardAction,
 } from './actionHandlers';
-import { resolveEffectInternal } from './effectResolver';
+import { resolveEffect } from './effectResolver';
 
 export type EngineResultKind =
   | 'state_patch'
@@ -200,13 +202,14 @@ export class GameEngineCore {
 
     switch (actionType) {
       case 'move':
-        return await this.handleMove(playerId, {
+        return await handleMoveAction(this, playerId, {
           to: (action as any).to as [number, number],
         });
       case 'end_turn':
-        return await this.handleEndTurn(playerId);
+        return await handleEndTurnAction(this, playerId);
       case 'use_card':
-        return await this.handleUseCard(
+        return await handleUseCardAction(
+          this,
           playerId,
           (action as any).cardInstance as CardInstance,
           (action as any).target as [number, number] | undefined,
@@ -288,27 +291,6 @@ export class GameEngineCore {
       playerId,
       invalidReason,
     );
-  }
-
-  // ---- 개별 액션 처리 ----
-
-  private async handleMove(
-    playerId: PlayerID,
-    payload: { to: [number, number] },
-  ): Promise<EngineResult[]> {
-    return handleMoveAction(this, playerId, payload);
-  }
-
-  private async handleEndTurn(playerId: PlayerID): Promise<EngineResult[]> {
-    return handleEndTurnAction(this, playerId);
-  }
-
-  private async handleUseCard(
-    playerId: PlayerID,
-    cardInstance: CardInstance,
-    _target: [number, number] | undefined,
-  ): Promise<EngineResult[]> {
-    return handleUseCardAction(this, playerId, cardInstance, _target);
   }
 
   // ---- 멀리건 입력 처리 ----
@@ -475,7 +457,7 @@ export class GameEngineCore {
     while (!this.effectStack.isEmpty()) {
       const effect = this.effectStack.pop();
       if (!effect) break;
-      await this.resolveEffect(effect, localDiff);
+      await resolveEffect(this, effect, localDiff);
       if (this.checkGameOver()) {
         const gameOver = this.buildGameOver();
         results.push({
@@ -502,10 +484,6 @@ export class GameEngineCore {
     return results;
   }
 
-  async resolveEffect(effect: Effect, diff: DiffPatch) {
-    await resolveEffectInternal(this, effect, diff);
-  }
-
   private checkGameOver(): boolean {
     const alive = Object.entries(this.state.players).filter(
       ([_, p]) => p.hp > 0,
@@ -520,7 +498,7 @@ export class GameEngineCore {
 
   private buildGameOver(): GameOverPayload {
     return {
-      winner: this.state.winner ?? null,
+      winner: this.state.winner ?? 'draw',
       reason: 'hp_zero',
     };
   }
@@ -616,7 +594,7 @@ export class GameEngineCore {
     }
   }
 
-  async executeCardTrigger(
+  async enqueueCardTriggerEffects(
     cardId: CardID,
     trigger: EffectTrigger,
     actor: PlayerID,
@@ -628,15 +606,10 @@ export class GameEngineCore {
     if (!parsed) return;
     const t = parsed.triggers.find((tr) => tr.trigger === trigger);
     if (!t) return;
-    executeEffects(
-      t.effects,
-      {
-        engine: this,
-        actor,
-        source: parsed,
-        diff,
-      } as any,
-      cardId,
-    );
+
+    const effects = buildEffectsFromConfigs(t.effects, actor, cardId);
+    if (effects.length > 0) {
+      this.effectStack.push(effects);
+    }
   }
 }
