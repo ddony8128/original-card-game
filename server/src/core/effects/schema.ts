@@ -22,6 +22,14 @@ export type EffectTrigger =
 
 export type EffectTarget = 'self' | 'enemy' | 'near_enemy';
 
+export type EffectCondition =
+  | 'if_self_deck_empty'
+  | 'if_self_deck_empty_not'
+  | 'if_self_hand_empty'
+  | 'if_self_hand_empty_not'
+  | 'if_enemy_dead_not'
+  | 'if_cata_deck_empty_not';
+
 export interface ManaGainEffectConfig {
   type: 'mana_gain';
   value: number;
@@ -33,14 +41,14 @@ export interface DamageEffectConfig {
   value: number | string;
   target: 'enemy' | 'near_enemy' | 'self';
   range?: number;
-  condition?: string;
+  condition?: EffectCondition;
 }
 
 export interface HealEffectConfig {
   type: 'heal';
   value: number;
   target: 'self' | 'enemy';
-  condition?: string;
+  condition?: EffectCondition;
 }
 
 export interface MoveEffectConfig {
@@ -60,7 +68,7 @@ export interface DrawCataEffectConfig {
   type: 'draw_cata';
   value: number;
   target: 'self';
-  condition?: string;
+  condition?: EffectCondition;
 }
 
 export interface DiscardEffectConfig {
@@ -68,7 +76,7 @@ export interface DiscardEffectConfig {
   value: number;
   target: 'enemy' | 'self';
   method: 'deck_random' | 'deck_top' | 'hand_choose' | 'hand_random';
-  condition?: string;
+  condition?: EffectCondition;
 }
 
 export interface BurnEffectConfig {
@@ -76,7 +84,7 @@ export interface BurnEffectConfig {
   target: 'self' | 'enemy';
   method?: 'deck_random' | 'deck_top' | 'this';
   value?: number;
-  condition?: string;
+  condition?: EffectCondition;
 }
 
 export interface InstallEffectConfig {

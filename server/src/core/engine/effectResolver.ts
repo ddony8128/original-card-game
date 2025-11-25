@@ -20,6 +20,13 @@ import type {
   BurnEffect,
 } from '../effects/effectTypes';
 import { parseCardEffectJson } from '../effects/schema';
+import {
+  checkDamageCondition,
+  checkHealCondition,
+  checkDiscardCondition,
+  checkBurnCondition,
+  checkDrawCataCondition,
+} from '../effects/conditions';
 import { MANA_INC_PER_TURN } from '../rules/constants';
 
 export async function resolveEffect(
@@ -269,15 +276,8 @@ export async function resolveEffect(
       const target = players[targetId];
       if (!target) break;
 
-      // 조건 처리
-      if (e.condition === 'if_self_deck_empty') {
-        const self = players[owner];
-        if (!self || self.deck.length > 0) break;
-      }
-      if (e.condition === 'if_self_deck_empty_not') {
-        const self = players[owner];
-        if (!self || self.deck.length === 0) break;
-      }
+      // condition 공통 처리
+      if (!checkDamageCondition(engine, e)) break;
 
       // near_enemy + range 체크
       if (e.target === 'near_enemy' && typeof e.range === 'number') {
@@ -321,9 +321,8 @@ export async function resolveEffect(
       const player = players[targetId];
       if (!player) break;
 
-      if (e.condition === 'if_enemy_dead_not' && e.target === 'enemy') {
-        if (player.hp <= 0) break;
-      }
+      // condition 공통 처리
+      if (!checkHealCondition(engine, e, player.hp)) break;
 
       const before = player.hp;
       player.hp = Math.min(player.hp + e.value, 20);
@@ -359,9 +358,7 @@ export async function resolveEffect(
       const actor = e.owner;
 
       for (let i = 0; i < e.value; i += 1) {
-        if (e.condition === 'if_cata_deck_empty_not') {
-          if (engine.state.catastropheDeck.length === 0) break;
-        }
+        if (!checkDrawCataCondition(engine, e)) break;
 
         // executor.drawCatastropheCard 로직 이식
         if (engine.state.catastropheDeck.length === 0) {
@@ -396,13 +393,8 @@ export async function resolveEffect(
       const target = players[targetId];
       if (!target) break;
 
-      // 조건 처리
-      if (e.condition === 'if_self_hand_empty') {
-        if (target.hand.length > 0) break;
-      }
-      if (e.condition === 'if_self_hand_empty_not') {
-        if (target.hand.length === 0) break;
-      }
+      // condition 공통 처리
+      if (!checkDiscardCondition(engine, e, target.hand.length)) break;
 
       if (e.method === 'deck_random') {
         const count = Math.min(e.value, target.deck.length);
@@ -475,11 +467,8 @@ export async function resolveEffect(
       const { owner } = e;
       const { players } = engine.state;
 
-      // 조건 처리
-      if (e.condition === 'if_self_deck_empty_not') {
-        const self = players[owner];
-        if (!self || self.deck.length === 0) break;
-      }
+      // condition 공통 처리
+      if (!checkBurnCondition(engine, e)) break;
 
       // 덱에서 무작위 burn
       if (e.method === 'deck_random') {
