@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { matchApi } from './api';
 
-export function useMatchStateQuery(roomId: string | null, enabled = true) {
+export function useMatchStateQuery(roomCode: string | null, enabled = true) {
   return useQuery({
-    queryKey: ['match', 'state', roomId],
-    queryFn: () => matchApi.state(roomId as string),
-    enabled: !!roomId && enabled,
+    queryKey: ['match', 'state', roomCode],
+    queryFn: () => matchApi.state(roomCode as string),
+    enabled: !!roomCode && enabled,
     refetchInterval: 3000,
   });
 }
@@ -23,9 +23,9 @@ export function useCreateRoomMutation() {
 export function useJoinRoomMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (roomId: string) => matchApi.join(roomId),
-    onSuccess: (_, roomId) => {
-      qc.invalidateQueries({ queryKey: ['match', 'state', roomId] });
+    mutationFn: (roomCode: string) => matchApi.join(roomCode),
+    onSuccess: (_, roomCode) => {
+      qc.invalidateQueries({ queryKey: ['match', 'state', roomCode] });
     },
   });
 }
@@ -33,10 +33,10 @@ export function useJoinRoomMutation() {
 export function useSubmitDeckMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ roomId, deckId }: { roomId: string; deckId: string }) =>
-      matchApi.submitDeck(roomId, deckId),
-    onSuccess: (_, { roomId }) => {
-      qc.invalidateQueries({ queryKey: ['match', 'state', roomId] });
+    mutationFn: ({ roomCode, deckId }: { roomCode: string; deckId: string }) =>
+      matchApi.submitDeck(roomCode, deckId),
+    onSuccess: (_, { roomCode }) => {
+      qc.invalidateQueries({ queryKey: ['match', 'state', roomCode] });
     },
   });
 }
@@ -44,9 +44,9 @@ export function useSubmitDeckMutation() {
 export function useLeaveRoomMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (roomId: string) => matchApi.leave(roomId),
-    onSuccess: (_, roomId) => {
-      qc.invalidateQueries({ queryKey: ['match', 'state', roomId] });
+    mutationFn: (roomCode: string) => matchApi.leave(roomCode),
+    onSuccess: (_, roomCode) => {
+      qc.invalidateQueries({ queryKey: ['match', 'state', roomCode] });
     },
   });
 }
@@ -54,9 +54,9 @@ export function useLeaveRoomMutation() {
 export function useDeleteRoomMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (roomId: string) => matchApi.delete(roomId),
-    onSuccess: (_, roomId) => {
-      qc.invalidateQueries({ queryKey: ['match', 'state', roomId] });
+    mutationFn: (roomCode: string) => matchApi.delete(roomCode),
+    onSuccess: (_, roomCode) => {
+      qc.invalidateQueries({ queryKey: ['match', 'state', roomCode] });
     },
   });
 }

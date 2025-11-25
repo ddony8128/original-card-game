@@ -3,34 +3,34 @@ import type { MatchStateDto } from '@/shared/api/types';
 
 export const matchApi = {
   create() {
-    return http<{ roomId: string; status: string; host: { id: string; username?: string } }>(
+    return http<{ roomCode: string; status: string; host: { id: string; username?: string } }>(
       '/api/match/create',
       { method: 'POST' },
     );
   },
-  join(roomId: string) {
+  join(roomCode: string) {
     return http<MatchStateDto>('/api/match/join', {
       method: 'POST',
-      body: JSON.stringify({ roomId }),
+      body: JSON.stringify({ roomCode }),
     });
   },
-  submitDeck(roomId: string, deckId: string) {
+  submitDeck(roomCode: string, deckId: string) {
     return http<MatchStateDto>('/api/match/deck', {
       method: 'PATCH',
-      body: JSON.stringify({ roomId, deckId }),
+      body: JSON.stringify({ roomCode, deckId }),
     });
   },
-  state(roomId: string) {
-    return http<MatchStateDto>(`/api/match/${roomId}`);
+  state(roomCode: string) {
+    return http<MatchStateDto>(`/api/match/${roomCode}`);
   },
-  leave(roomId: string) {
-    return http<{ roomId: string; status: string }>('/api/match/leave', {
+  leave(roomCode: string) {
+    return http<{ roomCode: string; status: string }>('/api/match/leave', {
       method: 'POST',
-      body: JSON.stringify({ roomId }),
+      body: JSON.stringify({ roomCode }),
     });
   },
-  delete(roomId: string) {
-    return http<{ roomId: string; status: string }>(`/api/match/${roomId}`, {
+  delete(roomCode: string) {
+    return http<{ roomCode: string; status: string }>(`/api/match/${roomCode}`, {
       method: 'DELETE',
     });
   },

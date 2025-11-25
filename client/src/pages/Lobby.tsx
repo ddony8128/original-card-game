@@ -52,8 +52,8 @@ export default function Lobby() {
     try {
       const res = await createRoom.mutateAsync();
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
-      toast.success('방이 생성되었습니다.', { description: `방 코드 : ${res.roomId}` });
-      navigate(`/back-room/${res.roomId}`);
+      toast.success('방이 생성되었습니다.', { description: `방 코드 : ${res.roomCode}` });
+      navigate(`/back-room/${res.roomCode}`);
     } catch (e: unknown) {
       toast.error(getErrorMessage(e) ?? '방 생성에 실패했습니다.');
     }
@@ -65,8 +65,8 @@ export default function Lobby() {
     try {
       const res = await joinRoom.mutateAsync(roomCode.trim());
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
-      toast.success('방에 입장했습니다.', { description: `방 코드 : ${res.roomId}` });
-      navigate(`/back-room/${res.roomId}`);
+      toast.success('방에 입장했습니다.', { description: `방 코드 : ${res.roomCode}` });
+      navigate(`/back-room/${res.roomCode}`);
     } catch (e: unknown) {
       toast.error(getErrorMessage(e) ?? '방 참가에 실패했습니다.');
     }

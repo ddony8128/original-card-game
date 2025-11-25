@@ -17,8 +17,10 @@ export default function BackRoom() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
+  // URL 파라미터는 roomId지만 실제로는 roomCode를 전달받음
+  const roomCode = roomId;
 
-  const { data: state, refetch: refetchState } = useMatchStateQuery(roomId, true);
+  const { data: state, refetch: refetchState } = useMatchStateQuery(roomCode, true);
   const { data: serverDecks, isLoading: loadingDecks } = useDecksQuery();
   const leaveRoom = useLeaveRoomMutation();
   const submitDeck = useSubmitDeckMutation();
@@ -31,8 +33,8 @@ export default function BackRoom() {
 
   useEffect(() => {
     if (!me) navigate('/login');
-    if (!roomId) navigate('/lobby');
-  }, [me, roomId, navigate]);
+    if (!roomCode) navigate('/lobby');
+  }, [me, roomCode, navigate]);
 
   const canStart = state?.status === 'playing';
   const hostName = state?.host?.username ?? '(대기 중)';
@@ -48,9 +50,9 @@ export default function BackRoom() {
   };
 
   const handleLeave = async () => {
-    if (!roomId) return;
+    if (!roomCode) return;
     try {
-      await leaveRoom.mutateAsync(roomId);
+      await leaveRoom.mutateAsync(roomCode);
       toast.success('방에서 나갔습니다.');
       navigate('/lobby');
     } catch (e: unknown) {
@@ -59,10 +61,10 @@ export default function BackRoom() {
   };
 
   const handleSelectDeck = async (deckId: string) => {
-    if (!roomId || locked) return;
+    if (!roomCode || locked) return;
     const deck = deckList.find((d) => d.id === deckId);
     try {
-      await submitDeck.mutateAsync({ roomId, deckId });
+      await submitDeck.mutateAsync({ roomCode, deckId });
       setSelectedDeckId(deckId);
       setLocked(true);
       if (deck) {
@@ -152,7 +154,7 @@ export default function BackRoom() {
         </Card>
 
         <div className="flex justify-end">
-          <Button disabled={!canStart} onClick={() => navigate(`/game/${roomId}`)}>
+          <Button disabled={!canStart} onClick={() => navigate(`/game/${roomCode}`)}>
             게임 시작
           </Button>
         </div>
