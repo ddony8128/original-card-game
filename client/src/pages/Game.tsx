@@ -135,7 +135,7 @@ export default function Game() {
       return;
     }
 
-    // 2) 일반 상황에서는 클릭으로 "선택"만 하고, 실제 이동/리추얼 사용은 아래 패널 버튼으로 처리
+    // 2) 일반 상황에서는 클릭으로 "선택"만 하고, 실제 이동/마법진 사용은 아래 패널 버튼으로 처리
   };
 
   const handlePlayCard = (index: number) => {
@@ -223,14 +223,14 @@ export default function Game() {
       (rt) => rt.owner === myId && rt.pos.r === r && rt.pos.c === c,
     );
     if (!ritual) {
-      toast.error('선택한 칸에 내가 사용할 수 있는 리추얼이 없습니다.');
+      toast.error('선택한 칸에 내가 사용할 수 있는 마법진이 없습니다.');
       return;
     }
 
     // 서버 프로토콜은 확장 가능하므로 ritualId 필드를 함께 전송
     sendPlayerAction({ action: 'use_ritual', ritualId: ritual.id } as PlayerActionPayload);
-    toast.info('리추얼 사용', {
-      description: `리추얼 ${ritual.cardId}을(를) 사용했습니다.`,
+    toast.info('마법진 사용', {
+      description: `마법진 ${ritual.cardId}을(를) 사용했습니다.`,
     });
     console.log('sendPlayerAction', { action: 'use_ritual', ritualId: ritual.id });
   };
@@ -470,7 +470,7 @@ export default function Game() {
                   이 칸으로 이동
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleUseRitualAtSelected}>
-                  리추얼 사용
+                  마법진 사용
                 </Button>
               </div>
             </div>
@@ -486,7 +486,6 @@ export default function Game() {
             maxMana={fogged.me.maxMana}
             label="나"
           />
-          <GameLog logs={perspectiveLogs} />
           <DeckInfo
             deckCount={fogged.me.deckCount}
             graveCount={fogged.me.graveCount}
@@ -494,6 +493,9 @@ export default function Game() {
             label="내 덱"
             onViewGrave={() => handleViewGrave('me')}
           />
+          <div className="col-span-3">
+            <GameLog logs={perspectiveLogs} />
+          </div>
         </div>
 
         {/* My Hand */}

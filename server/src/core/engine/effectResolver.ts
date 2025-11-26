@@ -275,10 +275,18 @@ export async function resolveEffect(
 
       // 일반 드로우 1장
       engine.drawCardNoTriggers(turnStart.owner, diff);
-      // onTurnStart 트리거 호출
-      engine.enqueueTriggeredEffects('onTurnStart', {
-        playerId: turnStart.owner,
-      });
+
+      // 리추얼 onTurnStart 트리거 실행
+      for (const r of engine.state.board.rituals.filter(
+        (ritual) => ritual.owner === turnStart.owner,
+      )) {
+        await engine.enqueueCardTriggerEffects(
+          r.cardId,
+          'onTurnStart',
+          turnStart.owner,
+          diff,
+        );
+      }
 
       // 마나 회복은 별도 Effect로 처리 (스택을 통해 일관성 유지)
       const manaGain: ManaGainEffect = {
@@ -337,18 +345,18 @@ export async function resolveEffect(
           }
         }
 
-        // 리추얼 카드의 onTurnEnd 트리거를 ObserverRegistry에 등록 (필요 시)
+        // 리추얼 카드의 onTurnEnd / onTurnStart 트리거를 ObserverRegistry에 등록 (필요 시)
         const meta = await engine.ctx.lookupCard(cardId);
         if (meta && meta.effectJson) {
           const parsed = parseCardEffectJson(meta.effectJson);
           if (parsed) {
             parsed.triggers.forEach((t, index) => {
-              if (t.trigger === 'onTurnEnd') {
+              if (t.trigger === 'onTurnEnd' || t.trigger === 'onTurnStart') {
                 engine.observers.register({
                   id: `${cardId}:${t.trigger}:${index}:${id}`,
                   owner: inst.owner,
                   cardId,
-                  trigger: t.trigger,
+                  trigger: t.trigger as any,
                   effectRef: t,
                 });
               }
@@ -389,6 +397,25 @@ export async function resolveEffect(
             entry.dest = 'board';
           }
         }
+
+        // 리추얼 카드의 onTurnEnd / onTurnStart 트리거를 ObserverRegistry에 등록 (필요 시)
+        const meta = await engine.ctx.lookupCard(cardId);
+        if (meta && meta.effectJson) {
+          const parsed = parseCardEffectJson(meta.effectJson);
+          if (parsed) {
+            parsed.triggers.forEach((t, index) => {
+              if (t.trigger === 'onTurnEnd' || t.trigger === 'onTurnStart') {
+                engine.observers.register({
+                  id: `${cardId}:${t.trigger}:${index}:${id}`,
+                  owner: inst.owner,
+                  cardId,
+                  trigger: t.trigger as any,
+                  effectRef: t,
+                });
+              }
+            });
+          }
+        }
         break;
       }
 
@@ -426,6 +453,9 @@ export async function resolveEffect(
         kind: requestKind,
         cardId,
         installRange: inst.range,
+        // 이후 select_install_position 응답에서 동일 인스턴스를 INSTALL 하도록
+        // 현재 INSTALL 이펙트의 object(카드 인스턴스)를 그대로 넘겨둔다.
+        cardInstance: inst.object,
         options,
       };
       engine.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
@@ -894,8 +924,8 @@ export async function resolveEffect(
 
       // dest 가 명시되지 않은 경우, 카드 메타를 조회하여
       // 재앙(catatastrophe)이면 catastropheGrave, 아니면 일반 grave 로 보낸다.
+      const meta = await engine.ctx.lookupCard(card.cardId);
       if (!dest) {
-        const meta = await engine.ctx.lookupCard(card.cardId);
         if (meta && meta.type === 'catastrophe') {
           dest = 'cata_grave';
         } else {
@@ -903,29 +933,56 @@ export async function resolveEffect(
         }
       }
 
+      const cardName =
+        (meta && (meta as any).name_ko) ||
+        (meta && (meta as any).name_dev) ||
+        card.cardId;
+      const cardDesc =
+        (meta && (meta as any).description_ko) ||
+        (meta && (meta as any).description) ||
+        '';
+
       switch (dest) {
         case 'grave':
           player.grave.push(card);
-          diff.log.push(`카드 ${card.cardId}가 무덤으로 이동했습니다.`);
+          diff.log.push(
+            `카드 ${cardName}가 무덤으로 이동했습니다.${
+              cardDesc ? ` (${cardDesc})` : ''
+            }`,
+          );
           break;
         case 'cata_grave':
           engine.state.catastropheGrave.push(card);
-          diff.log.push(`재앙 카드 ${card.cardId}가 재앙 묘지로 이동했습니다.`);
+          diff.log.push(
+            `재앙 카드 ${cardName}가 재앙 묘지로 이동했습니다.${
+              cardDesc ? ` (${cardDesc})` : ''
+            }`,
+          );
           break;
         case 'hand':
           player.hand.push(card);
-          diff.log.push(`카드 ${card.cardId}가 손패로 돌아갔습니다.`);
+          diff.log.push(
+            `카드 ${cardName}가 손패로 돌아갔습니다.${
+              cardDesc ? ` (${cardDesc})` : ''
+            }`,
+          );
           break;
         case 'board':
           // 리추얼 설치 등: 실제 보드에는 RitualInstance 로 이미 표현되어 있으므로
           // resolveStack 에서만 제거하고 별도 이동은 하지 않는다.
           diff.log.push(
-            `카드 ${card.cardId}의 최종 목적지가 보드(board)로 처리되었습니다.`,
+            `카드 ${cardName}의 최종 목적지가 보드(board)로 처리되었습니다.${
+              cardDesc ? ` (${cardDesc})` : ''
+            }`,
           );
           break;
         case 'burn':
           // 완전 소멸: 어떤 컬렉션에도 넣지 않고 제거
-          diff.log.push(`카드 ${card.cardId}가 완전히 소멸(burn)되었습니다.`);
+          diff.log.push(
+            `카드 ${cardName}가 완전히 소멸(burn)되었습니다.${
+              cardDesc ? ` (${cardDesc})` : ''
+            }`,
+          );
           break;
         default:
           break;

@@ -760,6 +760,22 @@ export class GameEngineCore {
 
     // onUsePerTurn 트리거 이펙트를 스택에 올린다.
     const diff: DiffPatch = { animations: [], log: [] };
+
+    // 카드 메타를 조회하여 이름/설명 기반 로그를 남긴다.
+    const meta = await this.ctx.lookupCard(ritual.cardId);
+    const cardName =
+      (meta && (meta as any).name_ko) ||
+      (meta && (meta as any).name_dev) ||
+      ritual.cardId;
+    const cardDesc =
+      (meta && (meta as any).description_ko) ||
+      (meta && (meta as any).description) ||
+      '';
+    diff.log.push(
+      `플레이어 ${playerId}가 마법진 ${cardName}을(를) 사용했습니다.${
+        cardDesc ? ` (${cardDesc})` : ''
+      }`,
+    );
     await this.enqueueCardTriggerEffects(
       ritual.cardId,
       'onUsePerTurn',
