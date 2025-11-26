@@ -30,6 +30,15 @@ export async function handleMoveAction(
   const toR = absPos.r;
   const toC = absPos.c;
 
+  // 한 칸(상하좌우) 이동만 허용: 현재 위치와의 택시 거리가 1인지 확인
+  const taxiDistance = Math.abs(wizard.r - toR) + Math.abs(wizard.c - toC);
+  const checkAdjacent = engine.require(
+    taxiDistance === 1,
+    playerId,
+    'invalid_target',
+  );
+  if (checkAdjacent) return checkAdjacent;
+
   const checkPositionValid = engine.require(
     isInsideBoard(engine.state.board, toR, toC),
     playerId,

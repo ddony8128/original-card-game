@@ -4,7 +4,6 @@ import type { GameEngineCore } from './index';
 import { GamePhase, type PlayerID } from '../../type/gameState';
 import {
   computeInstallPositions,
-  computeCastTargetPositions,
   toViewerPos,
   fromViewerPos,
   isInsideBoard,
@@ -35,7 +34,7 @@ import {
   checkBurnCondition,
   checkDrawCataCondition,
 } from '../effects/conditions';
-import { MANA_INC_PER_TURN } from '../rules/constants';
+import { MANA_CEILING, MANA_INC_PER_TURN } from '../rules/constants';
 
 export async function resolveEffect(
   engine: GameEngineCore,
@@ -267,7 +266,10 @@ export async function resolveEffect(
       if (!player) break;
 
       // 최대 마나 증가
-      player.maxMana += MANA_INC_PER_TURN;
+      player.maxMana = Math.min(
+        player.maxMana + MANA_INC_PER_TURN,
+        MANA_CEILING,
+      );
 
       // 마나 회복은 별도 Effect로 처리 (스택을 통해 일관성 유지)
       const manaGain: ManaGainEffect = {
@@ -502,7 +504,24 @@ export async function resolveEffect(
 
       // 선택형 damage: 대상 위치 선택 (select_damage_target)
       if (e.selectMode === 'choose_target' && typeof e.range === 'number') {
-        const positions = computeCastTargetPositions(board, owner, e.range);
+        // 자동 대상 확정은 하지 않고, "선택 가능한 위치"만 계산한다.
+        // 현재는 enemy 마법사 한 명만 존재하므로,
+        // range 이내에 enemy 마법사가 있으면 그 위치 하나만 후보로 제공한다.
+        const positions: { r: number; c: number }[] = [];
+        const casterPos = board.wizards[owner];
+        const enemyEntry = Object.entries(board.wizards).find(
+          ([pid]) => pid !== owner,
+        );
+        if (casterPos && enemyEntry) {
+          const enemyPos = enemyEntry[1];
+          const dist =
+            Math.abs(casterPos.r - enemyPos.r) +
+            Math.abs(casterPos.c - enemyPos.c);
+          if (dist <= e.range) {
+            positions.push({ r: enemyPos.r, c: enemyPos.c });
+          }
+        }
+
         if (!positions || positions.length === 0) {
           diff.log.push(
             '피해를 줄 수 있는 대상이 없어 DAMAGE 효과가 무효 처리되었습니다.',

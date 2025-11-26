@@ -533,6 +533,20 @@ describe('GameEngineCore card simulation', () => {
       cardInstance,
     } as any);
 
+    // 선택형 damage(select_damage_target) 입력이 필요한 경우 처리
+    if ((engine as any).pendingInput) {
+      const pendingInput = (engine as any).pendingInput;
+      if (
+        pendingInput.kind.type === 'map' &&
+        pendingInput.kind.kind === 'select_damage_target'
+      ) {
+        const firstOption = pendingInput.options?.[0];
+        await engine.handlePlayerInput(P1, {
+          answer: firstOption,
+        } as any);
+      }
+    }
+
     expect(engine.state.players[P2].hp).toBe(18);
   });
 
@@ -613,6 +627,20 @@ describe('GameEngineCore card simulation', () => {
       action: 'use_card',
       cardInstance,
     } as any);
+
+    // 선택형 damage(select_damage_target) 입력이 필요한 경우 처리
+    if ((engine as any).pendingInput) {
+      const pendingInput = (engine as any).pendingInput;
+      if (
+        pendingInput.kind.type === 'map' &&
+        pendingInput.kind.kind === 'select_damage_target'
+      ) {
+        const firstOption = pendingInput.options?.[0];
+        await engine.handlePlayerInput(P1, {
+          answer: firstOption,
+        } as any);
+      }
+    }
 
     expect(engine.state.players[P2].hp).toBe(17);
   });
@@ -725,6 +753,20 @@ describe('GameEngineCore card simulation', () => {
       action: 'use_card',
       cardInstance,
     } as any);
+
+    // 선택형 damage(select_damage_target) 입력이 필요한 경우 처리
+    if ((engine as any).pendingInput) {
+      const pendingInput = (engine as any).pendingInput;
+      if (
+        pendingInput.kind.type === 'map' &&
+        pendingInput.kind.kind === 'select_damage_target'
+      ) {
+        const firstOption = pendingInput.options?.[0];
+        await engine.handlePlayerInput(P1, {
+          answer: firstOption,
+        } as any);
+      }
+    }
 
     expect(engine.state.players[P2].hp).toBe(18);
   });

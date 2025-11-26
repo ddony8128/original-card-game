@@ -692,10 +692,32 @@ export class GameEngineCore {
     if (!meta || !meta.effectJson) return;
     const parsed = parseCardEffectJson(meta.effectJson);
     if (!parsed) return;
-    const t = parsed.triggers.find((tr) => tr.trigger === trigger);
-    if (!t) return;
 
-    const effects = buildEffectsFromConfigs(t.effects, actor, cardId, options);
+    const t = parsed.triggers.find((tr) => tr.trigger === trigger);
+    // 기본 트리거 이펙트들
+    let effectConfigs = t?.effects ?? [];
+
+    // ritual 카드의 경우, effectJson.install 정보를 기반으로 INSTALL 이펙트를 추가로 생성한다.
+    // - install.range 값을 그대로 InstallEffectConfig.range 로 전달한다.
+    if (trigger === 'onCast' && parsed.type === 'ritual' && parsed.install) {
+      effectConfigs = [
+        ...effectConfigs,
+        {
+          type: 'install',
+          object: cardId,
+          range: parsed.install.range,
+        } as any,
+      ];
+    }
+
+    if (!effectConfigs.length) return;
+
+    const effects = buildEffectsFromConfigs(
+      effectConfigs,
+      actor,
+      cardId,
+      options,
+    );
     if (effects.length > 0) {
       this.effectStack.push(effects);
     }

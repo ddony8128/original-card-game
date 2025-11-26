@@ -240,6 +240,20 @@ export function buildEffectsFromConfigs(
             : options?.invertSelfEnemy && c.target === 'enemy'
               ? 'self'
               : c.target;
+
+        // 이 게임에서는 자동 대상(near_enemy 자동 타격)을 사용하지 않는다.
+        // 카드 JSON에 type: damage, target: near_enemy, range: N 이 들어오면
+        // 무조건 플레이어 선택형(select_damage_target)으로 처리하기 위해
+        // selectMode 를 강제로 'choose_target' 으로 설정한다.
+        let selectMode = c.selectMode;
+        if (
+          !selectMode &&
+          c.target === 'near_enemy' &&
+          typeof c.range === 'number'
+        ) {
+          selectMode = 'choose_target';
+        }
+
         const eff: DamageEffect = {
           type: 'DAMAGE',
           owner: actor,
@@ -247,7 +261,7 @@ export function buildEffectsFromConfigs(
           target,
           range: c.range,
           condition: c.condition,
-          selectMode: c.selectMode,
+          selectMode,
         };
         effects.push(eff);
         break;

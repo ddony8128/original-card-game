@@ -132,6 +132,15 @@ export default function Game() {
       return;
     }
 
+    // 인접한 칸(상하좌우)로만 이동 가능하도록 클라이언트에서도 한 번 더 체크
+    const dx = Math.abs(playerPosition.x - position.x);
+    const dy = Math.abs(playerPosition.y - position.y);
+    const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+    if (!isAdjacent) {
+      toast.error('인접한 칸으로만 이동할 수 있습니다.');
+      return;
+    }
+
     sendPlayerAction({ action: 'move', to: [position.y, position.x] });
     toast.info('이동 시도', {
       description: `셀 (${position.x}, ${position.y})을 클릭했습니다.`,
@@ -297,10 +306,25 @@ export default function Game() {
               type = 'target';
           }
 
+          // 카드 선택 계열 요청(choose_discard / choose_burn)은
+          // 카드 메타 정보를 붙여서 모달에 사람이 읽을 수 있는 텍스트가 보이도록 가공
+          let options: InputOption[] = optionRequest.options as InputOption[];
+          if (kindId === 'choose_discard' || kindId === 'choose_burn') {
+            options = (optionRequest.options as CardInstance[]).map((inst) => {
+              const meta = getCardMeta(inst.cardId);
+              return {
+                ...inst,
+                name: meta?.name ?? inst.cardId,
+                mana: meta?.mana,
+                description: meta?.description,
+              } as InputOption;
+            });
+          }
+
           return {
             type,
             prompt: `입력이 필요합니다: ${kindId}`,
-            options: optionRequest.options as InputOption[],
+            options,
           };
         })()
       : null;

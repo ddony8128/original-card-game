@@ -129,36 +129,3 @@ export function canInstallAt(
 
   return true;
 }
-
-/**
- * 시전자의 cast_target(예: near_enemy)을 위해,
- * range 범위 안에 있는 상대 마법사 위치들을 계산한다.
- *
- * - 현재 게임은 1:1 구조이므로 0개 또는 1개의 위치만 반환된다.
- * - range 가 주어지면 택시 거리 기준으로 range 이내인 경우에만 포함된다.
- */
-export function computeCastTargetPositions(
-  board: GameState['board'],
-  casterId: PlayerID,
-  range?: number,
-): { r: number; c: number }[] {
-  const positions: { r: number; c: number }[] = [];
-  const { wizards } = board;
-
-  const casterPos = wizards[casterId];
-  if (!casterPos) return positions;
-
-  const enemyEntry = Object.entries(wizards).find(([pid]) => pid !== casterId);
-  if (!enemyEntry) return positions;
-
-  const enemyPos = enemyEntry[1];
-
-  if (range !== undefined) {
-    const taxiDistance =
-      Math.abs(casterPos.r - enemyPos.r) + Math.abs(casterPos.c - enemyPos.c);
-    if (taxiDistance > range) return positions;
-  }
-
-  positions.push({ r: enemyPos.r, c: enemyPos.c });
-  return positions;
-}
