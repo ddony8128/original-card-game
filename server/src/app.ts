@@ -12,7 +12,11 @@ export const app = express();
 
 app.use(
   cors({
-    origin: ['https://original-card-game.vercel.app', 'http://localhost:5173'],
+    origin: [
+      'https://original-card-game.vercel.app',
+      'http://localhost:5173',
+      'https://cardgame.perfect.ai.kr',
+    ],
     credentials: true,
   }),
 );
