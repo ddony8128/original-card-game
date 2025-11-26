@@ -1,7 +1,7 @@
 import type { PlayerID, CardInstance } from '../../type/gameState';
 import type { GameEngineCore, EngineResult } from './index';
 import { MOVE_MANA_COST } from '../rules/constants';
-import { isInsideBoard } from './boardUtils';
+import { isInsideBoard, fromViewerPos } from './boardUtils';
 import type {
   MoveEffect,
   TurnEndEffect,
@@ -19,7 +19,17 @@ export async function handleMoveAction(
   const checkWizardExists = engine.require(!!wizard, playerId, 'no_wizard');
   if (checkWizardExists) return checkWizardExists;
 
-  const [toR, toC] = payload.to;
+  // 클라이언트에서 온 좌표는 viewer 기준이므로, 절대 좌표로 변환한다.
+  const [viewR, viewC] = payload.to;
+  const absPos = fromViewerPos(
+    engine.state.board,
+    engine.bottomSidePlayerId,
+    { r: viewR, c: viewC },
+    playerId,
+  );
+  const toR = absPos.r;
+  const toC = absPos.c;
+
   const checkPositionValid = engine.require(
     isInsideBoard(engine.state.board, toR, toC),
     playerId,
