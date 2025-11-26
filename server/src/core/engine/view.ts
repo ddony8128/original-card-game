@@ -68,7 +68,7 @@ export async function toFoggedState(
     };
   });
 
-  // 묘지 및 resolve stack에 있는 모든 카드 ID 수집
+  // 묘지 / 보드 위 리추얼 / resolve stack 에 있는 모든 카드 ID 수집
   const cardIdsToFetch = new Set<string>();
 
   // 내 묘지
@@ -84,6 +84,11 @@ export async function toFoggedState(
   // 재앙 묘지
   state.catastropheGrave.forEach((instance) => {
     cardIdsToFetch.add(instance.cardId);
+  });
+
+  // 보드 위 리추얼
+  state.board.rituals.forEach((ritual) => {
+    cardIdsToFetch.add(ritual.cardId);
   });
 
   // 내 resolve stack

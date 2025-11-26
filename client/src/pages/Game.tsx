@@ -23,7 +23,7 @@ import { useGameSocket } from '@/ws/useGameSocket';
 import { useMulliganRequest } from '@/components/game/useMulliganRequest';
 import { cn } from '@/shared/lib/utils';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
-import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
+import type { PlayerActionPayload, RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
 
 export default function Game() {
@@ -32,6 +32,7 @@ export default function Game() {
   const { data: me } = useMeQuery();
   const fogged = useGameFogStore((s) => s.fogged);
   const lastDiff = useGameFogStore((s) => s.lastDiff);
+  const logs = useGameFogStore((s) => s.logs);
   const requestInput = useGameFogStore((s) => s.requestInput);
   const setRequestInput = useGameFogStore((s) => s.setRequestInput);
   const clearLastDiff = useGameFogStore((s) => s.clearLastDiff);
@@ -65,6 +66,25 @@ export default function Game() {
   const { mulliganRequest, handleMulliganResponse, handleMulliganCancel } = useMulliganRequest({
     sendAnswerMulligan,
   });
+
+  // diff.log 기반 클라이언트 로그를 "나/상대" 시점으로 변환
+  const perspectiveLogs = useMemo(() => {
+    if (!logs || !fogged) return [];
+    const boardWizards = fogged.board.wizards;
+    const opponentId =
+      myId && fogged ? Object.keys(boardWizards).find((id) => id !== myId) : undefined;
+
+    return logs.map((log) => {
+      let text = log.text;
+      if (myId) {
+        text = text.replaceAll(`플레이어 ${myId}`, '나');
+      }
+      if (opponentId) {
+        text = text.replaceAll(`플레이어 ${opponentId}`, '상대');
+      }
+      return { ...log, text };
+    });
+  }, [logs, myId, fogged]);
 
   // ---- request_input 해석 ----
 
@@ -115,37 +135,7 @@ export default function Game() {
       return;
     }
 
-    // 2) 일반 이동 액션 처리 (request_input 이 아닐 때)
-
-    // 상대 마법사가 있는 칸으로는 이동하지 않도록 클라이언트에서 차단
-    if (position.x === opponentPosition.x && position.y === opponentPosition.y) {
-      toast.error('상대 마법사가 있는 칸으로는 이동할 수 없습니다.');
-      return;
-    }
-
-    if (!myId || !isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
-      return;
-    }
-    if (!hasEnoughMana(1)) {
-      toast.error('마나가 부족하여 이동할 수 없습니다.');
-      return;
-    }
-
-    // 인접한 칸(상하좌우)로만 이동 가능하도록 클라이언트에서도 한 번 더 체크
-    const dx = Math.abs(playerPosition.x - position.x);
-    const dy = Math.abs(playerPosition.y - position.y);
-    const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-    if (!isAdjacent) {
-      toast.error('인접한 칸으로만 이동할 수 있습니다.');
-      return;
-    }
-
-    sendPlayerAction({ action: 'move', to: [position.y, position.x] });
-    toast.info('이동 시도', {
-      description: `셀 (${position.x}, ${position.y})을 클릭했습니다.`,
-    });
-    console.log('sendPlayerAction', { action: 'move', to: [position.y, position.x] });
+    // 2) 일반 상황에서는 클릭으로 "선택"만 하고, 실제 이동/리추얼 사용은 아래 패널 버튼으로 처리
   };
 
   const handlePlayCard = (index: number) => {
@@ -183,6 +173,66 @@ export default function Game() {
 
     sendPlayerAction({ action: 'end_turn' });
     console.log('sendPlayerAction', { action: 'end_turn' });
+  };
+
+  const handleMoveToSelected = () => {
+    if (!fogged || !myId || !selectedBoardPosition) return;
+    if (!isMyTurn(myId)) {
+      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      return;
+    }
+    if (!hasEnoughMana(1)) {
+      toast.error('마나가 부족하여 이동할 수 없습니다.');
+      return;
+    }
+
+    const position = selectedBoardPosition;
+    // 상대 마법사가 있는 칸으로는 이동 금지
+    if (position.x === opponentPosition.x && position.y === opponentPosition.y) {
+      toast.error('상대 마법사가 있는 칸으로는 이동할 수 없습니다.');
+      return;
+    }
+
+    // 인접한 칸(상하좌우)만 허용
+    const dx = Math.abs(playerPosition.x - position.x);
+    const dy = Math.abs(playerPosition.y - position.y);
+    const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
+    if (!isAdjacent) {
+      toast.error('인접한 칸으로만 이동할 수 있습니다.');
+      return;
+    }
+
+    sendPlayerAction({ action: 'move', to: [position.y, position.x] });
+    toast.info('이동 시도', {
+      description: `셀 (${position.x}, ${position.y})으로 이동을 시도합니다.`,
+    });
+    console.log('sendPlayerAction', { action: 'move', to: [position.y, position.x] });
+  };
+
+  const handleUseRitualAtSelected = () => {
+    if (!fogged || !myId || !selectedBoardPosition) return;
+    if (!isMyTurn(myId)) {
+      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      return;
+    }
+
+    const { x, y } = selectedBoardPosition;
+    const r = y;
+    const c = x;
+    const ritual = fogged.board.rituals.find(
+      (rt) => rt.owner === myId && rt.pos.r === r && rt.pos.c === c,
+    );
+    if (!ritual) {
+      toast.error('선택한 칸에 내가 사용할 수 있는 리추얼이 없습니다.');
+      return;
+    }
+
+    // 서버 프로토콜은 확장 가능하므로 ritualId 필드를 함께 전송
+    sendPlayerAction({ action: 'use_ritual', ritualId: ritual.id } as PlayerActionPayload);
+    toast.info('리추얼 사용', {
+      description: `리추얼 ${ritual.cardId}을(를) 사용했습니다.`,
+    });
+    console.log('sendPlayerAction', { action: 'use_ritual', ritualId: ritual.id });
   };
 
   // 묘지 카드를 DeckCard 형태로 변환
@@ -240,6 +290,10 @@ export default function Game() {
     fogged && myId
       ? Object.entries(fogged.board.wizards).find(([id]) => id !== myId)?.[1]
       : undefined;
+
+  const isGameOver = fogged?.phase === 'GAME_OVER';
+  const isWin = myId && fogged?.winner === myId;
+  const isLose = myId && fogged?.winner && fogged.winner !== myId;
 
   if (!fogged) {
     return (
@@ -385,14 +439,42 @@ export default function Game() {
         />
 
         {/* Game Board */}
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <GameBoard
             playerPosition={playerPosition}
             opponentPosition={opponentPosition}
             selectedPosition={selectedBoardPosition}
             highlightPositions={mapHighlightPositions}
+            rituals={fogged.board.rituals.map((r) => {
+              const meta = getCardMeta(r.cardId);
+              return {
+                x: r.pos.c,
+                y: r.pos.r,
+                name: meta?.name ?? r.cardId,
+                description: meta?.description,
+                isMine: myId ? r.owner === myId : false,
+              };
+            })}
             onCellClick={handleBoardCellClick}
           />
+
+          {selectedBoardPosition && (
+            <div className="bg-card text-card-foreground flex w-full max-w-md items-center justify-between rounded-lg border px-3 py-2 text-xs shadow-sm">
+              <div>
+                <div className="font-semibold">
+                  선택한 칸: ({selectedBoardPosition.x}, {selectedBoardPosition.y})
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handleMoveToSelected}>
+                  이 칸으로 이동
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleUseRitualAtSelected}>
+                  리추얼 사용
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Player Info + Logs + My Deck */}
@@ -404,7 +486,7 @@ export default function Game() {
             maxMana={fogged.me.maxMana}
             label="나"
           />
-          <GameLog logs={fogged.lastActions} />
+          <GameLog logs={perspectiveLogs} />
           <DeckInfo
             deckCount={fogged.me.deckCount}
             graveCount={fogged.me.graveCount}
@@ -521,6 +603,40 @@ export default function Game() {
         cards={graveCards}
         title={graveModalTitle}
       />
+
+      {isGameOver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <div className="bg-card text-card-foreground border-primary/60 shadow-primary/40 mx-4 max-w-md rounded-2xl border p-8 text-center shadow-2xl">
+            <div className="mb-4 text-4xl font-extrabold tracking-tight">
+              {isWin && (
+                <span className="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]">
+                  승리!
+                </span>
+              )}
+              {isLose && (
+                <span className="text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]">
+                  패배…
+                </span>
+              )}
+              {!isWin && !isLose && (
+                <span className="text-amber-300 drop-shadow-[0_0_15px_rgba(252,211,77,0.8)]">
+                  무승부
+                </span>
+              )}
+            </div>
+            <p className="text-muted-foreground mb-6 text-sm">
+              치열한 한 판이 끝났습니다. 로비로 돌아가서 다음 게임을 준비해 주세요.
+            </p>
+            <Button
+              size="lg"
+              className="bg-primary text-primary-foreground w-full animate-pulse font-semibold"
+              onClick={() => navigate('/lobby')}
+            >
+              로비로 돌아가기
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

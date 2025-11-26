@@ -220,14 +220,8 @@ export class GameEngineCore {
           (action as any).target as [number, number] | undefined,
         );
       case 'use_ritual':
-        // TODO: 카드 메타/ritual 효과 이용한 install/cast/use_ritual 구현
-        return [
-          {
-            kind: 'invalid_action',
-            targetPlayer: playerId,
-            invalidReason: 'not_implemented',
-          },
-        ];
+        // 보드 위에 설치된 자신의 ritual 을 1턴 1회 사용(onUsePerTurn)하는 액션
+        return await this.handleUseRitualAction(playerId, action as any);
       default:
         return [
           {
@@ -721,5 +715,58 @@ export class GameEngineCore {
     if (effects.length > 0) {
       this.effectStack.push(effects);
     }
+  }
+
+  async handleUseRitualAction(
+    playerId: PlayerID,
+    action: PlayerActionPayload,
+  ): Promise<EngineResult[]> {
+    const checkIsActivePlayer = this.require(
+      this.state.activePlayer === playerId,
+      playerId,
+      'not_your_turn',
+    );
+    if (checkIsActivePlayer) return checkIsActivePlayer;
+
+    const ritualId = (action as any).ritualId as string | undefined;
+    const checkRitualIdExists = this.require(
+      !!ritualId,
+      playerId,
+      'invalid_ritual',
+    );
+    if (checkRitualIdExists) return checkRitualIdExists;
+    if (!ritualId) return this.invalidAction(playerId, 'invalid_ritual');
+
+    const ritual = this.state.board.rituals.find(
+      (r) => r.id === ritualId && r.owner === playerId,
+    );
+    const checkRitualExists = this.require(
+      !!ritual,
+      playerId,
+      'invalid_ritual',
+    );
+    if (checkRitualExists) return checkRitualExists;
+    if (!ritual) return this.invalidAction(playerId, 'invalid_ritual');
+
+    // 1턴 1회 사용 체크
+    const checkNotUsedThisTurn = this.require(
+      !ritual.usedThisTurn,
+      playerId,
+      'ritual_already_used',
+    );
+    if (checkNotUsedThisTurn) return checkNotUsedThisTurn;
+
+    ritual.usedThisTurn = true;
+
+    // onUsePerTurn 트리거 이펙트를 스택에 올린다.
+    const diff: DiffPatch = { animations: [], log: [] };
+    await this.enqueueCardTriggerEffects(
+      ritual.cardId,
+      'onUsePerTurn',
+      playerId,
+      diff,
+    );
+
+    return await this.stepUntilStable();
   }
 }

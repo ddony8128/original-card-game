@@ -365,14 +365,20 @@ export function buildEffectsFromConfigs(
       }
       case 'install': {
         const c = cfg as InstallEffectConfig;
-        const dummyInstance: CardInstance = {
-          id: `install_${actor}_${c.object}`,
+        // INSTALL 은 가능하면 실제 카드 인스턴스를 대상으로 해야 한다.
+        // - CAST_EXECUTE(options.sourceInstanceId) 를 통해 들어오는 경우,
+        //   sourceInstanceId 를 그대로 사용하여 resolveStack 에 있는 카드와 연결한다.
+        // - 그 외(예: 테스트나 특수 효과)는 fallback 으로 dummy 인스턴스를 사용한다.
+        const instanceId =
+          options?.sourceInstanceId ?? `install_${actor}_${c.object}`;
+        const object: CardInstance = {
+          id: instanceId,
           cardId: c.object as CardID,
         };
         const eff: InstallEffect = {
           type: 'INSTALL',
           owner: actor,
-          object: dummyInstance,
+          object,
           range: c.range,
         };
         effects.push(eff);

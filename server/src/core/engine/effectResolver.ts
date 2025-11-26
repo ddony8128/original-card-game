@@ -271,15 +271,6 @@ export async function resolveEffect(
         MANA_CEILING,
       );
 
-      // 마나 회복은 별도 Effect로 처리 (스택을 통해 일관성 유지)
-      const manaGain: ManaGainEffect = {
-        type: 'MANA_GAIN',
-        owner: turnStart.owner,
-        value: player.maxMana,
-        target: 'self',
-      };
-      engine.effectStack.push(manaGain);
-
       diff.log.push(`플레이어 ${turnStart.owner} 턴 시작`);
 
       // 일반 드로우 1장
@@ -288,6 +279,16 @@ export async function resolveEffect(
       engine.enqueueTriggeredEffects('onTurnStart', {
         playerId: turnStart.owner,
       });
+
+      // 마나 회복은 별도 Effect로 처리 (스택을 통해 일관성 유지)
+      const manaGain: ManaGainEffect = {
+        type: 'MANA_GAIN',
+        owner: turnStart.owner,
+        value: player.maxMana - player.mana,
+        target: 'self',
+      };
+      engine.effectStack.push(manaGain);
+
       break;
     }
     case 'CHANGE_TURN': {
