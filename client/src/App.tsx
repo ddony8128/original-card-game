@@ -8,6 +8,7 @@ import DeckBuilder from './pages/DeckBuilder';
 import BackRoom from './pages/BackRoom';
 import Game from './pages/Game';
 import NotFound from './pages/NotFound';
+import Review from './pages/Review';
 import RequireAuth from './components/auth/RequireAuth';
 import RequireParticipant from './components/auth/RequireParticipant';
 
@@ -34,6 +35,14 @@ const App = () => (
             element={
               <RequireAuth>
                 <DeckBuilder />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/review"
+            element={
+              <RequireAuth>
+                <Review />
               </RequireAuth>
             }
           />

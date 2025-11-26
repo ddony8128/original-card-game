@@ -216,6 +216,13 @@ export default function Lobby() {
         </Card>
 
         <WaitingRoomsList />
+
+        {/* 리뷰 페이지로 이동 */}
+        <div className="flex justify-end">
+          <Button variant="outline" onClick={() => navigate('/review')}>
+            리뷰하러 가기
+          </Button>
+        </div>
       </div>
     </div>
   );

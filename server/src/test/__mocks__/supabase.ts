@@ -7,7 +7,8 @@ type TableName =
   | 'decks'
   | 'rooms'
   | 'game_results'
-  | 'game_turn_logs';
+  | 'game_turn_logs'
+  | 'reviews';
 
 type Row = Record<string, any>;
 
@@ -18,6 +19,7 @@ const tables: Record<TableName, Row[]> = {
   rooms: [],
   game_results: [],
   game_turn_logs: [],
+  reviews: [],
 };
 
 // Seed cards for filtering and deck validation (requested list)

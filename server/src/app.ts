@@ -7,6 +7,7 @@ import { cardsRouter } from './routes/cards';
 import { decksRouter } from './routes/decks';
 import { matchRouter } from './routes/match';
 import { logsRouter } from './routes/logs';
+import { reviewsRouter } from './routes/reviews';
 
 export const app = express();
 
@@ -29,6 +30,7 @@ app.use('/api/cards', cardsRouter);
 app.use('/api/decks', decksRouter);
 app.use('/api/match', matchRouter);
 app.use('/api/game', logsRouter);
+app.use('/api/reviews', reviewsRouter);
 
 // Health under /api for consistency
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));

@@ -33,6 +33,10 @@ it('카드 추가 및 제한 일부 동작 확인', async () => {
   expect(fire).toBeTruthy();
   expect(blaze).toBeTruthy();
 
+  // 재앙 카드 탭으로 전환
+  const cataTab = await screen.findByRole('button', { name: '재앙 카드' });
+  fireEvent.click(cataTab);
+
   // 파이어볼 클릭 → 덱 패널에 count 1 표시
   fireEvent.click(fire);
   // 오른쪽 패널의 "메인 카드" 섹션에서 count 뱃지 확인
@@ -105,6 +109,11 @@ it('저장 요청 payload 형태 검증(main/cata {id,count})', async () => {
     fireEvent.click(el);
     fireEvent.click(el);
   }
+
+  // 재앙 카드 탭으로 전환
+  const cataTab = await screen.findByRole('button', { name: '재앙 카드' });
+  fireEvent.click(cataTab);
+
   // 재앙 4장: 4종 × 1장
   const cataNames = ['파멸', '대지진', '해일', '운석'];
   for (const n of cataNames) {

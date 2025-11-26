@@ -2,6 +2,9 @@ import request from 'supertest';
 import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { __getTables } from './__mocks__/supabase.js';
 
+// Ensure JWT secret for auth in tests
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+
 // mock supabase before importing app
 vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
 

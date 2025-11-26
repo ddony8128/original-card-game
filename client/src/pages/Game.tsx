@@ -347,6 +347,7 @@ export default function Game() {
       ? (() => {
           const kind = optionRequest.kind;
           const kindId = kind.kind;
+          const count = optionRequest.count ?? 1;
 
           let type: InputRequest['type'];
           switch (kindId) {
@@ -375,10 +376,43 @@ export default function Game() {
             });
           }
 
+          // ----- 선택해야 하는 장수(min/max) 및 안내 문구 구성 -----
+          const totalOptions = options.length;
+          let minSelect: number | undefined;
+          let maxSelect: number | undefined;
+          let prompt: string;
+
+          if (kindId === 'choose_discard' || kindId === 'choose_burn') {
+            if (totalOptions >= count) {
+              // 선택지가 충분하면 정확히 count 장 선택
+              minSelect = count;
+              maxSelect = count;
+              prompt =
+                type === 'discard'
+                  ? `버릴 카드를 ${count}장 선택하세요.`
+                  : `소멸(burn)할 카드를 ${count}장 선택하세요.`;
+            } else {
+              // 선택지가 부족하면 "모두 선택"해야 진행 가능
+              minSelect = totalOptions;
+              maxSelect = totalOptions;
+              prompt =
+                type === 'discard'
+                  ? `버릴 수 있는 카드는 ${totalOptions}장뿐입니다. 모든 카드를 선택하면 진행됩니다.`
+                  : `소멸(burn)할 수 있는 카드는 ${totalOptions}장뿐입니다. 모든 카드를 선택하면 진행됩니다.`;
+            }
+          } else {
+            // 일반 option 입력: 기본적으로 1개 선택
+            minSelect = 1;
+            maxSelect = 1;
+            prompt = `입력이 필요합니다: ${kindId}`;
+          }
+
           return {
             type,
-            prompt: `입력이 필요합니다: ${kindId}`,
+            prompt,
             options,
+            minSelect,
+            maxSelect,
           };
         })()
       : null;
@@ -627,13 +661,23 @@ export default function Game() {
               )}
             </div>
             <p className="text-muted-foreground mb-6 text-sm">치열한 한 판이 끝났습니다.</p>
-            <Button
-              size="lg"
-              className="bg-primary text-primary-foreground w-full animate-pulse font-semibold"
-              onClick={() => navigate('/lobby')}
-            >
-              로비로 돌아가기
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 font-semibold"
+                onClick={() => navigate('/review')}
+              >
+                리뷰하러 가기
+              </Button>
+              <Button
+                size="lg"
+                className="bg-primary text-primary-foreground flex-1 animate-pulse font-semibold"
+                onClick={() => navigate('/lobby')}
+              >
+                로비로 돌아가기
+              </Button>
+            </div>
           </div>
         </div>
       )}
