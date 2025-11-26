@@ -117,7 +117,7 @@ export class GameEngineCore {
     );
   }
 
-  markReady(): EngineResult[] {
+  async markReady(): Promise<EngineResult[]> {
     // 모든 플레이어 ready → 게임 초기화
 
     if (this.initialized) return [];
@@ -129,7 +129,7 @@ export class GameEngineCore {
     const results: EngineResult[] = [];
 
     // 초기 상태 패치
-    results.push(...this.buildStatePatchForAll());
+    results.push(...(await this.buildStatePatchForAll()));
     this.players.forEach((pid) => {
       const player = this.state.players[pid];
       const initialHand = [...player.hand];
@@ -338,7 +338,7 @@ export class GameEngineCore {
       (pid) => this.state.players[pid].mulliganSelected,
     );
     if (!allDone) {
-      return this.buildStatePatchForAll();
+      return await this.buildStatePatchForAll();
     }
 
     // 모든 플레이어 멀리건 종료 → 첫 턴 시작
@@ -478,9 +478,9 @@ export class GameEngineCore {
     }
 
     if (localDiff.animations.length > 0 || localDiff.log.length > 0) {
-      results.push(...this.buildStatePatchForAll(localDiff));
+      results.push(...(await this.buildStatePatchForAll(localDiff)));
     } else {
-      results.push(...this.buildStatePatchForAll());
+      results.push(...(await this.buildStatePatchForAll()));
     }
 
     // 효과 처리 도중 플레이어 입력이 필요한 상황이 발생했다면
@@ -587,13 +587,16 @@ export class GameEngineCore {
     } as any);
   }
 
-  private buildStatePatchForAll(diff?: DiffPatch): EngineResult[] {
-    const { nextVersion, patches } = buildStatePatchForAllView({
+  private async buildStatePatchForAll(
+    diff?: DiffPatch,
+  ): Promise<EngineResult[]> {
+    const { nextVersion, patches } = await buildStatePatchForAllView({
       state: this.state,
       players: this.players,
       version: this.version,
       bottomSidePlayerId: this.bottomSidePlayerId,
       diff,
+      ctx: this.ctx,
     });
     this.version = nextVersion;
 

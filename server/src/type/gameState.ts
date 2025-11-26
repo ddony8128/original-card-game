@@ -93,6 +93,14 @@ export interface CardInstance {
 // 일단 메타 정보는 따로 제공하거나 클라이언트에서 캐시.
 // CardID만 전달.
 
+export interface PublicHandCard {
+  id: CardID;
+  name: string;
+  mana: number;
+  type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
+  description: string;
+}
+
 export interface FoggedGameState {
   phase: GamePhase;
   turn: number;
@@ -112,6 +120,7 @@ export interface FoggedGameState {
     hand: CardInstance[];
     handCount: number;
     deckCount: number;
+    grave: CardInstance[];
     graveCount: number;
     /** 현재 내 resolveStack (카드 인스턴스만 노출, dest 정보는 서버 전용) */
     resolveStack: CardInstance[];
@@ -123,13 +132,17 @@ export interface FoggedGameState {
     maxMana: number;
     handCount: number;
     deckCount: number;
+    grave: CardInstance[];
     graveCount: number;
     /** 상대 resolveStack (카드 인스턴스만 노출) */
     resolveStack: CardInstance[];
   };
   catastrophe: {
     deckCount: number;
+    grave: CardInstance[];
     graveCount: number;
   };
+  /** 묘지 및 resolve stack에 있는 카드들의 메타 정보 */
+  cardMetas?: PublicHandCard[];
   lastActions?: ClientSideActionLog[];
 }

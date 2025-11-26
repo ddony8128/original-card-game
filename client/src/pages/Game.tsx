@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { GameBoard, type BoardPosition } from '@/components/game/GameBoard';
 import { GameHeader } from '@/components/game/GameHeader';
@@ -12,6 +12,7 @@ import {
   type InputRequest,
   type InputOption,
 } from '@/components/game/RequestInputModal';
+import { DiscardPileModal } from '@/components/game/DiscardPileModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Play } from 'lucide-react';
@@ -23,6 +24,7 @@ import { useMulliganRequest } from '@/components/game/useMulliganRequest';
 import { cn } from '@/shared/lib/utils';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
+import type { CardInstance } from '@/shared/types/game';
 
 export default function Game() {
   const navigate = useNavigate();
@@ -37,6 +39,10 @@ export default function Game() {
   const hasEnoughMana = useGameFogStore((s) => s.hasEnoughMana);
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  const [graveModalOpen, setGraveModalOpen] = useState(false);
+  const [graveModalType, setGraveModalType] = useState<'me' | 'opponent' | 'catastrophe' | null>(
+    null,
+  );
 
   const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } = useGameSocket({
     roomCode: roomCode ?? '',
@@ -170,6 +176,56 @@ export default function Game() {
     console.log('sendPlayerAction', { action: 'end_turn' });
   };
 
+  // 묘지 카드를 DeckCard 형태로 변환
+  const convertGraveToDeckCards = useMemo(
+    () => (grave: CardInstance[] | undefined) => {
+      if (!grave) return [];
+      return grave.map((instance) => {
+        const meta = getCardMeta(instance.cardId);
+        if (!meta) {
+          return {
+            id: instance.cardId,
+            name_dev: '',
+            name_ko: instance.cardId,
+            description_ko: '',
+            type: 'instant' as const,
+            mana: null,
+            count: 1,
+          };
+        }
+        return {
+          id: instance.cardId,
+          name_dev: meta.name || '',
+          name_ko: meta.name,
+          description_ko: meta.description || '',
+          type: meta.type,
+          mana: meta.mana,
+          count: 1,
+        };
+      });
+    },
+    [getCardMeta],
+  );
+
+  const handleViewGrave = (type: 'me' | 'opponent' | 'catastrophe') => {
+    setGraveModalType(type);
+    setGraveModalOpen(true);
+  };
+
+  const graveCards = useMemo(() => {
+    if (!graveModalType || !fogged) return [];
+    switch (graveModalType) {
+      case 'me':
+        return convertGraveToDeckCards(fogged.me.grave);
+      case 'opponent':
+        return convertGraveToDeckCards(fogged.opponent.grave);
+      case 'catastrophe':
+        return convertGraveToDeckCards(fogged.catastrophe.grave);
+      default:
+        return [];
+    }
+  }, [graveModalType, fogged, convertGraveToDeckCards]);
+
   const myWizard = myId && fogged ? fogged.board.wizards[myId] : undefined;
   const opponentWizard =
     fogged && myId
@@ -251,6 +307,13 @@ export default function Game() {
 
   const activeRequest = mulliganRequest ?? currentRequest;
 
+  const graveModalTitle =
+    graveModalType === 'me'
+      ? '내 버린 카드'
+      : graveModalType === 'opponent'
+        ? '상대 버린 카드'
+        : '재앙 덱 버린 카드';
+
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4">
       <div className="mx-auto max-w-7xl space-y-4">
@@ -283,7 +346,9 @@ export default function Game() {
           <DeckInfo
             deckCount={fogged.opponent.deckCount}
             graveCount={fogged.opponent.graveCount}
+            grave={fogged.opponent.grave}
             label="상대 덱"
+            onViewGrave={() => handleViewGrave('opponent')}
           />
         </div>
 
@@ -291,6 +356,8 @@ export default function Game() {
         <CatastropheDeckInfo
           deckCount={fogged.catastrophe.deckCount}
           graveCount={fogged.catastrophe.graveCount}
+          grave={fogged.catastrophe.grave}
+          onViewGrave={() => handleViewGrave('catastrophe')}
         />
 
         {/* Game Board */}
@@ -317,7 +384,9 @@ export default function Game() {
           <DeckInfo
             deckCount={fogged.me.deckCount}
             graveCount={fogged.me.graveCount}
+            grave={fogged.me.grave}
             label="내 덱"
+            onViewGrave={() => handleViewGrave('me')}
           />
         </div>
 
@@ -421,6 +490,12 @@ export default function Game() {
             setRequestInput(null);
           }
         }}
+      />
+      <DiscardPileModal
+        open={graveModalOpen}
+        onOpenChange={setGraveModalOpen}
+        cards={graveCards}
+        title={graveModalTitle}
       />
     </div>
   );

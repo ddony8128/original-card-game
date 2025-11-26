@@ -65,7 +65,7 @@ export async function resolveEffect(
       const player = engine.state.players[targetId];
       if (!player) break;
       const before = player.mana;
-      player.mana = Math.min(player.maxMana, player.mana + manaGain.value);
+      player.mana += manaGain.value;
       const gained = player.mana - before;
       if (gained > 0) {
         diff.log.push(

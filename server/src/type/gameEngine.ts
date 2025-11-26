@@ -104,7 +104,7 @@ export class GameEngineAdapter {
    * 플레이어가 ready 를 눌렀을 때 호출.
    */
   async markReady(): Promise<void> {
-    const results = this.core.markReady();
+    const results = await this.core.markReady();
     this.dispatchResults(results);
   }
 

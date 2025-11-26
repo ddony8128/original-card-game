@@ -7,6 +7,7 @@ import type {
   RequestInputPayload,
   StatePatchPayload,
 } from '@/shared/types/ws';
+import { useCardMetaStore } from './cardMetaStore';
 
 type GameFogState = {
   fogged: FoggedGameState | null;
@@ -36,20 +37,29 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
   requestInput: null,
   mulligan: null,
   selectedDeckId: null,
-  setFromGameInit: (payload) =>
+  setFromGameInit: (payload) => {
+    // 카드 메타 정보 저장
+    if (payload.state.cardMetas && payload.state.cardMetas.length > 0) {
+      useCardMetaStore.getState().upsertFromWsHand(payload.state.cardMetas);
+    }
     set({
       fogged: payload.state,
       version: payload.version,
       lastDiff: null,
       requestInput: null,
       mulligan: null,
-    }),
+    });
+  },
   applyStatePatch: (payload) => {
     const current = get().fogged;
     console.log('[applyStatePatch] payload:', payload);
     if (!current) {
       console.log('[applyStatePatch] No current fogged state. Skipping patch.');
       return;
+    }
+    // 카드 메타 정보 저장
+    if (payload.fogged_state.cardMetas && payload.fogged_state.cardMetas.length > 0) {
+      useCardMetaStore.getState().upsertFromWsHand(payload.fogged_state.cardMetas);
     }
     set({
       fogged: payload.fogged_state,

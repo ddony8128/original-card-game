@@ -21,7 +21,7 @@ export interface PublicHandCard {
   id: CardID;
   name: string;
   mana: number;
-  type: 'instant' | 'ritual';
+  type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
   description: string;
 }
 
@@ -59,6 +59,7 @@ export interface FoggedGameState {
     hand: CardInstance[];
     handCount: number;
     deckCount: number;
+    grave: CardInstance[];
     graveCount: number;
   };
 
@@ -69,13 +70,18 @@ export interface FoggedGameState {
     maxMana: number;
     handCount: number;
     deckCount: number;
+    grave: CardInstance[];
     graveCount: number;
   };
 
   catastrophe: {
     deckCount: number;
+    grave: CardInstance[];
     graveCount: number;
   };
+
+  /** 묘지 및 resolve stack에 있는 카드들의 메타 정보 */
+  cardMetas?: PublicHandCard[];
 
   lastActions?: ClientSideActionLog[];
 }

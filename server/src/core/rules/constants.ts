@@ -9,6 +9,7 @@ export const INITIAL_HP = 20;
 export const INITIAL_MAX_HP = 20;
 export const INITIAL_MANA = 0;
 export const INITIAL_MAX_MANA = 0;
+export const MANA_CEILING = 5;
 export const INITIAL_HAND_LIMIT = 6;
 
 // 마나 관련 규칙
