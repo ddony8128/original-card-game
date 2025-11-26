@@ -115,7 +115,6 @@ export class GameEngineAdapter {
     playerId: PlayerID,
     action: PlayerActionPayload,
   ): Promise<void> {
-    console.log('[GameEngine] handlePlayerAction', playerId, action);
     const results = await this.core.handlePlayerAction(playerId, action);
     this.dispatchResults(results);
   }
@@ -127,7 +126,6 @@ export class GameEngineAdapter {
     playerId: PlayerID,
     payload: { replaceIndices: number[] },
   ) {
-    console.log('[GameEngine] handleAnswerMulligan', playerId, payload);
     const results = await this.core.handleAnswerMulligan(playerId, payload);
     this.dispatchResults(results);
   }
@@ -139,7 +137,6 @@ export class GameEngineAdapter {
     playerId: PlayerID,
     payload: PlayerInputPayload,
   ): Promise<void> {
-    console.log('[GameEngine] handlePlayerInput', playerId, payload);
     const results = await this.core.handlePlayerInput(playerId, payload);
     this.dispatchResults(results);
   }
@@ -151,31 +148,16 @@ export class GameEngineAdapter {
       switch (r.kind) {
         case 'state_patch':
           if (r.statePatch && this.handlers.onStatePatch) {
-            console.log(
-              '[GameEngine] dispatchResults state_patch',
-              r.targetPlayer,
-              r.statePatch,
-            );
             this.handlers.onStatePatch(r.targetPlayer ?? null, r.statePatch);
           }
           break;
         case 'ask_mulligan':
           if (r.askMulligan && this.handlers.onAskMulligan) {
-            console.log(
-              '[GameEngine] dispatchResults ask_mulligan',
-              r.targetPlayer,
-              r.askMulligan,
-            );
             this.handlers.onAskMulligan(r.targetPlayer ?? null, r.askMulligan);
           }
           break;
         case 'request_input':
           if (r.requestInput && this.handlers.onRequestInput) {
-            console.log(
-              '[GameEngine] dispatchResults request_input',
-              r.targetPlayer,
-              r.requestInput,
-            );
             this.handlers.onRequestInput(
               r.targetPlayer ?? null,
               r.requestInput,
@@ -184,17 +166,11 @@ export class GameEngineAdapter {
           break;
         case 'game_over':
           if (r.gameOver && this.handlers.onGameOver) {
-            console.log('[GameEngine] dispatchResults game_over', r.gameOver);
             this.handlers.onGameOver(r.gameOver);
           }
           break;
         case 'invalid_action':
           if (this.handlers.onInvalidAction) {
-            console.log(
-              '[GameEngine] dispatchResults invalid_action',
-              r.targetPlayer,
-              r.invalidReason,
-            );
             const payload: InvalidActionPayload = {
               reason: (r.invalidReason ??
                 'invalid_action') as InvalidActionPayload['reason'],

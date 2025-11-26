@@ -7,6 +7,7 @@ import {
   toViewerPos,
   fromViewerPos,
   isInsideBoard,
+  shuffle,
 } from './boardUtils';
 import type {
   Effect,
@@ -265,6 +266,13 @@ export async function resolveEffect(
       const player = engine.state.players[turnStart.owner];
       if (!player) break;
 
+      // 턴이 시작될 때, 해당 플레이어 소유 마법진의 사용 여부를 초기화
+      engine.state.board.rituals.forEach((ritual) => {
+        if (ritual.owner === turnStart.owner) {
+          ritual.usedThisTurn = false;
+        }
+      });
+
       // 최대 마나 증가
       player.maxMana = Math.min(
         player.maxMana + MANA_INC_PER_TURN,
@@ -273,10 +281,7 @@ export async function resolveEffect(
 
       diff.log.push(`플레이어 ${turnStart.owner} 턴 시작`);
 
-      // 일반 드로우 1장
-      engine.drawCardNoTriggers(turnStart.owner, diff);
-
-      // 리추얼 onTurnStart 트리거 실행
+      // 리추얼 onTurnStart 트리거 실행 이펙트를 먼저 스택에 올린다.
       for (const r of engine.state.board.rituals.filter(
         (ritual) => ritual.owner === turnStart.owner,
       )) {
@@ -296,6 +301,15 @@ export async function resolveEffect(
         target: 'self',
       };
       engine.effectStack.push(manaGain);
+
+      // 일반 드로우 1장은 이제 DRAW 이펙트로 스택에 올린다.
+      const drawEffect: DrawEffect = {
+        type: 'DRAW',
+        owner: turnStart.owner,
+        value: 1,
+        target: 'self',
+      };
+      engine.effectStack.push(drawEffect);
 
       break;
     }
@@ -648,11 +662,15 @@ export async function resolveEffect(
           ? owner
           : Object.keys(players).find((id) => id !== owner);
       if (!targetId) break;
+      const target = players[targetId];
+      if (!target) break;
+
+      const drawCount = e.value ?? 1;
 
       // value > 1 인 경우, 1장짜리 DRAW 이펙트를 여러 개로 분할하여 스택에 올린다.
-      if (e.value > 1) {
+      if (drawCount > 1) {
         const effects: DrawEffect[] = [];
-        for (let i = 0; i < e.value; i += 1) {
+        for (let i = 0; i < drawCount; i += 1) {
           effects.push({
             type: 'DRAW',
             owner,
@@ -665,7 +683,49 @@ export async function resolveEffect(
       }
 
       // value === 1 인 경우에만 실제 드로우 수행
-      (engine as any).drawCardNoTriggers(targetId, diff);
+      let card: CardInstance | null = null;
+
+      // 1) 일반 덱에서 우선 드로우
+      if (target.deck.length > 0) {
+        card = target.deck.shift()!;
+        target.hand.push(card);
+      } else {
+        // 2) 덱이 비어 있으면, 묘지에서 덱 복원
+        if (target.grave.length > 0) {
+          shuffle(target.grave, engine.ctx.random);
+          target.deck = target.grave.splice(0, target.grave.length);
+          diff.log.push(`플레이어 ${targetId}의 덱을 묘지에서 복원`);
+        }
+
+        // 3) 여전히 일반 덱에서 뽑을 카드가 없으면, 재앙 덱을 사용 (DRAW_CATA 이펙트로 위임)
+        if (engine.state.catastropheDeck.length === 0) {
+          if (engine.state.catastropheGrave.length > 0) {
+            shuffle(engine.state.catastropheGrave, engine.ctx.random);
+            engine.state.catastropheDeck = engine.state.catastropheGrave.splice(
+              0,
+              engine.state.catastropheGrave.length,
+            );
+            diff.log.push(`재앙 덱을 묘지에서 복원`);
+          }
+        }
+
+        if (engine.state.catastropheDeck.length > 0) {
+          const drawCata: DrawCataEffect = {
+            type: 'DRAW_CATA',
+            owner: targetId,
+            value: 1,
+          };
+          engine.effectStack.push(drawCata);
+        }
+
+        // 이 DRAW 이펙트에서는 더 이상 카드 드로우/로그를 처리하지 않는다.
+        break;
+      }
+
+      if (card) {
+        diff.animations.push({ kind: 'draw', player: targetId });
+        diff.log.push(`플레이어 ${targetId} 드로우`);
+      }
       break;
     }
     case 'DRAW_CATA': {

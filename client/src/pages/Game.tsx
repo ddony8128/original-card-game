@@ -77,7 +77,7 @@ export default function Game() {
     return logs.map((log) => {
       let text = log.text;
       if (myId) {
-        text = text.replaceAll(`플레이어 ${myId}`, '나');
+        text = text.replaceAll(`플레이어 ${myId}`, '내');
       }
       if (opponentId) {
         text = text.replaceAll(`플레이어 ${opponentId}`, '상대');
@@ -626,9 +626,7 @@ export default function Game() {
                 </span>
               )}
             </div>
-            <p className="text-muted-foreground mb-6 text-sm">
-              치열한 한 판이 끝났습니다. 로비로 돌아가서 다음 게임을 준비해 주세요.
-            </p>
+            <p className="text-muted-foreground mb-6 text-sm">치열한 한 판이 끝났습니다.</p>
             <Button
               size="lg"
               className="bg-primary text-primary-foreground w-full animate-pulse font-semibold"

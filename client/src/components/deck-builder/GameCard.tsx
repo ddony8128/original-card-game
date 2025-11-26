@@ -60,8 +60,10 @@ export const GameCard = ({ card, onClick, count }: GameCardProps) => {
 
       {/* Card Content */}
       <div className="space-y-2 p-3">
-        <h3 className="text-foreground truncate text-sm font-bold">{card.name_ko}</h3>
-        <p className="text-muted-foreground line-clamp-2 min-h-8 text-xs">{card.description_ko}</p>
+        <h3 className="text-foreground line-clamp-1 text-sm font-bold">{card.name_ko}</h3>
+        <p className="text-muted-foreground line-clamp-3 min-h-[3.5rem] text-xs">
+          {card.description_ko}
+        </p>
       </div>
 
       {/* Hover Glow Effect */}

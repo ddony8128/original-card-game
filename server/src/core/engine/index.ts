@@ -613,55 +613,6 @@ export class GameEngineCore {
     return card;
   }
 
-  drawCardNoTriggers(playerId: PlayerID, diff?: DiffPatch) {
-    const p = this.state.players[playerId];
-    if (!p) return;
-
-    // 먼저 일반 덱에서 시도
-    let card = this.bringCardToHand(playerId);
-
-    // 덱이 비어있으면 덱을 복원한 후 재앙덱에서 드로우
-    if (!card) {
-      if (p.grave.length > 0) {
-        shuffle(p.grave, this.ctx.random);
-        p.deck = p.grave.splice(0, p.grave.length);
-        // diff?.animations.push({ kind: 'shuffle', player: playerId });
-        diff?.log.push(`플레이어 ${playerId}의 덱을 묘지에서 복원`);
-      }
-
-      // 재앙덱이 비어있으면 재앙 묘지에서 셔플하여 재앙덱으로 복원
-      if (this.state.catastropheDeck.length === 0) {
-        if (this.state.catastropheGrave.length > 0) {
-          shuffle(this.state.catastropheGrave, this.ctx.random);
-          this.state.catastropheDeck = this.state.catastropheGrave.splice(
-            0,
-            this.state.catastropheGrave.length,
-          );
-          // diff?.animations.push({ kind: 'shuffle_catastrophe', player: playerId });
-          diff?.log.push(`재앙 덱을 묘지에서 복원`);
-        }
-      }
-
-      const catastropheCard = this.state.catastropheDeck.shift();
-      if (catastropheCard) {
-        // 재앙 카드는 손패에 넣음
-        // -> TODO : 재앙 카드의 onDrawn 트리거가 실행된 후 바로 묘지로 이동하도록 수정.
-        p.hand.push(catastropheCard);
-        card = catastropheCard;
-        if (diff) {
-          diff.log.push(
-            `플레이어 ${playerId}가 재앙 카드를 뽑았습니다. (${catastropheCard.cardId})`,
-          );
-        }
-      }
-    }
-
-    if (card && diff) {
-      diff.animations.push({ kind: 'draw', player: playerId });
-      diff.log.push(`플레이어 ${playerId} 드로우`);
-    }
-  }
-
   enqueueTriggeredEffects(trigger: string, context: unknown) {
     const effects = this.observers.collectTriggeredEffects(
       trigger as any,

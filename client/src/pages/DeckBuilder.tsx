@@ -26,6 +26,7 @@ const DeckBuilder = () => {
   const [deckName, setDeckName] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedMana, setSelectedMana] = useState<number | null>(null);
+  const [selectedTab, setSelectedTab] = useState<'main' | 'cata'>('main');
 
   const [serverEditingDeckId, setServerEditingDeckId] = useState<string | null>(null);
   const [deckCards, setDeckCards] = useState<DeckCard[]>([]);
@@ -76,19 +77,28 @@ const DeckBuilder = () => {
     }
   }, [searchParams, serverDecks, cardDtoById]);
 
-  const allCards: LocalCard[] = (cardsResp?.cards ?? []).map(
-    (dto): LocalCard => ({
-      id: dto.id,
-      name_dev: dto.name_dev,
-      name_ko: dto.name_ko,
-      description_ko: dto.description_ko ?? '',
-      mana: dto.mana,
-      type: dto.type as 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item',
-    }),
-  );
+  const allCards: LocalCard[] = (cardsResp?.cards ?? [])
+    // token 카드 필터링
+    .filter((dto) => !dto.token)
+    .map(
+      (dto): LocalCard => ({
+        id: dto.id,
+        name_dev: dto.name_dev,
+        name_ko: dto.name_ko,
+        description_ko: dto.description_ko ?? '',
+        mana: dto.mana,
+        type: dto.type as 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item',
+      }),
+    );
 
-  // 필터링은 서버에서 처리하므로 그대로 사용
-  const filteredCards = allCards;
+  // 탭(메인 / 재앙)에 따라 표시할 카드 분리
+  const filteredCards = useMemo(() => {
+    if (selectedTab === 'cata') {
+      return allCards.filter((c) => c.type === 'catastrophe');
+    }
+    // main 탭: 재앙이 아닌 카드만
+    return allCards.filter((c) => c.type !== 'catastrophe');
+  }, [allCards, selectedTab]);
 
   const isCatastrophe = (cardId: string) => {
     const dto = cardDtoById.get(cardId);
@@ -230,7 +240,7 @@ const DeckBuilder = () => {
           </h1>
         </div>
 
-        <div className="mb-6 flex gap-4">
+        <div className="mb-6 flex flex-wrap gap-4">
           <Input
             placeholder="덱 이름"
             value={deckName}
@@ -252,6 +262,24 @@ const DeckBuilder = () => {
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
             />
+
+            {/* 메인 / 재앙 카드 탭 전환 */}
+            <div className="flex items-center gap-2 px-1">
+              <Button
+                size="sm"
+                variant={selectedTab === 'main' ? 'default' : 'outline'}
+                onClick={() => setSelectedTab('main')}
+              >
+                메인 카드
+              </Button>
+              <Button
+                size="sm"
+                variant={selectedTab === 'cata' ? 'default' : 'outline'}
+                onClick={() => setSelectedTab('cata')}
+              >
+                재앙 카드
+              </Button>
+            </div>
 
             <div className="bg-card border-border flex-1 overflow-hidden rounded-lg border">
               <ScrollArea className="h-full p-4">

@@ -98,11 +98,6 @@ export class GameRoomManager {
     this.socketManager.joinRoom(roomCode, socket, userId);
 
     room.readyPlayers.add(userId as PlayerID);
-    console.log(
-      '[GameRoomManager] 준비완료 메시지 수신',
-      roomCode,
-      Array.from(room.readyPlayers),
-    );
 
     if (room.readyPlayers.size === room.players.length) {
       await room.engine.markReady();
@@ -220,9 +215,6 @@ export class GameRoomManager {
           version: payload.version,
         },
       };
-      console.log(
-        `[onStatePatch] Sending game_init to player ${pid} in room ${roomCode}`,
-      );
       this.socketManager.sendTo(roomCode, pid, initMsg);
       room.initializedPlayers.add(pid);
       return true;
@@ -242,9 +234,6 @@ export class GameRoomManager {
         };
         if (targetPlayer) {
           if (sendInitIfNeeded(targetPlayer, payload)) return;
-          console.log(
-            `[onStatePatch] Sending state_patch to player ${targetPlayer} in room ${roomCode}`,
-          );
           this.socketManager.sendTo(roomCode, targetPlayer, msg);
           return;
         }
@@ -254,9 +243,6 @@ export class GameRoomManager {
           sendInitIfNeeded(pid, payload);
         });
         this.socketManager.broadcast(roomCode, msg);
-        console.log(
-          `[onStatePatch] Broadcasting state_patch to all players in room ${roomCode}`,
-        );
         return;
       },
     );
@@ -271,9 +257,6 @@ export class GameRoomManager {
           event: 'ask_mulligan',
           data: payload,
         };
-        console.log(
-          `[onAskMulligan] Sending ask_mulligan to player ${targetPlayer} in room ${roomCode}`,
-        );
         this.socketManager.sendTo(roomCode, targetPlayer, msg);
       },
     );
