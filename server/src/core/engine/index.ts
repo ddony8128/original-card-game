@@ -423,6 +423,32 @@ export class GameEngineCore {
 
     // 이 이하의 입력 종류는 모두 "입력 해석 전용 이펙트"로 변환하여
     // 실제 상태 변경은 resolveEffect 에서만 일어나도록 통일한다.
+
+    // ---- 선택 개수 검증 (choose_discard / choose_burn 전용) ----
+    if (
+      pending.kind.type === 'option' &&
+      (pending.kind.kind === 'choose_discard' ||
+        pending.kind.kind === 'choose_burn')
+    ) {
+      const requiredCount = pending.count ?? 1;
+      const options = pending.options ?? [];
+      const totalOptions = Array.isArray(options) ? options.length : 0;
+      const answers = Array.isArray(payload.answer)
+        ? payload.answer
+        : [payload.answer];
+      const selectedCount = answers.length;
+
+      const isValidSelection =
+        // 선택지가 충분한 경우: 정확히 requiredCount 장을 골라야 함
+        (totalOptions >= requiredCount && selectedCount === requiredCount) ||
+        // 선택지가 부족한 경우: 선택지 전부를 골랐다면 허용
+        (totalOptions < requiredCount && selectedCount === totalOptions);
+
+      if (!isValidSelection) {
+        return this.invalidAction(playerId, 'invalid_input_selection_count');
+      }
+    }
+
     this.effectStack.push({
       type: 'RESOLVE_PLAYER_INPUT',
       owner: playerId,
@@ -480,13 +506,14 @@ export class GameEngineCore {
     // 효과 처리 도중 플레이어 입력이 필요한 상황이 발생했다면
     // 별도의 request_input 이벤트를 발생시킨다.
     if (this.pendingInput) {
-      const { playerId, kind, options } = this.pendingInput;
+      const { playerId, kind, options, count } = this.pendingInput;
       results.push({
         kind: 'request_input',
         targetPlayer: playerId,
         requestInput: {
           kind,
           options: options ?? [],
+          count,
         },
       });
     }

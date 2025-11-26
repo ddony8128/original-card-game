@@ -79,6 +79,25 @@ export async function resolveEffect(
       const wizard = engine.state.board.wizards[effect.owner];
       if (!wizard) break;
 
+      // value > 1 인 MOVE 이펙트는, 1칸짜리 MOVE 이펙트를 value 번으로 분할해서 스택에 올린다.
+      // 이렇게 하면 draw / discard 등의 다중 처리와 동일하게,
+      // "이동 → (입력 대기) → 이동 ..." 이 value 횟수만큼 순차 처리된다.
+      if ((move.value ?? 1) > 1 && !move.to) {
+        const count = move.value ?? 1;
+        const direction = move.direction ?? 'forward';
+        const effects: MoveEffect[] = [];
+        for (let i = 0; i < count; i += 1) {
+          effects.push({
+            type: 'MOVE',
+            owner: effect.owner,
+            direction,
+            value: 1,
+          } as MoveEffect);
+        }
+        engine.effectStack.push(effects);
+        break;
+      }
+
       // 액션 기반 MOVE: to가 명시된 경우 절대 좌표로 이동
       if (move.to) {
         const from = [wizard.r, wizard.c] as [number, number];

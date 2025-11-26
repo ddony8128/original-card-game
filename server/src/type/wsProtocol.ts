@@ -77,6 +77,7 @@ export type RequestInputKind =
 export interface RequestInputPayload {
   kind: RequestInputKind;
   options: unknown[];
+  count?: number;
 }
 
 export interface InvalidActionPayload {
