@@ -161,13 +161,15 @@ export interface DiscardEffect extends BaseEffect {
    * discard 동작 방식
    * - deck_random / deck_top / hand_random / hand_choose : 카드 효과 JSON에서 오는 공용 모드
    * - instance : 엔진 내부에서 특정 인스턴스를 지정해서 버릴 때 사용
+   * - hand_max : 엔진 내부에서 손패 최대 개수를 강제할 때 사용
    */
   method:
     | 'deck_random'
     | 'deck_top'
     | 'hand_choose'
     | 'hand_random'
-    | 'instance';
+    | 'instance'
+    | 'hand_max';
   condition?: string;
   /** method === 'instance' 인 경우, 어떤 인스턴스를 버릴지 지정 */
   instanceId?: CardInstanceId;

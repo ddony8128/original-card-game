@@ -218,18 +218,12 @@ export async function resolveEffect(
     case 'TURN_END': {
       const turnEnd = effect as TurnEndEffect;
       diff.log.push(`플레이어 ${turnEnd.owner} 턴 종료`);
-      // 리추얼 onTurnEnd 트리거 실행
-      for (const r of engine.state.board.rituals.filter(
-        (r) => r.owner === turnEnd.owner,
-      )) {
-        await engine.enqueueCardTriggerEffects(
-          r.cardId,
-          'onTurnEnd',
-          turnEnd.owner,
-          diff,
-        );
-      }
-      // 다음 턴 플레이어로 변경
+
+      // 1) 먼저 CHANGE_TURN, hand_max DISCARD 를 push 해 두고
+      // 2) 마지막에 onTurnEnd 트리거 이펙트들을 push 해서,
+      //    실제 해석 순서가 onTurnEnd → hand_max DISCARD → CHANGE_TURN 이 되도록 한다.
+
+      // 다음 턴 플레이어로 변경 (가장 마지막에 실행되도록 먼저 push)
       {
         const currentIdx = engine.players.indexOf(engine.state.activePlayer);
         const nextIdx = (currentIdx + 1) % engine.players.length;
@@ -240,6 +234,31 @@ export async function resolveEffect(
         } as Effect;
         engine.effectStack.push(changeEffect);
       }
+
+      // 턴 종료 시 손패 최대 개수 초과분을 강제로 버리기 위한 hand_max discard 이펙트
+      {
+        const handMaxEffect: DiscardEffect = {
+          type: 'DISCARD',
+          owner: turnEnd.owner,
+          value: 0, // hand_max 에서는 value 는 사용하지 않음
+          target: 'self',
+          method: 'hand_max',
+        };
+        engine.effectStack.push(handMaxEffect);
+      }
+
+      // 리추얼 onTurnEnd 트리거 실행 (스택 최상단에 올라가서 가장 먼저 해석됨)
+      for (const r of engine.state.board.rituals.filter(
+        (r) => r.owner === turnEnd.owner,
+      )) {
+        await engine.enqueueCardTriggerEffects(
+          r.cardId,
+          'onTurnEnd',
+          turnEnd.owner,
+          diff,
+        );
+      }
+
       break;
     }
     case 'TURN_START': {
@@ -679,6 +698,27 @@ export async function resolveEffect(
 
       // condition 공통 처리
       if (!checkDiscardCondition(engine, e, target.hand.length)) break;
+
+      // 손패 최대 개수 초과분 강제 버리기용 내부 모드:
+      // - 현재 손패 개수 - handLimit 을 계산하여,
+      //   초과분이 1장 이상이면 hand_choose DISCARD 이펙트를 스택에 올린다.
+      if (e.method === 'hand_max') {
+        const overflow = target.hand.length - target.handLimit;
+        if (overflow > 0) {
+          const chooseEffect: DiscardEffect = {
+            type: 'DISCARD',
+            owner,
+            value: overflow,
+            target: 'self',
+            method: 'hand_choose',
+          };
+          engine.effectStack.push(chooseEffect);
+          diff.log.push(
+            `플레이어 ${targetId}의 손패가 최대 제한을 초과하여 ${overflow}장을 버려야 합니다.`,
+          );
+        }
+        break;
+      }
 
       // value > 1 이고, 자동 처리 모드(deck_random / deck_top / hand_random)인 경우
       // 1장짜리 DISCARD 이펙트를 여러 개로 분할하여 스택에 올린다.
