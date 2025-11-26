@@ -1,12 +1,18 @@
 import { http } from '@/shared/api/http';
-import type { MatchStateDto } from '@/shared/api/types';
+import type { MatchStateDto, WaitingRoomDto } from '@/shared/api/types';
 
 export const matchApi = {
-  create() {
+  create(roomName?: string | null) {
     return http<{ roomCode: string; status: string; host: { id: string; username?: string } }>(
       '/api/match/create',
-      { method: 'POST' },
+      {
+        method: 'POST',
+        body: JSON.stringify({ roomName: roomName ?? null }),
+      },
     );
+  },
+  waiting() {
+    return http<WaitingRoomDto[]>('/api/match/waiting');
   },
   join(roomCode: string) {
     return http<MatchStateDto>('/api/match/join', {

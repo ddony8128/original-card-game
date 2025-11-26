@@ -40,9 +40,10 @@ async function buildStateResponse(roomCode: string) {
 // 4.1 방 생성
 matchRouter.post('/create', (req, res) => {
   const userId = (req as any).user.id as string;
+  const { roomName } = req.body as { roomName?: string | null };
 
   (async () => {
-    const room = await roomsService.create(userId);
+    const room = await roomsService.create(userId, roomName ?? null);
     const host = await usersService.findById(userId);
     return res.status(HttpStatus.CREATED).json({
       roomCode: room.code,
@@ -125,7 +126,46 @@ matchRouter.patch('/deck', (req, res) => {
   );
 });
 
-// 4.4 방 상태 조회 (폴링)
+// 4.4 waiting 상태 방 리스트 조회
+matchRouter.get('/waiting', (req, res) => {
+  (async () => {
+    const rooms = await roomsService.listWaiting();
+    const states = await Promise.all(
+      rooms.map(async (room) => {
+        const [host, guest] = await Promise.all([
+          usersService.findById(room.host_id),
+          room.guest_id
+            ? usersService.findById(room.guest_id)
+            : Promise.resolve(null),
+        ]);
+        return {
+          roomCode: room.code,
+          roomName: room.room_name,
+          host: host
+            ? {
+                id: host.id,
+                username: host.username,
+                deckId: room.host_deck_id ?? undefined,
+              }
+            : undefined,
+          guest: guest
+            ? {
+                id: guest.id,
+                username: guest.username,
+                deckId: room.guest_deck_id ?? undefined,
+              }
+            : undefined,
+          status: room.status,
+        };
+      }),
+    );
+    return res.status(HttpStatus.OK).json(states);
+  })().catch((e) =>
+    res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: e.message }),
+  );
+});
+
+// 4.5 방 상태 조회 (폴링)
 matchRouter.get('/:roomCode', (req, res) => {
   const { roomCode } = req.params as { roomCode: string };
   (async () => {
@@ -138,7 +178,7 @@ matchRouter.get('/:roomCode', (req, res) => {
   );
 });
 
-// 4.5 참가자 이탈
+// 4.6 참가자 이탈
 matchRouter.post('/leave', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomCode } = req.body as { roomCode?: string };
@@ -159,7 +199,7 @@ matchRouter.post('/leave', (req, res) => {
   );
 });
 
-// 4.6 방 삭제 (방장 전용)
+// 4.7 방 삭제 (방장 전용)
 matchRouter.delete('/:roomCode', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomCode } = req.params as { roomCode: string };

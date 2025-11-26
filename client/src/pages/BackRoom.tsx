@@ -84,7 +84,12 @@ export default function BackRoom() {
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-6">
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">대기실</h1>
+          <div>
+            <h1 className="text-2xl font-bold">대기실</h1>
+            <div className="text-muted-foreground mt-1 text-sm">
+              {state?.roomName || '방 이름 없음'} · 코드: {roomCode}
+            </div>
+          </div>
           <Button variant="outline" onClick={handleLeave}>
             나가기
           </Button>

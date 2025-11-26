@@ -36,6 +36,15 @@ export type DeckDto = {
 
 export type MatchStateDto = {
   roomCode: string;
+  roomName?: string | null;
+  status: string;
+  host?: { id: string; username: string; deckId?: string };
+  guest?: { id: string; username: string; deckId?: string };
+};
+
+export type WaitingRoomDto = {
+  roomCode: string;
+  roomName: string | null;
   status: string;
   host?: { id: string; username: string; deckId?: string };
   guest?: { id: string; username: string; deckId?: string };

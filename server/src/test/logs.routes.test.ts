@@ -52,7 +52,8 @@ describe('Game logs/results routes', () => {
     // create room and join
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
 
     await request(app)
@@ -93,7 +94,8 @@ describe('Game logs/results routes', () => {
   it('patch result to finished (internal) -> 200, then get result -> 200 with fields', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
 
     await request(app)
@@ -147,7 +149,8 @@ describe('Game logs/results routes', () => {
   it('turn logs: post internal -> ok, get as client -> 200 logs', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
 
     await request(app)
@@ -184,7 +187,8 @@ describe('Game logs/results routes', () => {
     // existing room, no logs
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
 
     const res204 = await request(app)

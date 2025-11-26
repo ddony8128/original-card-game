@@ -13,10 +13,18 @@ export function useMatchStateQuery(roomCode: string | null, enabled = true) {
 export function useCreateRoomMutation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: matchApi.create,
+    mutationFn: (roomName?: string | null) => matchApi.create(roomName),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['match'] });
     },
+  });
+}
+
+export function useWaitingRoomsQuery(enabled = true) {
+  return useQuery({
+    queryKey: ['match', 'waiting'],
+    queryFn: () => matchApi.waiting(),
+    enabled,
   });
 }
 

@@ -31,7 +31,11 @@ it('덱 없음 UI 표시', async () => {
 it('방 생성 후 /back-room/:roomId 로 이동', async () => {
   server.use(
     http.post('/api/match/create', () =>
-      HttpResponse.json({ roomId: 'r2', status: 'waiting', host: { id: 'u1' } }),
+      HttpResponse.json({
+        roomCode: 'R2',
+        status: 'waiting',
+        host: { id: 'u1', username: 'tester' },
+      }),
     ),
   );
   renderWithProviders(<Lobby />, {
@@ -52,6 +56,9 @@ it('방 생성 후 /back-room/:roomId 로 이동', async () => {
   });
   // 덱 목록이 로딩된 후 버튼 클릭
   await screen.findByText('기본 덱');
+  // 방 이름 입력 필드에 값을 입력하여 버튼 활성화
+  const roomNameInput = await screen.findByPlaceholderText('방 이름 입력');
+  fireEvent.change(roomNameInput, { target: { value: '테스트 방' } });
   const createBtn = await screen.findByRole('button', { name: /방 생성/ });
   fireEvent.click(createBtn);
   expect(await screen.findByText('ROOM R2')).toBeInTheDocument();
@@ -96,6 +103,9 @@ it('덱이 없을 때 방 생성 클릭 시 에러 토스트 노출', async () =
   });
   // 덱 없음이 렌더된 이후 클릭해야 error 토스트 경로로 진입
   await screen.findByText('아직 덱이 없습니다');
+  // 방 이름 입력 필드에 값을 입력하여 버튼 활성화
+  const roomNameInput = await screen.findByPlaceholderText('방 이름 입력');
+  fireEvent.change(roomNameInput, { target: { value: '테스트 방' } });
   const createBtn = await screen.findByRole('button', { name: /방 생성/ });
   fireEvent.click(createBtn);
   expect(await screen.findByText('덱을 먼저 만들어야 합니다.')).toBeInTheDocument();

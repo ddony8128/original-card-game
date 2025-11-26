@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 
 // helpers to match both relative and absolute URLs
 const authMeMatchers = ['/api/auth/me', /https?:\/\/.*\/api\/auth\/me$/];
-const matchStateMatchers = ['/api/match/:roomId', /https?:\/\/.*\/api\/match\/.+$/];
+const matchStateMatchers = ['/api/match/:roomCode', /https?:\/\/.*\/api\/match\/.+$/];
 
 export const handlers = [
   // me
@@ -364,33 +364,78 @@ export const handlers = [
   http.delete(/https?:\/\/.*\/api\/decks\/.+$/, () => HttpResponse.text(null, { status: 204 })),
   // match create/join/leave/deck
   http.post('/api/match/create', () =>
-    HttpResponse.json({ roomId: 'r1', status: 'waiting', host: { id: 'u1' } }),
+    HttpResponse.json({
+      roomCode: 'R1',
+      status: 'waiting',
+      host: { id: 'u1', username: 'tester' },
+    }),
   ),
   http.post(/https?:\/\/.*\/api\/match\/create$/, () =>
-    HttpResponse.json({ roomId: 'r1', status: 'waiting', host: { id: 'u1' } }),
+    HttpResponse.json({
+      roomCode: 'R1',
+      status: 'waiting',
+      host: { id: 'u1', username: 'tester' },
+    }),
   ),
   http.post('/api/match/join', async ({ request }) => {
-    const { roomId } = (await request.json()) as { roomId: string };
-    return HttpResponse.json({ roomId, status: 'waiting', host: { id: 'u1', username: 'tester' } });
+    const { roomCode } = (await request.json()) as { roomCode: string };
+    return HttpResponse.json({
+      roomCode,
+      status: 'waiting',
+      host: { id: 'u1', username: 'tester' },
+    });
   }),
   http.post(/https?:\/\/.*\/api\/match\/join$/, async ({ request }) => {
-    const { roomId } = (await request.json()) as { roomId: string };
-    return HttpResponse.json({ roomId, status: 'waiting', host: { id: 'u1', username: 'tester' } });
+    const { roomCode } = (await request.json()) as { roomCode: string };
+    return HttpResponse.json({
+      roomCode,
+      status: 'waiting',
+      host: { id: 'u1', username: 'tester' },
+    });
   }),
   http.patch('/api/match/deck', async ({ request }) => {
-    const { roomId } = (await request.json()) as { roomId: string };
-    return HttpResponse.json({ roomId, status: 'waiting', host: { id: 'u1', username: 'tester' } });
+    const { roomCode } = (await request.json()) as { roomCode: string };
+    return HttpResponse.json({
+      roomCode,
+      status: 'waiting',
+      host: { id: 'u1', username: 'tester' },
+    });
   }),
   http.patch(/https?:\/\/.*\/api\/match\/deck$/, async ({ request }) => {
-    const { roomId } = (await request.json()) as { roomId: string };
-    return HttpResponse.json({ roomId, status: 'waiting', host: { id: 'u1', username: 'tester' } });
+    const { roomCode } = (await request.json()) as { roomCode: string };
+    return HttpResponse.json({
+      roomCode,
+      status: 'waiting',
+      host: { id: 'u1', username: 'tester' },
+    });
   }),
   http.post('/api/match/leave', async ({ request }) => {
-    const { roomId } = (await request.json()) as { roomId: string };
-    return HttpResponse.json({ roomId, status: 'left' });
+    const { roomCode } = (await request.json()) as { roomCode: string };
+    return HttpResponse.json({ roomCode, status: 'left' });
   }),
   http.post(/https?:\/\/.*\/api\/match\/leave$/, async ({ request }) => {
-    const { roomId } = (await request.json()) as { roomId: string };
-    return HttpResponse.json({ roomId, status: 'left' });
+    const { roomCode } = (await request.json()) as { roomCode: string };
+    return HttpResponse.json({ roomCode, status: 'left' });
   }),
+  // match waiting rooms list
+  http.get('/api/match/waiting', () =>
+    HttpResponse.json([
+      {
+        roomCode: 'R1',
+        roomName: '테스트 방',
+        status: 'waiting',
+        host: { id: 'u1', username: 'tester' },
+      },
+    ]),
+  ),
+  http.get(/https?:\/\/.*\/api\/match\/waiting$/, () =>
+    HttpResponse.json([
+      {
+        roomCode: 'R1',
+        roomName: '테스트 방',
+        status: 'waiting',
+        host: { id: 'u1', username: 'tester' },
+      },
+    ]),
+  ),
 ];

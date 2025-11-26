@@ -47,7 +47,8 @@ describe('Match routes', () => {
   it('POST /api/match/create -> 201', async () => {
     const res = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty('roomCode');
     expect(res.body).toHaveProperty('host.username', host.username);
@@ -65,7 +66,8 @@ describe('Match routes', () => {
   it('join success -> 200 with host/guest', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     const res = await request(app)
       .post('/api/match/join')
@@ -81,7 +83,8 @@ describe('Match routes', () => {
   it('join conflict -> 409', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     const joined = await request(app)
       .post('/api/match/join')
@@ -99,7 +102,8 @@ describe('Match routes', () => {
   it('GET /api/match/:roomCode -> state', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     await request(app)
       .post('/api/match/join')
@@ -116,7 +120,8 @@ describe('Match routes', () => {
   it('PATCH /api/match/deck -> 403 when deck not owned', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     await request(app)
       .post('/api/match/join')
@@ -134,7 +139,8 @@ describe('Match routes', () => {
   it('PATCH /api/match/deck -> playing when both submitted', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     await request(app)
       .post('/api/match/join')
@@ -162,7 +168,8 @@ describe('Match routes', () => {
   it('POST /api/match/leave -> finished', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     await request(app)
       .post('/api/match/join')
@@ -179,7 +186,8 @@ describe('Match routes', () => {
   it('DELETE /api/match/:roomCode -> 403 for guest, 200 for host', async () => {
     const created = await request(app)
       .post('/api/match/create')
-      .set('Cookie', host.cookie);
+      .set('Cookie', host.cookie)
+      .send({ roomName: '테스트 방' });
     const roomCode = created.body.roomCode as string;
     await request(app)
       .post('/api/match/join')

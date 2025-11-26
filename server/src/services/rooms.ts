@@ -6,6 +6,7 @@ export type RoomRow = {
   host_id: string;
   guest_id: string | null;
   code: string;
+  room_name: string | null;
   status: 'waiting' | 'playing' | 'finished';
   host_deck_id?: string | null;
   guest_deck_id?: string | null;
@@ -13,7 +14,10 @@ export type RoomRow = {
 };
 
 export const roomsService = {
-  async create(host_id: string): Promise<RoomRow> {
+  async create(
+    host_id: string,
+    room_name: string | null = null,
+  ): Promise<RoomRow> {
     const genCode = () => crypto.randomBytes(3).toString('hex').toUpperCase();
     // 최대 10회 재시도 (중복 코드 회피)
     for (let attempt = 0; attempt < 10; attempt++) {
@@ -29,7 +33,7 @@ export const roomsService = {
         continue; // 충돌 → 재시도
       }
 
-      const payload = { host_id, code, status: 'waiting' as const };
+      const payload = { host_id, code, room_name, status: 'waiting' as const };
       const { data, error } = await supabase
         .from('rooms')
         .insert(payload)
@@ -161,5 +165,21 @@ export const roomsService = {
       .single();
     if (upErr) throw upErr;
     return { room: updated as RoomRow };
+  },
+
+  async listWaiting(): Promise<RoomRow[]> {
+    // 12시간 전 시간 계산
+    const twelveHoursAgo = new Date();
+    twelveHoursAgo.setHours(twelveHoursAgo.getHours() - 12);
+    const twelveHoursAgoISO = twelveHoursAgo.toISOString();
+
+    const { data, error } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('status', 'waiting')
+      .gte('created_at', twelveHoursAgoISO)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data as RoomRow[]) ?? [];
   },
 };
