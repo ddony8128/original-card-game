@@ -19,6 +19,7 @@ async function buildStateResponse(roomCode: string) {
   ]);
   return {
     roomCode: room.code,
+    roomName: room.room_name,
     host: host
       ? {
           id: host.id,

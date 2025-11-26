@@ -38,13 +38,7 @@ export default function Game() {
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
 
-  const {
-    sendReady,
-    sendAnswerMulligan,
-    sendPlayerInput,
-    sendPlayerAction,
-    status: wsStatus,
-  } = useGameSocket({
+  const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } = useGameSocket({
     roomCode: roomCode ?? '',
     userId: me?.id,
   });
@@ -260,16 +254,12 @@ export default function Game() {
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4">
       <div className="mx-auto max-w-7xl space-y-4">
-        {/* Top Bar: navigation + WS status */}
+        {/* Top Bar: navigation */}
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => navigate('/lobby')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             로비
           </Button>
-          <div className="text-muted-foreground min-w-[200px] text-right text-xs">
-            WS 상태: {wsStatus}
-          </div>
-          <div className="text-muted-foreground text-sm">방 코드: {roomCode ?? '-'}</div>
         </div>
 
         {/* Turn Header */}
