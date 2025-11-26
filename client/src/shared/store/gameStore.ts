@@ -107,6 +107,7 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
       fogged: null,
       version: null,
       lastDiff: null,
+      logs: [],
       requestInput: null,
       mulligan: null,
       selectedDeckId: null,

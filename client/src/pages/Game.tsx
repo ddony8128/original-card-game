@@ -38,12 +38,18 @@ export default function Game() {
   const clearLastDiff = useGameFogStore((s) => s.clearLastDiff);
   const isMyTurn = useGameFogStore((s) => s.isMyTurn);
   const hasEnoughMana = useGameFogStore((s) => s.hasEnoughMana);
+  const clearGameState = useGameFogStore((s) => s.clear);
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [graveModalOpen, setGraveModalOpen] = useState(false);
   const [graveModalType, setGraveModalType] = useState<'me' | 'opponent' | 'catastrophe' | null>(
     null,
   );
+
+  // 페이지 진입 시 전역 게임 상태 초기화
+  useEffect(() => {
+    clearGameState();
+  }, [clearGameState]);
 
   const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } = useGameSocket({
     roomCode: roomCode ?? '',

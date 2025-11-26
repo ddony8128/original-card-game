@@ -28,13 +28,6 @@ export async function toFoggedState(
 
   const { width, height } = state.board;
 
-  console.log('meState', {
-    meState,
-  });
-  console.log('opponentState', {
-    opponentState,
-  });
-
   const wizards: FoggedGameState['board']['wizards'] = {} as any;
   Object.entries(state.board.wizards).forEach(([pid, pos]) => {
     const translated = toViewerPos(
@@ -43,12 +36,6 @@ export async function toFoggedState(
       pos,
       viewer,
     );
-
-    console.log('translated', {
-      r: translated.r,
-      c: translated.c,
-    });
-
     (wizards as any)[pid] = { r: translated.r, c: translated.c };
   });
 

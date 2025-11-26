@@ -291,6 +291,25 @@ const dummyCards: Record<CardID, CardMeta> = {
       ],
     },
   },
+  protect_token: {
+    id: 'protect_token',
+    name_dev: 'protect_token',
+    name_ko: '보호 토큰',
+    description_ko: null,
+    type: 'ritual',
+    mana: 0,
+    token: true,
+    effectJson: {
+      type: 'ritual',
+      install: { range: 3 },
+      triggers: [
+        {
+          trigger: 'onDestroy',
+          effects: [{ type: 'damage', value: 5, target: 'self' }],
+        },
+      ],
+    },
+  },
   'c01-030': {
     id: 'c01-030',
     name_dev: 'ultimate_dark_magic',
@@ -482,6 +501,30 @@ const dummyCards: Record<CardID, CardMeta> = {
     effectJson: {
       type: 'catastrophe',
       triggers: [],
+    },
+  },
+  catastrophe_protect: {
+    id: 'catastrophe_protect',
+    name_dev: 'catastrophe_protect',
+    name_ko: '보호 토큰 재앙',
+    description_ko: null,
+    type: 'catastrophe',
+    mana: 0,
+    token: false,
+    effectJson: {
+      type: 'catastrophe',
+      triggers: [
+        {
+          trigger: 'onDrawn',
+          effects: [
+            {
+              type: 'install',
+              object: 'protect_token',
+              target: 'self',
+            },
+          ],
+        },
+      ],
     },
   },
 };
@@ -1008,5 +1051,53 @@ describe('GameEngineCore card simulation', () => {
     await engine.stepUntilStable();
 
     expect(engine.state.players[P1].hp).toBe(17);
+  });
+
+  it('catastrophe_protect: 뽑으면 protect_token 설치, 상대가 밟으면 내가 5 피해', async () => {
+    const state = createEmptyState();
+    state.players[P1].hp = 10;
+    state.players[P2].hp = 10;
+    // 재앙 덱에 protect 토큰을 설치하는 재앙 카드 한 장 세팅
+    state.catastropheDeck = [
+      { id: 'cata_protect_inst', cardId: 'catastrophe_protect' },
+    ];
+
+    const engine = GameEngineCore.create(state, ctx, {
+      roomCode: 'test',
+      players: [P1, P2],
+    });
+
+    // P1이 재앙 카드를 한 장 뽑는 효과 실행
+    const drawCataEffect = {
+      type: 'DRAW_CATA',
+      owner: P1,
+      value: 1,
+    } as any;
+    engine.effectStack.push(drawCataEffect);
+    await engine.stepUntilStable();
+
+    // protect_token 리추얼이 P1 위치에 설치되었는지 확인
+    const token = engine.state.board.rituals.find(
+      (r) => r.cardId === 'protect_token',
+    );
+    expect(token).toBeTruthy();
+    expect(token!.owner).toBe(P1);
+    const p1Pos = engine.state.board.wizards[P1];
+    expect(token!.pos).toEqual(p1Pos);
+
+    // 이제 P2가 그 칸을 밟아서 리추얼이 파괴된다고 가정하고 destroyRitual 호출
+    const diff: any = { animations: [], log: [] };
+    await (engine as any).destroyRitual({
+      owner: P1,
+      ritualId: token!.id,
+      diff,
+      actor: P2,
+      invertSelfEnemy: true,
+    });
+    await engine.stepUntilStable();
+
+    // 결과: P1(리추얼 소유자)이 5 피해, P2는 그대로
+    expect(engine.state.players[P1].hp).toBe(5);
+    expect(engine.state.players[P2].hp).toBe(10);
   });
 });
