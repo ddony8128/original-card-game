@@ -19,6 +19,15 @@ import {
   INITIAL_HAND_LIMIT,
 } from '../core/rules/constants';
 
+/**
+ * 게임 엔진이 사용할 **초기 GameState 및 카드 메타(Context)** 를 만드는 모듈.
+ *
+ * - 덱 리스트(메인/재앙)를 받아 각 플레이어별 CardInstance 배열을 생성한다.
+ * - 두 플레이어의 마법사 시작 위치를 설정하고, 재앙 덱을 하나로 합친다.
+ * - `buildEngineContextFromDecks` 는 필요한 카드 메타만 Supabase에서 미리 조회 후
+ *   엔진에서 사용할 lookupCard 캐시를 구성한다.
+ */
+
 export interface PlayerDeckConfig {
   playerId: PlayerID;
   main: DeckList;

@@ -1,5 +1,15 @@
 import type { GameState, PlayerID } from '../../type/gameState';
 
+/**
+ * 보드 좌표/방향/설치 가능 위치 등
+ * **게임판 관련 공통 유틸 함수**를 모아둔 모듈.
+ *
+ * - 절대 좌표 ↔ 플레이어 시점(viewer) 좌표 변환
+ * - 보드 안/밖 판정
+ * - 리추얼 설치 가능 위치 계산 및 단일 위치 검증
+ * - 피셔–예이츠 셔플
+ */
+
 // 보드 범위 체크
 export function isInsideBoard(
   board: GameState['board'],

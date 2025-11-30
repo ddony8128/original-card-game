@@ -15,6 +15,13 @@ interface UseGameSocketParams {
   userId?: string;
 }
 
+/**
+ * 게임 화면용 WebSocket 훅.
+ *
+ * - 내부에서 `createGameSocket` 으로 소켓을 만들고,
+ *   서버에서 내려오는 게임 관련 이벤트들을 Zustand `useGameFogStore` 에 반영한다.
+ * - 컴포넌트 입장에서는 `sendReady / sendPlayerAction` 등만 사용하면 된다.
+ */
 export function useGameSocket({ roomCode, userId }: UseGameSocketParams) {
   const setFromGameInit = useGameFogStore((s) => s.setFromGameInit);
   const applyStatePatch = useGameFogStore((s) => s.applyStatePatch);

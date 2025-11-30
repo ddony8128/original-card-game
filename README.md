@@ -1,187 +1,234 @@
-이 프로젝트는 `client/`와 `server/`로 분리된 구조의 카드 게임 기본 세팅입니다.
+이 프로젝트는 **1:1 대전 마법 카드 게임**의 풀스택 구현입니다.  
+프론트엔드는 `client/` (React + TypeScript + Vite), 백엔드는 `server/` (Express 5 + Supabase)로 구성되어 있습니다.
 
-- client: React + TypeScript + Vite. 상태관리는 Zustand + React Query, 라우팅은 React Router.
-- server: Express 5. 쿠키 기반 인증(JWT httpOnly)과 CORS를 사용합니다.
+---
 
-역할 분리: 클라이언트는 UI을 담당하고, 서버는 백엔드 엔드포인트와 게임 상태 관리를 담당합니다. `client/`에는 프론트엔드 소스와 Vite/TS 설정이, `server/`에는 Express 의존성과 서버 코드가 위치합니다.
+## 전체 구조
 
-## 서버 API 개요
+- **클라이언트 (`client/`)**
+
+  - React + TypeScript + Vite
+  - 상태 관리: **Zustand** (게임/덱 상태), **React Query** (서버 상태)
+  - 라우팅: **React Router**
+  - WebSocket: 게임 진행 상태 실시간 동기화 (`ws/gameSocket.ts`)
+
+- **서버 (`server/`)**
+  - Express 5 + TypeScript
+  - 인증: **JWT httpOnly 쿠키**
+  - 데이터: Supabase(Postgres)를 추상화한 `lib/supabase`
+  - 게임 엔진: `src/core/*` (보드/턴/카드 효과/재앙 처리)
+
+역할 분리: 클라이언트는 UI·애니메이션·입력을 담당하고, 서버는 **덱/매치/게임 흐름/로그/리뷰**를 책임집니다.
+
+---
+
+## 주요 기능
+
+- **회원가입 & 로그인**
+
+  - `POST /api/auth/register` – `{ username, password }` 로 회원가입
+  - `POST /api/auth/login` – 로그인 시 JWT를 `auth_token` httpOnly 쿠키에 저장
+  - `GET /api/auth/me` – 현재 로그인한 사용자 정보 조회
+
+- **카드 목록 (`/api/cards`)**
+
+  - 카드 검색/필터 (마나, 이름, 타입, 토큰 여부 등)
+  - 상세 조회
+
+- **덱 빌더 (`/api/decks` + `/deck-builder` 페이지)**
+
+  - 메인 덱 16장 / 재앙 덱 4장 **규칙 검증** 포함
+  - 토큰/재앙 카드는 메인에 넣을 수 없음
+  - 서버에 덱 저장/수정/삭제, 클라이언트에서는 미리보기/로컬 상태 유지
+
+- **매치 & 게임**
+
+  - `/api/match/create` – 방 생성, 방 코드 발급
+  - `/api/match/join` – 방 코드로 참가, Host/Guest 매칭
+  - `/api/match/deck` – 각자 덱 제출, 양쪽 제출 완료 시 `playing` 상태로 전환
+  - `/api/match/:roomCode` – 매치 상태 폴링
+  - WebSocket – 실제 턴 진행, 카드 사용, 이동, 재앙 카드(onDrawn), 리추얼 설치/파괴 등 게임 엔진과 동기화
+
+- **게임 로그 & 결과 (`/api/game`)**
+
+  - `GET /api/game/result/:roomCode` – 게임 종료 후 결과 조회
+  - `GET /api/game/log/:roomCode` – 턴 로그 조회 (없으면 204)
+
+- **게임 리뷰 (`/api/reviews` + `/review` 페이지)**
+  - `POST /api/reviews` – 게임 후 소감을 남기는 간단 리뷰 작성 (인증 필요)
+  - 프론트 `/review` 페이지에서 텍스트 입력 후 서버로 전송, 서버는 Supabase `reviews` 테이블에 저장
+
+---
+
+## 주요 화면 흐름 (클라이언트)
+
+- **`/login`**
+
+  - 로그인 / 회원가입 폼
+  - 성공 시 `/lobby` 로 이동
+
+- **`/lobby`**
+
+  - 현재 사용자 정보 / 내 덱 목록
+  - 방 만들기(Host) / 방 코드로 참가(Guest)
+  - 만들어둔 덱이 없으면 게임 시작 불가 안내
+
+- **`/deck-builder`**
+
+  - 서버 카드 검색/필터, 카드 상세 툴팁
+  - 메인/재앙 슬롯에 드래그 또는 클릭 추가
+  - 덱 저장/수정 → 서버 `/api/decks` 호출
+
+- **`/back-room`**
+
+  - Host/Guest 상태, 각자 덱 선택 및 제출
+  - `waiting / playing / finished` 상태 표시
+  - 둘 다 덱을 제출하면 **게임 시작 버튼** 활성화
+
+- **`/game`**
+
+  - WebSocket으로 게임 상태(fogged state) 수신
+  - 보드(마법사 위치/마법진), 손패, 덱/묘지, 재앙 덱 정보 표시
+  - 버튼으로 **카드 사용, 이동, 마법진 사용, 턴 종료** 수행
+  - 재앙 카드 onDrawn / 토큰 설치 / 보호 토큰과 같은 특수 효과도 엔진에서 처리된 결과만 반영
+  - 게임 종료 시 승/패/무승부 오버레이 및 **리뷰 페이지로 이동 버튼**
+
+- **`/review`**
+  - 최신 종료 게임에 대한 한 줄 리뷰를 작성
+  - `POST /api/reviews` 호출 후 성공 시 토스트/리다이렉트
+
+---
+
+## 서버 API 요약
 
 Base URL: `/api`
 
-- Auth (`/api/auth`)
+- **Auth** – `/api/auth`
+- **Cards** – `/api/cards`
+- **Decks** – `/api/decks`
+- **Match** – `/api/match`
+- **Game Logs/Result** – `/api/game`
+- **Reviews** – `/api/reviews` (POST, 인증 필요)
 
-  - POST `/register` body: `{ username, password }` → 201
-  - POST `/login` body: `{ username, password }` → 200 + httpOnly 쿠키(`auth_token`) 설정
-  - GET `/me` → 200 현재 사용자 조회 (Authorization Bearer 또는 쿠키 인증 지원)
+인증은 **httpOnly 쿠키(`auth_token`)** 또는 `Authorization: Bearer <token>` 둘 다 지원하지만, 프론트에서는 쿠키 기반 + `credentials: "include"` 사용을 권장합니다.
 
-- Cards (`/api/cards`) [인증 필요]
-
-  - GET `/` 쿼리: `mana?: number`(5면 5+), `name?: string`, `token?: boolean`, `type?: instant|ritual|catastrophe|summon|item`, `page?: number`, `limit?: number`
-    - 응답: `{ cards: [...], total, page?, limit? }`
-  - GET `/:id` → 카드 상세
-
-- Decks (`/api/decks`) [인증 필요]
-
-  - GET `/` → 사용자 덱 목록
-  - POST `/` body: `{ name: string, main_cards: string[], cata_cards: string[] }` → 201
-  - PUT `/:deckId` body: `{ name, main_cards, cata_cards }` → 200
-  - DELETE `/:deckId` → 204
-
-- Match (`/api/match`) [인증 필요]
-
-  - POST `/create` → 방 생성(코드 반환)
-  - POST `/join` body: `{ roomCode }` → 방 참가
-  - PATCH `/deck` body: `{ roomCode, deckId }` → 덱 제출
-  - GET `/:roomCode` → 방 상태 조회(폴링)
-  - POST `/leave` body: `{ roomCode }` → 참가자 이탈
-  - DELETE `/:roomCode` → 방장 방 삭제
-
-- Logs (`/api/game`)
-  - GET `/result/:roomCode` [인증 또는 내부] → 완료된 게임 결과 조회
-  - GET `/log/:roomCode` [인증 또는 내부] → 턴 로그 조회 (로그 없으면 204)
-  - POST/PUT(내부용) 엔드포인트는 서버 내부 연동용 비공개
-
-인증: httpOnly 쿠키(`auth_token`) 또는 `Authorization: Bearer <token>`. 클라이언트는 쿠키 기반 사용 권장(모든 요청에 `credentials: "include"`).
-
-## 클라이언트 화면 개요
-
-- `/login`: 아이디/비밀번호 입력, 로그인/회원가입(모달). 성공 시 `/lobby` 이동.
-- `/lobby`: 방 만들기/참가, 내 덱 섹션(로컬/서버 덱 표시). 덱 없으면 경고.
-- `/deck-builder`: 서버 카드 검색/필터로 덱 구성(메인 16장·재앙 4장 분리 표시). 저장/수정 가능.
-- `/back-room`: Host/Guest 표시, 덱 선택 제출(잠금), 상태 폴링. `playing`이면 게임 시작 활성화.
-- `/game`: 게임 화면(WS 테스트 버튼 및 상태 표시 추가).
-- `*` → NotFound: 로그인 여부에 따라 `/login` 또는 `/lobby`로 이동 버튼.
-
-상태 관리
-
-- 서버 데이터: React Query 훅(`features/*/queries.ts`)
-- UI/세션: Zustand(`store/useGameStore.ts`, `store/useDeckStore.ts`), 덱 로컬 저장 병행
-
-환경 변수
-
-- `client/.env`에 `VITE_API_BASE_URL` 설정 필요. 모든 요청은 `credentials: "include"`로 쿠키 인증 사용.
+---
 
 ## 테스트
 
-### 프론트엔드(client)
+### 클라이언트 (`client`)
 
-- 사전 준비
+- 준비
 
   - 의존성 설치: `cd client && npm i`
-  - Vitest 설정: `vite.config.ts`의 `test` 섹션(`environment: 'jsdom'`, `setupFiles: 'src/test/setup.ts'`)을 사용합니다.
-  - MSW 설정: `src/test/testServer.ts`, `src/test/testHandlers.ts`에서 API를 가짜로 응답합니다. 절대/상대 경로 둘 다 매칭하도록 핸들러가 준비되어 있습니다.
+  - Vitest + jsdom 환경, MSW 로 서버 API 모킹 (`src/test/*`)
 
 - 실행
-
-  - 단위/통합 테스트:
+  - 일반 실행
     ```bash
     cd client
     npm run test
     ```
-  - 워치 모드(필요 시):
+  - 워치 모드
     ```bash
     npm run test -- --watch
     ```
-  - 커버리지(필요 시):
+  - 커버리지
     ```bash
     npm run test -- --coverage
     ```
 
-- 참고
-  - 테스트 유틸: `src/test/render.tsx`의 `renderWithProviders`로 `QueryClientProvider`/`MemoryRouter`를 감쌉니다. `seed` 옵션으로 쿼리 캐시 초기화가 가능합니다.
-  - 가드 테스트: `RequireAuth`, `RequireParticipant`는 `/api/auth/me`, `/api/match/:roomId`를 MSW로 모킹하여 리다이렉트/권한 체크를 검증합니다.
+### 서버 (`server`)
 
-### 백엔드(server)
-
-- 사전 준비
+- 준비
 
   - 의존성 설치: `cd server && npm i`
-  - 환경 변수: 테스트는 `cross-env DOTENV_CONFIG_PATH=.env.test`로 실행됩니다. 최소한 아래 값을 `server/.env.test`에 설정하세요.
+  - `server/.env.test` 예시
     ```env
     JWT_SECRET=dev-secret
     NODE_ENV=test
     ```
-  - 외부 DB 필요 없음: `src/test/__mocks__/supabase.ts`가 인메모리 목을 제공합니다.
+  - Supabase 는 실제 서버 대신 **인메모리 목** 사용 (`src/test/__mocks__/supabase.ts`)
 
 - 실행
-
-  - 일회성 실행:
+  - 일반 실행
     ```bash
     cd server
     npm run test
     ```
-  - 워치 모드:
+  - 워치 모드
     ```bash
     npm run test:watch
     ```
-  - 커버리지:
+  - 커버리지
     ```bash
     npm run test:coverage
     ```
 
-- 참고
-  - 라우트/서비스/타입 단위로 테스트가 구성되어 있습니다(`src/test/*`).
-  - JWT 쿠키 동작은 `auth` 라우트 테스트에서 검증합니다. 테스트 실행 시 쿠키/헤더 인증이 모두 지원됩니다.
+---
 
-## 로컬 실행 (개발)
+## 로컬 개발 실행
 
-### 서버(server) 실행
+### 서버 (`server`)
 
-사전 준비
+- 필요 조건
 
-- Node.js 18+ 권장
-- 의존성 설치:
+  - Node.js 18+
 
-```bash
-cd server
-npm install
-```
+- 설치
 
-- 환경 변수(`server/.env`):
+  ```bash
+  cd server
+  npm install
+  ```
 
-```env
-PORT=3000              # 선택, 기본 3000
-JWT_SECRET=dev-secret  # 필수
-```
+- 환경 변수 (`server/.env` 예시)
 
-실행
+  ```env
+  PORT=3000
+  JWT_SECRET=dev-secret
+  ```
 
-```bash
-# TypeScript 빌드 후 실행
-npm run build
-npm start
-# 서버는 기본적으로 http://localhost:3000 에서 동작
-```
+- 실행
+  ```bash
+  npm run build
+  npm start
+  # http://localhost:3000
+  ```
 
-참고
+### 클라이언트 (`client`)
 
-- WebSocket 엔드포인트: `/api/match/socket`
-- CORS는 `http://localhost:5173`를 허용하도록 설정되어 있습니다.
+- 설치
 
-### 클라이언트(client) 실행
+  ```bash
+  cd client
+  npm install
+  ```
 
-사전 준비
+- 환경 변수 (`client/.env` 예시)
 
-```bash
-cd client
-npm install
-```
+  ```env
+  VITE_API_BASE_URL=http://localhost:3000
+  ```
 
-- 환경 변수(`client/.env`):
+- 실행
+  ```bash
+  npm run dev
+  # http://localhost:5173
+  ```
 
-```env
-VITE_API_BASE_URL=http://localhost:3000
-```
+### 빠른 실행 요약
 
-실행
-
-```bash
-npm run dev
-# 기본 포트: http://localhost:5173
-```
-
-동시 실행 요약
-
-1. 터미널 A: `cd server && npm i && npm run build && npm start`
-2. 터미널 B: `cd client && npm i && npm run dev`
+1. 터미널 A
+   ```bash
+   cd server
+   npm i
+   npm run build
+   npm start
+   ```
+2. 터미널 B
+   ```bash
+   cd client
+   npm i
+   npm run dev
+   ```

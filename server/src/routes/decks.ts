@@ -8,6 +8,7 @@ export const decksRouter = Router();
 
 decksRouter.use(requireAuth);
 
+// 내 덱 목록 조회: 로그인한 사용자가 소유한 모든 덱을 반환한다.
 decksRouter.get('/', (req, res) => {
   const userId = (req as any).user.id as string;
   (async () => {
@@ -26,6 +27,7 @@ decksRouter.get('/', (req, res) => {
   );
 });
 
+// 덱 생성: 메인/재앙 카드 리스트를 검증 후 새 덱을 만든다.
 decksRouter.post('/', (req, res) => {
   const userId = (req as any).user.id as string;
   const { name, main_cards, cata_cards } = req.body as {
@@ -80,6 +82,7 @@ decksRouter.post('/', (req, res) => {
   );
 });
 
+// 덱 수정: 기존 덱의 이름과 메인/재앙 구성을 업데이트한다.
 decksRouter.put('/:deckId', (req, res) => {
   const userId = (req as any).user.id as string;
   const { name, main_cards, cata_cards } = req.body as {
@@ -130,6 +133,7 @@ decksRouter.put('/:deckId', (req, res) => {
   );
 });
 
+// 덱 삭제: 내 소유의 덱을 소프트 삭제 처리한다.
 decksRouter.delete('/:deckId', (req, res) => {
   const userId = (req as any).user.id as string;
   (async () => {

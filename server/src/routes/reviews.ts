@@ -7,6 +7,7 @@ export const reviewsRouter = Router();
 
 reviewsRouter.use(requireAuth);
 
+// 리뷰 생성: 게임 후 한 줄 리뷰 텍스트를 남긴다.
 reviewsRouter.post('/', (req, res) => {
   const userId = (req as any).user.id as string;
   const { review } = req.body as { review: string };

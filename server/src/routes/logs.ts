@@ -5,7 +5,7 @@ import { requireAuthOrInternal, requireInternal } from '../middleware/auth';
 
 export const logsRouter = Router();
 
-// 6.1 게임 결과 생성 (서버 전용)
+// 6.1 게임 결과 생성 (서버 전용): roomCode 기준으로 게임 결과 row를 새로 만든다.
 logsRouter.post('/result', requireInternal, (req, res) => {
   const { roomCode, startedAt } = req.body as {
     roomCode?: string;
@@ -30,7 +30,7 @@ logsRouter.post('/result', requireInternal, (req, res) => {
   });
 });
 
-// 6.2 게임 결과 업데이트 (서버 전용)
+// 6.2 게임 결과 업데이트 (서버 전용): 이미 생성된 결과의 승패/종료 시각을 기록한다.
 logsRouter.patch('/result/:roomCode', requireInternal, (req, res) => {
   const { roomCode } = req.params as { roomCode: string };
   const { result, endedAt } = req.body as {
@@ -56,7 +56,7 @@ logsRouter.patch('/result/:roomCode', requireInternal, (req, res) => {
   });
 });
 
-// 6.3 게임 결과 조회 (클라이언트용, finished만 허용)
+// 6.3 게임 결과 조회 (클라이언트용, finished만 허용): 끝난 게임의 요약 결과를 돌려준다.
 logsRouter.get('/result/:roomCode', requireAuthOrInternal, (req, res) => {
   const { roomCode } = req.params as { roomCode: string };
   (async () => {
@@ -78,7 +78,7 @@ logsRouter.get('/result/:roomCode', requireAuthOrInternal, (req, res) => {
   });
 });
 
-// 6.4 게임 턴 로그 저장 (서버 전용)
+// 6.4 게임 턴 로그 저장 (서버 전용): 특정 결과(resultId)에 턴별 텍스트 로그를 적재한다.
 logsRouter.post('/log', requireInternal, (req, res) => {
   const { resultId, turn, text } = req.body as {
     resultId?: string;
@@ -100,7 +100,7 @@ logsRouter.post('/log', requireInternal, (req, res) => {
   );
 });
 
-// 6.5 게임 로그 조회 (클라이언트/서버 공용)
+// 6.5 게임 로그 조회 (클라이언트/서버 공용): 방 코드 기준으로 저장된 턴 로그를 조회한다.
 logsRouter.get('/log/:roomCode', requireAuthOrInternal, (req, res) => {
   const { roomCode } = req.params as { roomCode: string };
   (async () => {

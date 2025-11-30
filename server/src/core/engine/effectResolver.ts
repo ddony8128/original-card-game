@@ -37,6 +37,14 @@ import {
 } from '../effects/conditions';
 import { MANA_CEILING, MANA_INC_PER_TURN } from '../rules/constants';
 
+/**
+ * Effect 한 개를 실제 게임 상태 변경으로 해석하는 실행기.
+ *
+ * - `GameEngineCore.stepUntilStable` 에서 EffectStack 에서 pop 한 Effect 를 넘겨 받는다.
+ * - 상태 변경 / 애니메이션 / 로그를 모두 `diff` 에 누적하고,
+ *   필요하면 추가 Effect 들을 다시 EffectStack 에 push 하면서 연쇄 처리를 만든다.
+ * - 카드 effectJson(onCast / onDrawn / onDestroy 등)은 여기에서만 실제로 처리된다.
+ */
 export async function resolveEffect(
   engine: GameEngineCore,
   effect: Effect,

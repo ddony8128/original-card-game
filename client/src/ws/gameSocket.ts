@@ -39,6 +39,14 @@ export interface GameSocket {
   getStatus: () => GameSocketStatus;
 }
 
+/**
+ * 게임 화면에서 사용하는 WebSocket 클라이언트 래퍼.
+ *
+ * - 서버와의 원시 WS 연결을 숨기고, `sendReady / sendPlayerAction / onEvent(...)` 같은
+ *   **도메인 친화적인 인터페이스**만 노출한다.
+ * - 실제 엔드포인트는 서버의 `/api/match/socket` 을 사용하며,
+ *   최초 연결 시 `ready` 이벤트를 자동으로 전송해 방/유저 정보를 알려준다.
+ */
 export function createGameSocket(options: GameSocketOptions): GameSocket {
   let socket: WebSocket | null = null;
   let status: GameSocketStatus = 'idle';
@@ -67,6 +75,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
 
     socket.onopen = () => {
       updateStatus('open');
+      // 서버에 이 소켓이 어떤 방/유저에 속하는지 알려주는 초기 ready 메시지
       const readyPayload: WsClientToServerMessage = {
         event: 'ready',
         data: {

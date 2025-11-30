@@ -9,6 +9,7 @@ const isProd = process.env.NODE_ENV === 'prod';
 
 export const authRouter = Router();
 
+// 회원가입: username/password를 받아 새 유저를 생성한다.
 authRouter.post('/register', (req, res) => {
   const { username, password } = req.body as {
     username?: string;
@@ -42,6 +43,7 @@ authRouter.post('/register', (req, res) => {
   );
 });
 
+// 로그인: username/password 검증 후 JWT를 httpOnly 쿠키(auth_token)에 설정한다.
 authRouter.post('/login', (req, res) => {
   const { username, password } = req.body as {
     username?: string;
@@ -90,6 +92,7 @@ authRouter.post('/login', (req, res) => {
   );
 });
 
+// 현재 로그인한 사용자 정보 조회: 쿠키 또는 Authorization 헤더의 토큰을 기반으로 /me 응답.
 authRouter.get('/me', (req, res) => {
   const cookieToken = (req as any).cookies?.auth_token as string | undefined;
   const authHeader = req.header('authorization') || req.header('Authorization');

@@ -18,6 +18,13 @@ const MAX_MAIN_SIZE = 16;
 const MAX_CATA_SIZE = 4;
 const MAX_DUPLICATE = 2;
 
+/**
+ * 서버 기반 덱 빌더 화면.
+ *
+ * - 카드 검색(마나/이름) → 메인/재앙 탭으로 필터링 → 드래그 없이 클릭만으로 덱 구성.
+ * - 메인 16장 / 재앙 4장 / 카드별 최대 2장 규칙을 로컬에서 검증한 뒤,
+ *   서버 `/api/decks` 형식({ id, count } 배열)으로 저장/수정 요청을 보낸다.
+ */
 const DeckBuilder = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

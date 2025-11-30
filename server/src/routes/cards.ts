@@ -7,6 +7,7 @@ export const cardsRouter = Router();
 
 cardsRouter.use(requireAuth);
 
+// 카드 목록 검색: 마나/이름/타입/토큰 여부/페이지네이션으로 필터링된 카드 리스트를 반환한다.
 cardsRouter.get('/', (req, res) => {
   (async () => {
     const manaRaw = (req.query.mana as string | undefined) ?? undefined;
@@ -84,6 +85,7 @@ cardsRouter.get('/', (req, res) => {
   );
 });
 
+// 단일 카드 상세 조회: 카드 ID로 한 장의 카드 정보를 반환한다.
 cardsRouter.get('/:id', (req, res) => {
   (async () => {
     const card = await cardsService.getById(req.params.id);

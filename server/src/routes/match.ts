@@ -38,7 +38,7 @@ async function buildStateResponse(roomCode: string) {
   } as const;
 }
 
-// 4.1 방 생성
+// 4.1 방 생성: 현재 유저를 호스트로 하는 새 매치 방을 만들고 방 코드를 반환한다.
 matchRouter.post('/create', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomName } = req.body as { roomName?: string | null };
@@ -56,7 +56,7 @@ matchRouter.post('/create', (req, res) => {
   );
 });
 
-// 4.2 방 참가
+// 4.2 방 참가: 방 코드로 존재하는 방에 참가(게스트로 입장)한다.
 matchRouter.post('/join', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomCode } = req.body as { roomCode?: string };
@@ -81,7 +81,7 @@ matchRouter.post('/join', (req, res) => {
   );
 });
 
-// 4.3 덱 제출
+// 4.3 덱 제출: 호스트/게스트가 자신의 덱을 방에 제출해 ready 상태를 만든다.
 matchRouter.patch('/deck', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomCode, deckId } = req.body as {
@@ -127,7 +127,7 @@ matchRouter.patch('/deck', (req, res) => {
   );
 });
 
-// 4.4 waiting 상태 방 리스트 조회
+// 4.4 waiting 상태 방 리스트 조회: 아직 플레이 중이 아닌 공개 대기 방 목록을 가져온다.
 matchRouter.get('/waiting', (req, res) => {
   (async () => {
     const rooms = await roomsService.listWaiting();
@@ -166,7 +166,7 @@ matchRouter.get('/waiting', (req, res) => {
   );
 });
 
-// 4.5 방 상태 조회 (폴링)
+// 4.5 방 상태 조회 (폴링): 방 코드 기준으로 현재 매치 상태를 조회한다.
 matchRouter.get('/:roomCode', (req, res) => {
   const { roomCode } = req.params as { roomCode: string };
   (async () => {
@@ -179,7 +179,7 @@ matchRouter.get('/:roomCode', (req, res) => {
   );
 });
 
-// 4.6 참가자 이탈
+// 4.6 참가자 이탈: 호스트/게스트가 방을 떠나면 방 상태를 finished 로 마무리한다.
 matchRouter.post('/leave', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomCode } = req.body as { roomCode?: string };
@@ -200,7 +200,7 @@ matchRouter.post('/leave', (req, res) => {
   );
 });
 
-// 4.7 방 삭제 (방장 전용)
+// 4.7 방 삭제 (방장 전용): 호스트만 방을 완전히 종료(finished) 처리할 수 있다.
 matchRouter.delete('/:roomCode', (req, res) => {
   const userId = (req as any).user.id as string;
   const { roomCode } = req.params as { roomCode: string };
