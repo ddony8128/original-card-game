@@ -1,6 +1,6 @@
 import type { DiffPatch } from '../../type/wsProtocol';
 import type { CardInstance } from '../../type/gameState';
-import type { GameEngineCore } from './index';
+import type { GameEngineCore } from './gameEngineCore';
 import { GamePhase, type PlayerID } from '../../type/gameState';
 import {
   computeInstallPositions,

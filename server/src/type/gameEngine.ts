@@ -12,7 +12,7 @@ import {
   GameEngineCore,
   type EngineConfig,
   type EngineResult,
-} from '../core/engine';
+} from '../core/engine/gameEngineCore';
 import type { EngineContext } from '../core/context';
 
 /**

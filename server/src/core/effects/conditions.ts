@@ -1,4 +1,4 @@
-import type { GameEngineCore } from '../engine';
+import type { GameEngineCore } from '../engine/gameEngineCore';
 import type {
   DamageEffect,
   HealEffect,

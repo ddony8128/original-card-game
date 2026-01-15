@@ -1,5 +1,5 @@
 import type { PlayerID, CardInstance } from '../../type/gameState';
-import type { GameEngineCore, EngineResult } from './index';
+import type { GameEngineCore, EngineResult } from './gameEngineCore';
 import { MOVE_MANA_COST } from '../rules/constants';
 import { isInsideBoard, fromViewerPos } from './boardUtils';
 import type {
