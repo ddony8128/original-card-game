@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" },
+    { "source": "/api/:path*", "destination": "https://original-card-game.onrender.com/api/:path*" }
+  ]
 }

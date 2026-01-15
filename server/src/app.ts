@@ -15,7 +15,7 @@ app.use(
   cors({
     origin: [
       'https://original-card-game.vercel.app',
-      'http://localhost:5173', // 테스트를 위해 남겨둔 로컬 origin
+      'http://localhost:5173',
       'https://cardgame.perfect.ai.kr',
     ],
     credentials: true,
