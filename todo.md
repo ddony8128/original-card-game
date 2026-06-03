@@ -58,7 +58,7 @@
 - [ ] **E-1** 로딩 스켈레톤 (Lobby 덱리스트, DeckBuilder isLoading)
 - [ ] **E-2** 모바일 반응형 (Mobile/Desktop 분리, 화면너비 기준)
 - [ ] **E-3** 로그인 에러 인라인 표시 + 로그아웃 버튼
-- [ ] **E-4** 게임 로그 가시성 (최신 하단 고정/자동 스크롤)
+- [x] **E-4** 게임 로그: 새 로그 도착 시 bottomRef로 자동 하단 스크롤(최신이 묻히지 않음). tsc/lint/test✓ (시각 확인 권장)
 - [ ] **E-5** 게임 이펙트 (피해 숫자/마법·덫 표시)
 - [ ] **E-6** 덱빌더 카드 크기 고정 + 호버 z-index + 축약형 덱 카드
 - [x] **E-7** 검색 캐싱: useCardsQuery에 staleTime(5분)+keepPreviousData. 같은 검색어 재방문 시 재요청 없음, 타이핑 중 깜빡임 제거. tsc/lint/test✓
