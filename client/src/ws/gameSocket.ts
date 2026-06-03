@@ -47,9 +47,18 @@ export interface GameSocket {
  * - 실제 엔드포인트는 서버의 `/api/match/socket` 을 사용하며,
  *   최초 연결 시 `ready` 이벤트를 자동으로 전송해 방/유저 정보를 알려준다.
  */
+const RECONNECT_BASE_MS = 500;
+const RECONNECT_MAX_MS = 10_000;
+const MAX_RECONNECT_ATTEMPTS = 10;
+
 export function createGameSocket(options: GameSocketOptions): GameSocket {
   let socket: WebSocket | null = null;
   let status: GameSocketStatus = 'idle';
+
+  // 의도적 close(close 호출/언마운트)와 예기치 않은 끊김을 구분해 재연결을 제어한다.
+  let intentionalClose = false;
+  let reconnectAttempts = 0;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
   const messageHandlers = new Set<MessageHandler>();
   const eventHandlers = new Map<ServerToClientEvent, Set<EventHandler<ServerToClientEvent>>>();
@@ -58,7 +67,34 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     status = next;
   };
 
+  const clearReconnectTimer = () => {
+    if (reconnectTimer !== null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+  };
+
+  const scheduleReconnect = () => {
+    if (intentionalClose) return;
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      updateStatus('closed');
+      return;
+    }
+    const delay = Math.min(
+      RECONNECT_BASE_MS * 2 ** reconnectAttempts,
+      RECONNECT_MAX_MS,
+    );
+    reconnectAttempts += 1;
+    clearReconnectTimer();
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connect();
+    }, delay);
+  };
+
   const connect = () => {
+    // 명시적으로 다시 연결을 시도하는 것이므로 의도적 close 플래그를 해제한다.
+    intentionalClose = false;
     if (
       socket &&
       (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)
@@ -75,6 +111,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
 
     socket.onopen = () => {
       updateStatus('open');
+      reconnectAttempts = 0;
       // 서버에 이 소켓이 어떤 방/유저에 속하는지 알려주는 초기 ready 메시지
       const readyPayload: WsClientToServerMessage = {
         event: 'ready',
@@ -108,17 +145,25 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     };
 
     socket.onclose = () => {
-      updateStatus('closed');
       socket = null;
+      if (intentionalClose) {
+        updateStatus('closed');
+        return;
+      }
+      // 예기치 않은 끊김: 지수 백오프로 재연결을 시도한다.
+      updateStatus('connecting');
+      scheduleReconnect();
     };
   };
 
   const close = () => {
+    intentionalClose = true;
+    clearReconnectTimer();
     if (socket) {
       socket.close();
       socket = null;
-      updateStatus('closed');
     }
+    updateStatus('closed');
   };
 
   const send = (msg: WsClientToServerMessage) => {

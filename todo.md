@@ -25,7 +25,7 @@
 - [x] **C-1** 덱 2번 생성: DeckBuilder 저장 버튼이 비활성화 안 됨이 원인. raw decksApi 호출 → `useSaveDeckMutation`(분기형 create/update)로 전환, `isPending`으로 버튼 disabled + 가드. 재현 테스트(지연응답 중 재클릭→POST 1회). lint/tsc/test✓
 - [x] **C-2** 버리기 중 바탕 클릭 멈춤: RequestInputModal 백드롭/ESC/X가 `onCancel`→`setRequestInput(null)`만 호출(답 미전송)→서버 WAITING_FOR_PLAYER_INPUT 영구대기. `dismissible` prop 추가, 비-멀리건 필수입력은 닫기 차단(멀리건은 빈 응답 전송하므로 닫기 허용 유지). 테스트 2개. lint/tsc/test✓
 - [x] **C-3** 연속 게임 시작 안 됨: 실제 원인은 game_over 콜백을 안 타는 종료(leave/host-delete) 시 in-memory 엔진이 GAME_OVER로 잔존. `ensureRoom`에서 GAME_OVER 엔진 폐기 후 재생성. 재현 테스트 2개. tsc/lint/test✓
-- [ ] **C-4** 웹소켓 연결 재시도 로직
+- [x] **C-4** 웹소켓 재연결: onclose가 재시도 없이 socket만 null로 둠. 지수 백오프(500ms~10s, 최대10회) 자동 재연결, 의도적 close()와 끊김 구분, 성공 시 ready 재전송. mock WS+fake timer 테스트 4개. ⚠️후속: 디스커넥트 중 누락 패치 서버측 재동기화. lint/tsc/test✓
 - [x] **C-5** 자연종료 시 onGameOver에서 `roomsService.finishByCode` fire-and-forget 호출 → DB status='finished'. 재현 테스트. tsc/lint/test✓
 - [x] **C-6** 끈적거림: Tailwind v4는 이미 hover를 (hover:hover) 게이팅→터치 sticky-hover 아님. 실제 원인은 async 중 즉각 피드백 부재. 비활성화+로딩표시 패턴 적용(C-1 덱저장, BackRoom 나가기; Lobby 방생성/참가는 기존 적용). ⚠️잔여 체감지연은 시각QA 항목. lint/tsc/test✓
 - [x] **C-7** 시크릿탭 로그인: cross-site 쿠키(sameSite:none) 차단이 원인. 서버가 이미 지원하던 Bearer 경로를 완성 — login 응답에 token, 클라 localStorage 저장 후 Authorization 헤더 첨부(쿠키 경로 유지, additive). 서버 테스트로 '쿠키 없이 Bearer만 /me 200' 검증. ⚠️실배포 시크릿탭 최종확인 권장. lint/tsc/test✓
