@@ -46,11 +46,11 @@ export default function Lobby() {
 
   const requireDecksOrWarn = () => {
     if (loadingDecks) {
-      toast.info('덱 정보를 불러오는 중입니다. 잠시만 기다려주세요.');
+      toast.info(t('lobby.loadingDecks'));
       return false;
     }
     if (!totalDeckCount) {
-      toast.error('덱을 먼저 만들어야 합니다.');
+      toast.error(t('lobby.needDeck'));
       return false;
     }
     return true;
@@ -61,34 +61,38 @@ export default function Lobby() {
     try {
       const res = await createRoom.mutateAsync(roomName.trim() || null);
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
-      toast.success('방이 생성되었습니다.', { description: `방 코드 : ${res.roomCode}` });
+      toast.success(t('lobby.roomCreated'), {
+        description: t('lobby.roomCodeDesc', { code: res.roomCode }),
+      });
       navigate(`/back-room/${res.roomCode}`);
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? '방 생성에 실패했습니다.');
+      toast.error(getErrorMessage(e) ?? t('lobby.errCreateRoom'));
     }
   };
 
   const handleJoinRoom = async () => {
     if (!requireDecksOrWarn()) return;
-    if (!roomCode.trim()) return toast.error('방 코드를 입력하세요.');
+    if (!roomCode.trim()) return toast.error(t('lobby.needRoomCode'));
     try {
       const res = await joinRoom.mutateAsync(roomCode.trim());
       // 방 정보는 URL로 전달하고, BackRoom에서 서버 쿼리로 조회
-      toast.success('방에 입장했습니다.', { description: `방 코드 : ${res.roomCode}` });
+      toast.success(t('lobby.joinedRoom'), {
+        description: t('lobby.roomCodeDesc', { code: res.roomCode }),
+      });
       navigate(`/back-room/${res.roomCode}`);
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? '방 참가에 실패했습니다.');
+      toast.error(getErrorMessage(e) ?? t('lobby.errJoinRoom'));
     }
   };
 
   const handleDeleteDeck = (deck: DeckDto) => {
-    if (!confirm(`${deck.name} 덱을 삭제하시겠습니까?`)) return;
+    if (!confirm(t('lobby.confirmDeleteDeck', { name: deck.name }))) return;
     deleteDeckMutation.mutate(deck.id, {
       onSuccess: () =>
-        toast.success('덱이 삭제되었습니다.', {
+        toast.success(t('lobby.deckDeleted'), {
           description: deck.name,
         }),
-      onError: (err: unknown) => toast.error(getErrorMessage(err) ?? '삭제 실패'),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) ?? t('lobby.errDeleteDeck')),
     });
   };
 
@@ -112,33 +116,33 @@ export default function Lobby() {
             disabled={logout.isPending}
           >
             <LogOut className="mr-2 h-4 w-4" />
-            {logout.isPending ? '로그아웃 중...' : '로그아웃'}
+            {logout.isPending ? t('lobby.loggingOut') : t('lobby.logout')}
           </Button>
         </div>
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-bold">로비</h1>
-          <p className="text-muted-foreground">환영합니다, {me.username}님!</p>
+          <h1 className="text-3xl font-bold">{t('lobby.title')}</h1>
+          <p className="text-muted-foreground">{t('lobby.welcome', { username: me.username })}</p>
         </div>
 
         <div className="flex flex-col items-center gap-2">
           <div className="flex flex-wrap justify-center gap-3">
             <Button onClick={() => navigate('/tutorial')}>
               <GraduationCap className="mr-2 h-4 w-4" />
-              튜토리얼 (AI 연습)
+              {t('lobby.tutorial')}
             </Button>
             <Button variant="secondary" onClick={() => navigate('/pve')}>
               <Swords className="mr-2 h-4 w-4" />
-              PvE (AI 도전)
+              {t('lobby.pve')}
             </Button>
           </div>
           {pveProgress?.allCleared ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-sm font-bold text-amber-300 ring-1 ring-amber-300/60 drop-shadow-[0_0_8px_rgba(252,211,77,0.6)]">
               <Trophy className="h-4 w-4" />
-              황금 뱃지 획득!
+              {t('lobby.goldenBadge')}
             </span>
           ) : (
             <span className="text-muted-foreground text-xs">
-              PvE 3스테이지 클리어 시 황금 뱃지 ({pveProgress?.clearedStageIds.length ?? 0}/3)
+              {t('lobby.pveBadgeProgress', { count: pveProgress?.clearedStageIds.length ?? 0 })}
             </span>
           )}
         </div>
@@ -173,7 +177,7 @@ export default function Lobby() {
         {/* 리뷰 페이지로 이동 */}
         <div className="flex justify-end">
           <Button variant="outline" onClick={() => navigate('/review')}>
-            리뷰하러 가기
+            {t('lobby.goToReview')}
           </Button>
         </div>
       </div>

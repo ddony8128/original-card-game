@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLangNavigate } from '@/i18n/nav';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,13 +10,14 @@ import { useCreateReviewMutation } from '@/features/reviews/queries';
 
 export default function Review() {
   const navigate = useLangNavigate();
+  const { t } = useTranslation();
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const createReview = useCreateReviewMutation();
 
   const handleSubmit = async () => {
     if (!review.trim()) {
-      toast.error('리뷰를 입력해주세요.');
+      toast.error(t('review.errEmpty'));
       return;
     }
 
@@ -23,8 +25,8 @@ export default function Review() {
       setSubmitting(true);
       await createReview.mutateAsync({ review: review.trim() });
 
-      toast.success('리뷰가 등록되었습니다.', {
-        description: '소중한 의견 감사합니다!',
+      toast.success(t('review.success'), {
+        description: t('review.successDesc'),
       });
       setReview('');
       navigate('/lobby');
@@ -32,7 +34,7 @@ export default function Review() {
       const message =
         e instanceof Error
           ? e.message
-          : '리뷰 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
+          : t('review.errSubmit');
       toast.error(message);
     } finally {
       setSubmitting(false);
@@ -45,7 +47,7 @@ export default function Review() {
       <div className="mb-6">
         <Button variant="ghost" onClick={() => navigate('/lobby')} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
-          로비로 돌아가기
+          {t('common.backToLobby')}
         </Button>
       </div>
 
@@ -53,23 +55,23 @@ export default function Review() {
       <div className="flex flex-1 items-center justify-center">
         <Card className="w-full max-w-2xl">
           <CardHeader>
-            <CardTitle className="text-center text-3xl">게임 리뷰</CardTitle>
+            <CardTitle className="text-center text-3xl">{t('review.title')}</CardTitle>
             <CardDescription className="pt-2 text-center text-base">
-              게임이 재미있었던 점, 아쉬웠던 점, 이런 카드 있으면 좋겠다 등
+              {t('review.descriptionLine1')}
               <br />
-              자유롭게 적어주세요!
+              {t('review.descriptionLine2')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              placeholder="여기에 리뷰를 작성해주세요..."
+              placeholder={t('review.placeholder')}
               value={review}
               onChange={(e) => setReview(e.target.value)}
               className="min-h-[300px] resize-none"
               disabled={submitting}
             />
             <Button onClick={handleSubmit} className="w-full" size="lg" disabled={submitting}>
-              {submitting ? '등록 중...' : '리뷰 등록'}
+              {submitting ? t('review.submitting') : t('review.submit')}
             </Button>
           </CardContent>
         </Card>

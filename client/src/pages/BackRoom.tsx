@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useLangNavigate } from '@/i18n/nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 
 export default function BackRoom() {
   const navigate = useLangNavigate();
+  const { t } = useTranslation();
   const { roomId } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
   // URL 파라미터는 roomId지만 실제로는 roomCode를 전달받음
@@ -56,8 +58,8 @@ export default function BackRoom() {
   }, [me, roomCode, navigate]);
 
   const canStart = state?.status === 'playing';
-  const hostName = state?.host?.username ?? '(대기 중)';
-  const guestName = state?.guest?.username ?? '(대기 중)';
+  const hostName = state?.host?.username ?? t('common.waiting');
+  const guestName = state?.guest?.username ?? t('common.waiting');
 
   const getErrorMessage = (err: unknown): string | undefined => {
     if (err instanceof Error) return err.message;
@@ -72,10 +74,10 @@ export default function BackRoom() {
     if (!roomCode) return;
     try {
       await leaveRoom.mutateAsync(roomCode);
-      toast.success('방에서 나갔습니다.');
+      toast.success(t('backRoom.leftRoom'));
       navigate('/lobby');
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? '방 나가기에 실패했습니다.');
+      toast.error(getErrorMessage(e) ?? t('backRoom.errLeave'));
     }
   };
 
@@ -92,12 +94,12 @@ export default function BackRoom() {
         setGlobalSelectedDeckId(deckId);
         setCardMetaFromDeck(deck);
       }
-      toast.success('덱이 제출되었습니다.');
+      toast.success(t('backRoom.deckSubmitted'));
       await refetchState();
     } catch (e: unknown) {
       setSelectedDeckId(prevSelected);
       setLocked(false);
-      toast.error(getErrorMessage(e) ?? '덱 제출에 실패했습니다.');
+      toast.error(getErrorMessage(e) ?? t('backRoom.errSubmitDeck'));
     }
   };
 
@@ -108,9 +110,12 @@ export default function BackRoom() {
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">대기실</h1>
+            <h1 className="text-2xl font-bold">{t('backRoom.title')}</h1>
             <div className="text-muted-foreground mt-1 text-sm">
-              {state?.roomName || '방 이름 없음'} · 코드: {roomCode}
+              {t('backRoom.roomInfo', {
+                roomName: state?.roomName || t('backRoom.noRoomName'),
+                code: roomCode,
+              })}
             </div>
           </div>
           <Button
@@ -118,16 +123,16 @@ export default function BackRoom() {
             onClick={handleLeave}
             disabled={leaveRoom.isPending}
           >
-            {leaveRoom.isPending ? '나가는 중...' : '나가기'}
+            {leaveRoom.isPending ? t('backRoom.leaving') : t('backRoom.leave')}
           </Button>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>방 참가자</span>
+              <span>{t('backRoom.participants')}</span>
               <span className="text-muted-foreground text-sm">
-                상태: {state?.status ?? 'unknown'}
+                {t('backRoom.status', { status: state?.status ?? 'unknown' })}
               </span>
             </CardTitle>
           </CardHeader>
@@ -145,14 +150,14 @@ export default function BackRoom() {
 
         <Card>
           <CardHeader>
-            <CardTitle>내 덱 선택</CardTitle>
+            <CardTitle>{t('backRoom.selectDeck')}</CardTitle>
           </CardHeader>
           <CardContent>
             {loadingDecks ? (
-              <div className="text-muted-foreground py-8 text-center">덱을 불러오는 중...</div>
+              <div className="text-muted-foreground py-8 text-center">{t('backRoom.loadingDecks')}</div>
             ) : deckList.length === 0 ? (
               <div className="text-muted-foreground py-8 text-center">
-                저장된 서버 덱이 없습니다. 덱을 먼저 만들어주세요.
+                {t('backRoom.noDecks')}
               </div>
             ) : (
               <div className="space-y-2">
@@ -167,7 +172,7 @@ export default function BackRoom() {
                       <div>
                         <div className="font-semibold">{d.name}</div>
                         <div className="text-muted-foreground text-xs">
-                          메인 {mainCount}장 / 재앙 {cataCount}장
+                          {t('backRoom.deckCardCount', { main: mainCount, cata: cataCount })}
                         </div>
                       </div>
                       <Button
@@ -175,7 +180,7 @@ export default function BackRoom() {
                         disabled={locked || selectedDeckId === d.id}
                         onClick={() => handleSelectDeck(d.id)}
                       >
-                        {selectedDeckId === d.id ? '선택됨' : '선택'}
+                        {selectedDeckId === d.id ? t('backRoom.selected') : t('backRoom.select')}
                       </Button>
                     </div>
                   );
@@ -187,13 +192,13 @@ export default function BackRoom() {
 
         <Card>
           <CardHeader>
-            <CardTitle>채팅</CardTitle>
+            <CardTitle>{t('backRoom.chat')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="bg-secondary/30 h-64 overflow-y-auto rounded-lg p-3">
               {messages.length === 0 ? (
                 <div className="text-muted-foreground py-8 text-center text-sm">
-                  아직 메시지가 없습니다.
+                  {t('backRoom.noMessages')}
                 </div>
               ) : (
                 <div className="space-y-1">
@@ -229,11 +234,11 @@ export default function BackRoom() {
                     handleSendChat();
                   }
                 }}
-                placeholder="메시지를 입력하세요"
+                placeholder={t('backRoom.chatPlaceholder')}
                 maxLength={500}
               />
               <Button onClick={handleSendChat} disabled={!chatInput.trim()}>
-                전송
+                {t('backRoom.send')}
               </Button>
             </div>
           </CardContent>
@@ -241,7 +246,7 @@ export default function BackRoom() {
 
         <div className="flex justify-end">
           <Button disabled={!canStart} onClick={() => navigate(`/game/${roomCode}`)}>
-            게임 시작
+            {t('backRoom.startGame')}
           </Button>
         </div>
       </div>

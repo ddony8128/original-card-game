@@ -3,6 +3,8 @@ import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import { server } from './testServer';
 import 'whatwg-fetch';
+// i18next 인스턴스를 초기화해 컴포넌트의 t()가 키가 아닌 한국어(기본 언어)로 해석되도록 한다.
+import '@/i18n';
 
 beforeAll(() => server.listen());
 afterEach(() => {

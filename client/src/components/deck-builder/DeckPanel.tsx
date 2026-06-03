@@ -2,6 +2,7 @@ import type { DeckCard } from '@/shared/types/deck';
 import { GameCard } from './GameCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/lib/utils';
 
 interface DeckPanelProps {
@@ -20,6 +21,7 @@ export const DeckPanel = ({
   maxCataSize,
   cataIds,
 }: DeckPanelProps) => {
+  const { t } = useTranslation();
   const totalCards = deckCards.reduce((sum, card) => sum + card.count, 0);
 
   const mainCards = deckCards.filter((c) => !cataIds?.has(c.id));
@@ -35,7 +37,7 @@ export const DeckPanel = ({
       {/* Header */}
       <div className="from-primary/20 to-primary/10 border-border border-b bg-linear-to-r p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-foreground text-xl font-bold">나의 덱</h2>
+          <h2 className="text-foreground text-xl font-bold">{t('deckBuilder.myDeck')}</h2>
           <div
             className={cn(
               'rounded-lg px-4 py-2 text-2xl font-bold',
@@ -45,11 +47,16 @@ export const DeckPanel = ({
               !isComplete && !isOverLimit && 'bg-secondary text-foreground',
             )}
           >
-            메인 {mainCount}/{maxMainSize} · 재앙 {cataCount}/{maxCataSize}
+            {t('deckBuilder.deckCount', {
+              main: mainCount,
+              maxMain: maxMainSize,
+              cata: cataCount,
+              maxCata: maxCataSize,
+            })}
           </div>
         </div>
         {isOverLimit && (
-          <p className="text-destructive mt-2 text-sm">덱의 최대 장수를 초과했습니다!</p>
+          <p className="text-destructive mt-2 text-sm">{t('deckBuilder.overLimit')}</p>
         )}
       </div>
 
@@ -58,14 +65,14 @@ export const DeckPanel = ({
         {deckCards.length === 0 ? (
           <div className="text-muted-foreground flex h-full items-center justify-center">
             <p className="text-center">
-              카드를 클릭하여
+              {t('deckBuilder.emptyDeckLine1')}
               <br />
-              덱에 추가하세요
+              {t('deckBuilder.emptyDeckLine2')}
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="text-muted-foreground mb-1 text-sm font-semibold">메인 카드</div>
+            <div className="text-muted-foreground mb-1 text-sm font-semibold">{t('deckBuilder.mainCards')}</div>
             {mainCards
               .sort((a, b) => (a.mana ?? 0) - (b.mana ?? 0))
               .map((card) => (
@@ -88,9 +95,9 @@ export const DeckPanel = ({
                 </div>
               ))}
 
-            <div className="text-muted-foreground mt-6 mb-1 text-sm font-semibold">재앙 카드</div>
+            <div className="text-muted-foreground mt-6 mb-1 text-sm font-semibold">{t('deckBuilder.cataCards')}</div>
             {cataCards.length === 0 ? (
-              <div className="text-muted-foreground text-xs">재앙 카드를 선택하지 않았습니다.</div>
+              <div className="text-muted-foreground text-xs">{t('deckBuilder.noCataSelected')}</div>
             ) : (
               cataCards
                 .sort((a, b) => (a.mana ?? 0) - (b.mana ?? 0))
@@ -121,7 +128,7 @@ export const DeckPanel = ({
       {/* Stats Footer */}
       <div className="bg-secondary/50 border-border border-t p-4">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">평균 마나 비용</span>
+          <span className="text-muted-foreground">{t('deckBuilder.avgMana')}</span>
           <span className="text-foreground font-bold">
             {deckCards.length > 0
               ? (

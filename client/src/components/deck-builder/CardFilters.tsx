@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/shared/lib/utils';
 
 interface CardFiltersProps {
@@ -24,13 +25,14 @@ export const CardFilters = ({
   searchQuery,
   onSearchChange,
 }: CardFiltersProps) => {
+  const { t } = useTranslation();
   return (
     <div className="bg-card border-border space-y-4 rounded-lg border p-4">
       {/* Search Bar */}
       <div className="relative">
         <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
-          placeholder="카드 이름이나 내용 검색..."
+          placeholder={t('deckBuilder.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="bg-secondary border-border pl-10"
@@ -39,7 +41,7 @@ export const CardFilters = ({
 
       {/* Mana Cost Filters */}
       <div className="space-y-2">
-        <p className="text-muted-foreground text-sm font-medium">마나 비용</p>
+        <p className="text-muted-foreground text-sm font-medium">{t('deckBuilder.manaCost')}</p>
         <div className="flex flex-wrap gap-2">
           <Button
             variant={selectedMana === null ? 'default' : 'outline'}
@@ -50,7 +52,7 @@ export const CardFilters = ({
               selectedMana === null && 'shadow-[0_0_20px_hsl(260_80%_55%/0.4)]',
             )}
           >
-            전체
+            {t('deckBuilder.all')}
           </Button>
           {manaFilters.map((filter) => (
             <Button

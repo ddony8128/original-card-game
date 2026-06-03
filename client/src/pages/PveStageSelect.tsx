@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useLangNavigate } from '@/i18n/nav';
 import { ArrowLeft, Trophy, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { usePveStagesQuery, usePveProgressQuery } from '@/features/pve/queries';
 
 export default function PveStageSelect() {
   const navigate = useLangNavigate();
+  const { t } = useTranslation();
   const { data: stagesData, isLoading: stagesLoading } = usePveStagesQuery();
   const { data: progress, isLoading: progressLoading } = usePveProgressQuery();
 
@@ -23,16 +25,16 @@ export default function PveStageSelect() {
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={() => navigate('/lobby')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            로비
+            {t('lobby.title')}
           </Button>
         </div>
 
         <div className="space-y-2 text-center">
           <h1 className="flex items-center justify-center gap-2 text-3xl font-bold">
             <Swords className="h-7 w-7" />
-            PvE (AI 도전)
+            {t('pve.title')}
           </h1>
-          <p className="text-muted-foreground">스테이지를 골라 AI 와 대전하세요.</p>
+          <p className="text-muted-foreground">{t('pve.subtitle')}</p>
         </div>
 
         {/* 전체 클리어 축하 배너 */}
@@ -41,9 +43,9 @@ export default function PveStageSelect() {
             <Crown className="h-8 w-8 text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.9)]" />
             <div>
               <p className="text-xl font-extrabold text-amber-300 drop-shadow-[0_0_10px_rgba(252,211,77,0.8)]">
-                모든 스테이지 클리어! 황금 뱃지 획득!
+                {t('pve.allClearedBanner')}
               </p>
-              <p className="text-muted-foreground text-sm">진정한 마법사로 인정받았습니다.</p>
+              <p className="text-muted-foreground text-sm">{t('pve.allClearedSubtitle')}</p>
             </div>
           </div>
         )}
@@ -69,7 +71,7 @@ export default function PveStageSelect() {
                 >
                   <CardContent className="flex h-full flex-col items-center gap-3 p-6 text-center">
                     <span className="text-muted-foreground text-xs font-semibold">
-                      스테이지 {index + 1}
+                      {t('pve.stageLabel', { number: index + 1 })}
                     </span>
                     {cleared ? (
                       <Trophy className="h-10 w-10 text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.9)]" />
@@ -79,7 +81,7 @@ export default function PveStageSelect() {
                     <h2 className="text-lg font-bold">{stage.name}</h2>
                     {cleared && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-3 py-0.5 text-sm font-bold text-amber-300">
-                        클리어!
+                        {t('pve.cleared')}
                       </span>
                     )}
                     <Button
@@ -87,7 +89,7 @@ export default function PveStageSelect() {
                       variant={cleared ? 'outline' : 'default'}
                       onClick={() => navigate(`/pve/play/${stage.id}`)}
                     >
-                      {cleared ? '다시 도전' : '도전'}
+                      {cleared ? t('pve.retry') : t('pve.challenge')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -98,7 +100,7 @@ export default function PveStageSelect() {
 
         {!isLoading && !allCleared && (
           <p className="text-muted-foreground text-center text-sm">
-            모든 스테이지를 클리어하면 황금 뱃지를 획득합니다 ({clearedCount}/{totalCount})
+            {t('pve.progressHint', { cleared: clearedCount, total: totalCount })}
           </p>
         )}
       </div>

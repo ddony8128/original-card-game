@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CardFilters } from '@/components/deck-builder/CardFilters';
 import { DeckPanel } from '@/components/deck-builder/DeckPanel';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useDeckBuilder } from '@/features/decks/hooks/useDeckBuilder';
 import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 
@@ -17,6 +18,7 @@ import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
  *   서버 `/api/decks` 형식({ id, count } 배열)으로 저장/수정 요청을 보낸다.
  */
 const DeckBuilder = () => {
+  const { t } = useTranslation();
   const {
     navigate,
     deckName,
@@ -49,16 +51,16 @@ const DeckBuilder = () => {
         <div className="mb-6 flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate('/lobby')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            로비로 돌아가기
+            {t('common.backToLobby')}
           </Button>
           <h1 className="from-primary to-accent bg-linear-to-r bg-clip-text text-4xl font-bold">
-            {serverEditingDeckId ? '덱 수정' : '덱 빌더'}
+            {serverEditingDeckId ? t('deckBuilder.editTitle') : t('deckBuilder.title')}
           </h1>
         </div>
 
         <div className="mb-6 flex flex-wrap gap-4">
           <Input
-            placeholder="덱 이름"
+            placeholder={t('deckBuilder.deckNamePlaceholder')}
             value={deckName}
             onChange={(e) => setDeckName(e.target.value)}
             className="max-w-xs"
@@ -66,10 +68,10 @@ const DeckBuilder = () => {
           <Button onClick={handleSave} disabled={isPending}>
             <Save className="mr-2 h-4 w-4" />
             {isPending
-              ? '저장 중...'
+              ? t('deckBuilder.saving')
               : serverEditingDeckId
-                ? '수정 완료'
-                : '덱 저장'}
+                ? t('deckBuilder.editDone')
+                : t('deckBuilder.save')}
           </Button>
         </div>
 
@@ -90,14 +92,14 @@ const DeckBuilder = () => {
                 variant={selectedTab === 'main' ? 'default' : 'outline'}
                 onClick={() => setSelectedTab('main')}
               >
-                메인 카드
+                {t('deckBuilder.mainCards')}
               </Button>
               <Button
                 size="sm"
                 variant={selectedTab === 'cata' ? 'default' : 'outline'}
                 onClick={() => setSelectedTab('cata')}
               >
-                재앙 카드
+                {t('deckBuilder.cataCards')}
               </Button>
             </div>
 
@@ -123,7 +125,7 @@ const DeckBuilder = () => {
                 )}
                 {!loadingCards && filteredCards.length === 0 && (
                   <div className="text-muted-foreground flex h-64 items-center justify-center">
-                    <p>검색 결과가 없습니다</p>
+                    <p>{t('deckBuilder.noResults')}</p>
                   </div>
                 )}
               </ScrollArea>
