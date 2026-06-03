@@ -41,10 +41,13 @@
 - [x] **A-6** 순수 엔진/스크립트 해석기 **의존성 주입**으로 실현(고위험 파일 대이동 대신): EngineConfig에 effectResolver+actionHandlers 주입점, defaultScripts.ts(기본 wiring), handlePlayerAction switch→주입 맵 lookup, stepUntilStable→resolveEffectFn. core/engine/README.md로 경계 문서화. 주입 테스트 3개. 서버86 green.
 
 ## B. 서버 엔진 — 타입 / 품질
+- [x] **B-2** 카드 정보 리소스화(#4): 카드 카탈로그를 메모리에 1회 적재(core/resources/cardCatalog.ts), buildEngineContextFromDecks의 lookupCard를 DB→메모리 동기조회로 전환(플레이 중 DB 조회 제거). 동시시작 시 1회 로드. 테스트 2개.
 - [~] **B-1** (판단) ws 프로토콜은 이미 **타입드 string-literal union**이라 typo는 tsc가 차단(타입안전 확보). 영향력 큰 버전(숫자 wire enum)은 클라/서버 lockstep+버저닝 필요한 고위험·저가치 → 보류.
 - [x] **B-3** 초기 드로우 2/3 → FIRST/SECOND_PLAYER_INITIAL_DRAW 상수. heal 상한 하드코딩 20 → player.maxHp. (주요 규칙은 이미 constants에 집약돼 있었음) tsc/lint/test✓
 - [x] **B-4** action 디스패치 `as any` 제거: `UseRitualActionPayload` 추가, move/use_card/use_ritual을 판별 union 특정 타입으로 캐스트. any경고 203→198. tsc/lint/test✓ (엔진 내부 effect 동적처리용 any는 정당하여 유지)
 - [~] **B-5** (판단) A-4 분해 후 주석 대부분 정확. resolveTriggeredEffect TODO는 거짓이 아니라 보류된 A-1 작업 표시→유지. 대량 주석정리는 저가치·노이즈 위험으로 보류.
+- [x] **#7 보안 차단**: ws 악용입력(파싱실패/미인증플러딩/미지이벤트)을 소켓별 strike 누적→임계 초과 시 연결 차단(ws/abuseGuard). 단위테스트.
+- [x] **로비 me? 타입**: !me 가드 후 me?.username→me.username.
 
 ## D. 클라이언트 — 구조 (정우근)
 - [x] **D-1** `Lobby.tsx` 302→124줄. `components/lobby/`로 CreateRoomCard/JoinRoomCard/MyDecksCard/WaitingRoomsList 추출, 중복 getErrorMessage→`shared/lib/errors.ts`. 동작보존, 6 Lobby 테스트+전체 31 green. tsc/lint✓
@@ -81,3 +84,4 @@
 - 다음 예정: D(클라 구조) → B(타입/품질) → E(UX) → A(선택적 대공사).
 - **전 작업 완료**: C(8) D(6) E(10) F(5) A(7) B(5). 서버 86 test / 클라 32 test, tsc/lint 전부 green.
 - 보류(근거 기록): B-1(이미 타입드 union), B-5(주석 대부분 정확). 후속 권장(시각QA/대규모): E-2 완전 Mobile/Desktop 분리, E-6 가로형 덱카드, C-4 디스커넥트 재동기화, F-3 test_full_stack.sh 삭제 확인.
+- **후속 추가완료**(별도 브랜치): 카드 리소스화(#4), 보안 차단(#7), 로비 타입. 서버 90 test / 클라 32 test green.
