@@ -24,6 +24,7 @@ import { getCardMeta } from '../core/resources/cardCatalog';
 import { chooseAIAction } from '../core/ai/heuristic';
 import { getProfile, type AIProfile } from '../core/ai/profiles';
 import { getPveStage } from '../core/resources/pveStages';
+import { pveProgressService } from '../services/pveProgress';
 import type { DeckList } from '../type/deck';
 import type { LegalAction } from '../core/ai/legalActions';
 import { toViewerPos } from '../core/engine/boardUtils';
@@ -350,6 +351,23 @@ export class SoloGameManager {
         data: payload,
       };
       this.socketManager.sendTo(soloId, humanId, msg);
+
+      // PvE(스테이지 지정)에서 사람이 이겼으면 클리어를 기록한다.
+      // 튜토리얼(stageId 없음)은 아무 것도 기록하지 않는다.
+      // ws 경로를 막지 않도록 fire-and-forget 으로 처리한다(절대 throw 하지 않음).
+      if (room.stageId && payload.winner === humanId) {
+        pveProgressService
+          .markCleared(humanId, room.stageId)
+          .catch((err) => {
+            console.warn('[SoloGameManager] markCleared failed', {
+              soloId,
+              humanId,
+              stageId: room.stageId,
+              err,
+            });
+          });
+      }
+
       this.rooms.delete(soloId);
     });
 

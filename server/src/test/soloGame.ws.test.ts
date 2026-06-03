@@ -140,8 +140,33 @@ vi.mock('../services/cards', () => {
   };
 });
 
+// PvE 클리어 기록 서비스는 supabase 에 닿으므로 모킹한다(스파이 가능하도록).
+vi.mock('../services/pveProgress', () => {
+  return {
+    pveProgressService: {
+      markCleared: vi.fn(async () => {}),
+      getClearedStageIds: vi.fn(async () => []),
+    },
+  };
+});
+
 import { SoloGameManager, AI_PLAYER_ID } from '../ws/soloGameManager';
+import { pveProgressService } from '../services/pveProgress';
 import { resetCardCatalog } from '../core/resources/cardCatalog';
+
+/** SoloGameManager 내부 방의 엔진에 등록된 onGameOver 콜백을 꺼낸다. */
+function getGameOverHandler(
+  manager: SoloGameManager,
+  soloId: string,
+): (payload: { winner: PlayerID | 'draw' | null; reason: string }) => void {
+  const rooms = (
+    manager as unknown as {
+      rooms: Map<string, { engine: { handlers: any } }>;
+    }
+  ).rooms;
+  const room = rooms.get(soloId)!;
+  return (room.engine as any).handlers.onGameOver;
+}
 
 class FakeSocketManager
   implements Pick<SocketManager, 'joinRoom' | 'leave' | 'broadcast' | 'sendTo'>
@@ -205,6 +230,7 @@ describe('솔로(싱글플레이 vs AI) WebSocket 통합 플로우', () => {
   beforeEach(() => {
     // 다른 테스트가 빈 카탈로그를 적재했을 수 있으므로, 우리 카드들로 다시 적재한다.
     resetCardCatalog();
+    vi.mocked(pveProgressService.markCleared).mockClear();
   });
 
   it('start_solo → game_init + ask_mulligan → 멀리건 후 사람 액션 단계에 도달한다', async () => {
@@ -422,5 +448,91 @@ describe('솔로(싱글플레이 vs AI) WebSocket 통합 플로우', () => {
       manager as unknown as { rooms: Map<string, unknown> }
     ).rooms;
     expect(rooms.size).toBe(0);
+  });
+
+  it('pve: 사람이 이기면 onGameOver 가 markCleared(human, stageId) 를 호출한다', async () => {
+    const fakeManager = new FakeSocketManager();
+    const manager = new SoloGameManager(
+      fakeManager as unknown as SocketManager,
+    );
+    const socket = {} as SocketClient;
+
+    await manager.handleStartSolo(socket, {
+      userId: human,
+      deckId: 'deck-1',
+      mode: 'pve',
+      stageId: 'stage-1',
+    });
+    const room = getRoom(manager);
+    const onGameOver = getGameOverHandler(manager, room.soloId);
+
+    // 사람 승리로 game_over 를 발생시킨다(엔진 콜백을 직접 호출).
+    onGameOver({ winner: human, reason: 'hp_zero' });
+
+    expect(pveProgressService.markCleared).toHaveBeenCalledTimes(1);
+    expect(pveProgressService.markCleared).toHaveBeenCalledWith(
+      human,
+      'stage-1',
+    );
+  });
+
+  it('pve: AI 가 이기면 markCleared 를 호출하지 않는다', async () => {
+    const fakeManager = new FakeSocketManager();
+    const manager = new SoloGameManager(
+      fakeManager as unknown as SocketManager,
+    );
+    const socket = {} as SocketClient;
+
+    await manager.handleStartSolo(socket, {
+      userId: human,
+      deckId: 'deck-1',
+      mode: 'pve',
+      stageId: 'stage-1',
+    });
+    const room = getRoom(manager);
+    const onGameOver = getGameOverHandler(manager, room.soloId);
+
+    onGameOver({ winner: AI_PLAYER_ID, reason: 'hp_zero' });
+
+    expect(pveProgressService.markCleared).not.toHaveBeenCalled();
+  });
+
+  it('tutorial(stageId 없음): 사람이 이겨도 markCleared 를 호출하지 않는다', async () => {
+    const fakeManager = new FakeSocketManager();
+    const manager = new SoloGameManager(
+      fakeManager as unknown as SocketManager,
+    );
+    const socket = {} as SocketClient;
+
+    await manager.handleStartSolo(socket, { userId: human, deckId: 'deck-1' });
+    const room = getRoom(manager);
+    const onGameOver = getGameOverHandler(manager, room.soloId);
+
+    onGameOver({ winner: human, reason: 'hp_zero' });
+
+    expect(pveProgressService.markCleared).not.toHaveBeenCalled();
+  });
+
+  it('markCleared 가 reject 해도 onGameOver 가 throw 하지 않는다(fire-and-forget)', async () => {
+    vi.mocked(pveProgressService.markCleared).mockRejectedValueOnce(
+      new Error('db down'),
+    );
+    const fakeManager = new FakeSocketManager();
+    const manager = new SoloGameManager(
+      fakeManager as unknown as SocketManager,
+    );
+    const socket = {} as SocketClient;
+
+    await manager.handleStartSolo(socket, {
+      userId: human,
+      deckId: 'deck-1',
+      mode: 'pve',
+      stageId: 'stage-1',
+    });
+    const room = getRoom(manager);
+    const onGameOver = getGameOverHandler(manager, room.soloId);
+
+    expect(() => onGameOver({ winner: human, reason: 'hp_zero' })).not.toThrow();
+    expect(pveProgressService.markCleared).toHaveBeenCalledTimes(1);
   });
 });

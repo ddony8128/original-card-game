@@ -8,7 +8,8 @@ type TableName =
   | 'rooms'
   | 'game_results'
   | 'game_turn_logs'
-  | 'reviews';
+  | 'reviews'
+  | 'pve_progress';
 
 type Row = Record<string, any>;
 
@@ -20,6 +21,7 @@ const tables: Record<TableName, Row[]> = {
   game_results: [],
   game_turn_logs: [],
   reviews: [],
+  pve_progress: [],
 };
 
 // Seed cards for filtering and deck validation (requested list)
@@ -331,6 +333,10 @@ function insertRow(table: TableName, payload: any): Row {
     if (base.deleted === undefined) base.deleted = false;
     if (base.created_at === undefined) base.created_at = now;
     if (base.updated_at === undefined) base.updated_at = now;
+  }
+  if (table === 'pve_progress') {
+    if (base.cleared_at === undefined) base.cleared_at = now;
+    if (base.created_at === undefined) base.created_at = now;
   }
   const row = base;
   tables[table].push(row);
