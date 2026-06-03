@@ -51,8 +51,15 @@ const BRUISER_PROFILE: AIProfile = {
  */
 const DISRUPTOR_PROFILE: AIProfile = {
   id: 'disruptor',
-  preferredDistance: 2,
+  // 어그로의 근접 카드를 피해 카이팅하며 밀(mill)/덱아웃 클럭을 돌린다.
+  preferredDistance: 3,
+  // 지력흡수(힐3/턴)·침입자감지(함정)·스겜의 정령(상호 드로우=덱아웃 가속) 같은
+  // 리추얼 엔진을 데미지보다 먼저 깔아 생존·덱소모 엔진을 구축한다.
+  prioritizeRituals: true,
   spamPriority: ['c01-007', 'c01-021'],
+  // 좋은 게임 오래오래(마나+5/힐+7)로 사이클·생존. 밀 클럭이 도는 동안
+  // 어그로를 버텨내기 위함. (지진 데미지는 base 사다리 rung 3 가 담당.)
+  cycleCards: ['c01-027'],
 };
 
 /**

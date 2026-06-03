@@ -115,12 +115,16 @@ describe('getProfile', () => {
     // bruiser: aggressive melee rush — no preferredDistance, only the finisher held.
     expect(getProfile('bruiser').holdUntilKill).toEqual(['c01-024']);
     expect(getProfile('bruiser').preferredDistance).toBeUndefined();
-    // disruptor: spam engine cards, keep distance 2 (less aimless kiting).
+    // disruptor: mill/덱아웃 클럭을 카이팅(거리 3)하며 돌리되, 교란 카드는
+    // 데미지·생존 뒤의 "필러"로만 쓴다. 리추얼 엔진(지력흡수/스겜정령/침입자감지)을
+    // 먼저 깔고, 좋은 게임으로 사이클·생존한다.
     expect(getProfile('disruptor').spamPriority).toEqual([
       'c01-007',
       'c01-021',
     ]);
-    expect(getProfile('disruptor').preferredDistance).toBe(2);
+    expect(getProfile('disruptor').preferredDistance).toBe(3);
+    expect(getProfile('disruptor').prioritizeRituals).toBe(true);
+    expect(getProfile('disruptor').cycleCards).toEqual(['c01-027']);
     // control: lowered aggression threshold to 4 (slightly less passive early).
     expect(getProfile('control').aggressionManaThreshold).toBe(4);
     expect(getProfile('control').prioritizeRituals).toBe(true);
@@ -284,7 +288,9 @@ describe('disruptor profile (spamPriority)', () => {
     bolt: { mana: 2, effectJson: onCast(dmg(3, 'enemy')) },
   });
 
-  it('prioritizes c01-007 over a normal in-range damage card', () => {
+  it('plays an in-range DAMAGE card over a spam-filler disruption card', () => {
+    // 스팸(spamPriority)은 이제 데미지·생존 뒤의 "필러"다. 실데미지(bolt)가
+    // 사거리 안이면 교란 카드(c01-007)보다 먼저 친다. (예전엔 반대였다.)
     const state = makeState({
       p1: { mana: 5, hand: [card('h1', 'bolt'), card('h2', 'c01-007')] },
       p2: { hp: 20 },
@@ -297,13 +303,14 @@ describe('disruptor profile (spamPriority)', () => {
       getProfile('disruptor'),
     );
     expect(action.kind === 'use_card' && action.cardInstance.cardId).toBe(
-      'c01-007',
+      'bolt',
     );
   });
 
-  it('prioritizes c01-021 when affordable', () => {
+  it('spams a disruption card as filler when no damage/heal is available', () => {
+    // 데미지·생존 수가 없을 때는 교란 카드를 필러로 깐다(밀 클럭 유지).
     const state = makeState({
-      p1: { mana: 5, hand: [card('h1', 'bolt'), card('h2', 'c01-021')] },
+      p1: { mana: 5, hand: [card('h2', 'c01-021')] },
       p2: { hp: 20 },
     });
     const action = chooseAIAction(

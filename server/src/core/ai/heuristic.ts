@@ -169,15 +169,6 @@ export function chooseAIAction(
     if (best.length > 0) return pickRandom(best, rand);
   }
 
-  // ── P. (profile) spamPriority: 킬각이 아니면 교란/엔진 카드 최우선 ────────
-  if (!killAngle && profile.spamPriority && profile.spamPriority.length > 0) {
-    const prioSet = new Set(profile.spamPriority);
-    const best = playableCardActions.filter((a) =>
-      prioSet.has(a.cardInstance.cardId),
-    );
-    if (best.length > 0) return pickRandom(best, rand);
-  }
-
   // ── 2. Use own ready ritual that damages the enemy ─────────────────────
   {
     let bestValue = 0;
@@ -259,6 +250,19 @@ export function chooseAIAction(
         }
       }
     }
+    if (best.length > 0) return pickRandom(best, rand);
+  }
+
+  // ── P. (profile) spamPriority: 교란/엔진 카드를 "필러"로 사용 ─────────────
+  // 킬각이 아니고, 실데미지(rung 3)·긴급/부상 힐(E/rung 4)을 먼저 처리한 뒤에도
+  // 마땅한 수가 없으면 교란 카드를 깐다. (예전엔 이 블록이 E 직후에 있어 데미지/
+  // 생존 카드를 굶기고 밀링만 반복 → 어그로에 그냥 맞아 죽었다. 이제 데미지·생존을
+  // 우선하고 밀링은 압박용 필러로만 쓴다.)
+  if (!killAngle && profile.spamPriority && profile.spamPriority.length > 0) {
+    const prioSet = new Set(profile.spamPriority);
+    const best = playableCardActions.filter((a) =>
+      prioSet.has(a.cardInstance.cardId),
+    );
     if (best.length > 0) return pickRandom(best, rand);
   }
 
