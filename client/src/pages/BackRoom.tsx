@@ -103,7 +103,7 @@ export default function BackRoom() {
   const deckList = useMemo(() => serverDecks ?? [], [serverDecks]);
 
   return (
-    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-6">
+    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4 sm:p-6">
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center justify-between">
           <div>

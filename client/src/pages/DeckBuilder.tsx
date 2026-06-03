@@ -45,7 +45,7 @@ const DeckBuilder = () => {
 
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br">
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-4 sm:p-6">
         <div className="mb-6 flex items-center gap-4">
           <Button variant="outline" onClick={() => navigate('/lobby')}>
             <ArrowLeft className="mr-2 h-4 w-4" />

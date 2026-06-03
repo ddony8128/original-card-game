@@ -56,7 +56,7 @@
 
 ## E. 클라이언트 — UI/UX
 - [x] **E-1** 스켈레톤 UI: `components/ui/skeleton.tsx` 추가. Lobby 덱리스트 로딩 시 스켈레톤 행("(0/4)" 깜빡임 제거, 헤더는 '…'), DeckBuilder 카드목록 로딩 시 스켈레톤 그리드. tsc/lint/test✓
-- [ ] **E-2** 모바일 반응형 (Mobile/Desktop 분리, 화면너비 기준)
+- [~] **E-2** 안전 반응형 패스: viewport meta 확인(존재), 게임 존 간격 `gap-2 sm:gap-4`, 페이지 패딩 `p-4 sm:p-6`(데스크톱 불변). tsc/lint/test✓. ⚠️완전한 Mobile/Desktop 컴포넌트 분리 + 실기기 시각QA는 후속(시각 확인 필수라 자율 한계).
 - [x] **E-3** 로그인 실패를 토스트→인라인 빨간 메시지(role=alert, 입력 시 클리어). `doAfterAuth`→`goToLobbyAfterAuth` 개명. 서버 `POST /api/auth/logout`(쿠키 클리어)+`useLogoutMutation`(토큰폐기+캐시clear)+Lobby 로그아웃 버튼. Login 테스트 추가. 서버78/클라32 green.
 - [x] **E-4** 게임 로그: 새 로그 도착 시 bottomRef로 자동 하단 스크롤(최신이 묻히지 않음). tsc/lint/test✓ (시각 확인 권장)
 - [x] **E-5** 게임 이펙트: AnimationLayer 피해=빨강 "-N"(기존엔 "+N"로 회복처럼 보이던 버그 수정), 회복=초록 "+N", 글자 키우고 glow. tsc/lint/test✓ (게임 구동 시각QA 권장)

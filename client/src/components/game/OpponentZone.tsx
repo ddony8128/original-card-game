@@ -13,7 +13,7 @@ export function OpponentZone({ opponent, catastrophe, onViewGrave }: OpponentZon
   return (
     <>
       {/* Opponent Info */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <PlayerInfo
           hp={opponent.hp}
           maxHp={opponent.maxHp}
