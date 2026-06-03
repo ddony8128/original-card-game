@@ -14,8 +14,6 @@ import type {
   AnswerMulliganPayload,
   PlayerActionPayload,
   PlayerInputPayload,
-  MoveActionPayload,
-  UseCardActionPayload,
   UseRitualActionPayload,
 } from '../../type/wsProtocol';
 import type { EngineContext } from '../context';
@@ -35,12 +33,12 @@ import {
   SECOND_PLAYER_INITIAL_DRAW,
 } from '../rules/constants';
 import { buildStatePatchForAllView } from './view';
+import type { EffectResolverFn } from './effectResolver';
 import {
-  handleMoveAction,
-  handleEndTurnAction,
-  handleUseCardAction,
-} from './actionHandlers';
-import { resolveEffect } from './effectResolver';
+  defaultEffectResolver,
+  defaultActionHandlers,
+  type ActionHandlerMap,
+} from './defaultScripts';
 
 export type EngineResultKind =
   | 'state_patch'
@@ -62,6 +60,16 @@ export interface EngineResult {
 export interface EngineConfig {
   roomCode: string;
   players: PlayerID[];
+  /**
+   * 이펙트 → 상태 변경 매핑을 담당하는 "스크립트 해석기".
+   * 주입하지 않으면 defaultEffectResolver(resolveEffect) 가 사용된다.
+   */
+  effectResolver?: EffectResolverFn;
+  /**
+   * player_action 종류 → 처리 함수 매핑.
+   * 주입한 종류만 기본 핸들러를 덮어쓰고, 나머지는 기본 핸들러로 fallback 한다.
+   */
+  actionHandlers?: ActionHandlerMap;
 }
 
 export class GameEngineCore {
@@ -73,6 +81,10 @@ export class GameEngineCore {
   state: GameState;
   readonly effectStack: EffectStack;
   readonly observers: ObserverRegistry;
+  /** 주입된 이펙트 해석기. 미주입 시 defaultEffectResolver 사용. */
+  private readonly resolveEffectFn: EffectResolverFn;
+  /** 주입된 action 핸들러 맵. 미주입 종류는 defaultActionHandlers 로 fallback. */
+  private readonly actionHandlers: ActionHandlerMap;
   private version = 1; // state patch마다 1씩 증가
   private initialized = false; // 게임 초기화 여부, 중복 초기화 방지
   pendingInput: {
@@ -96,12 +108,22 @@ export class GameEngineCore {
     ctx: EngineContext,
     roomCode: string,
     players: PlayerID[],
+    scripts?: {
+      effectResolver?: EffectResolverFn;
+      actionHandlers?: ActionHandlerMap;
+    },
   ) {
     this.state = initialState;
     this.effectStack = new EffectStack();
     this.observers = new ObserverRegistry();
     this.roomCode = roomCode;
     this.players = players;
+    // 주입된 스크립트 해석기 (미주입 시 기본 구현으로 동작 보존)
+    this.resolveEffectFn = scripts?.effectResolver ?? defaultEffectResolver;
+    this.actionHandlers = {
+      ...defaultActionHandlers,
+      ...(scripts?.actionHandlers ?? {}),
+    };
 
     this.ctx = {
       lookupCard: ctx.lookupCard,
@@ -121,6 +143,10 @@ export class GameEngineCore {
       ctx,
       config.roomCode,
       config.players,
+      {
+        effectResolver: config.effectResolver,
+        actionHandlers: config.actionHandlers,
+      },
     );
   }
 
@@ -215,37 +241,18 @@ export class GameEngineCore {
 
     const actionType = action.action;
 
-    switch (actionType) {
-      case 'move':
-        return await handleMoveAction(this, playerId, {
-          to: (action as MoveActionPayload).to,
-        });
-      case 'end_turn':
-        return await handleEndTurnAction(this, playerId);
-      case 'use_card': {
-        const useCard = action as UseCardActionPayload;
-        return await handleUseCardAction(
-          this,
-          playerId,
-          useCard.cardInstance,
-          useCard.target,
-        );
-      }
-      case 'use_ritual':
-        // 보드 위에 설치된 자신의 ritual 을 1턴 1회 사용(onUsePerTurn)하는 액션
-        return await this.handleUseRitualAction(
-          playerId,
-          action as UseRitualActionPayload,
-        );
-      default:
-        return [
-          {
-            kind: 'invalid_action',
-            targetPlayer: playerId,
-            invalidReason: 'unknown_action',
-          },
-        ];
+    // 하드코딩된 switch 대신 주입된(혹은 기본) action 핸들러 맵을 조회한다.
+    const handler = this.actionHandlers[actionType];
+    if (!handler) {
+      return [
+        {
+          kind: 'invalid_action',
+          targetPlayer: playerId,
+          invalidReason: 'unknown_action',
+        },
+      ];
     }
+    return await handler(this, playerId, action);
   }
 
   // ---- 검증 헬퍼 함수 ----
@@ -489,7 +496,7 @@ export class GameEngineCore {
     while (!this.effectStack.isEmpty()) {
       const effect = this.effectStack.pop();
       if (!effect) break;
-      await resolveEffect(this, effect, localDiff);
+      await this.resolveEffectFn(this, effect, localDiff);
       if (this.checkGameOver()) {
         const gameOver = this.buildGameOver();
         results.push({

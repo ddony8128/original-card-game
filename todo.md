@@ -38,7 +38,7 @@
 - [x] **A-1** TRIGGERED_EFFECT가 effectRef(트리거 config)를 실제 빌드·실행. 구독 경로 활성화.
 - [x] **A-2** turnResolvers의 직접 발화 루프 제거 → enqueueTriggeredEffects(구독)로 교체. reconcileRitualObservers로 보드 리추얼을 트리거 직전 레지스트리에 동기화(INSTALL/직접배치 모두 커버, hasRitual로 중복 방지). collectTriggeredEffects에 owner 필터(턴 소유자만).
 - [x] **A-3** 생명주기: destroyRitual→unregisterByRitual, checkGameOver(GAME_OVER)→observers.clear. 신규 테스트 3개(단일발화/상대미발화/파괴후미발화), fail-before 검증. 서버83 green.
-- [ ] **A-6** (대규모) 순수 엔진 / 스크립트 해석기 폴더 분리 + 주입
+- [x] **A-6** 순수 엔진/스크립트 해석기 **의존성 주입**으로 실현(고위험 파일 대이동 대신): EngineConfig에 effectResolver+actionHandlers 주입점, defaultScripts.ts(기본 wiring), handlePlayerAction switch→주입 맵 lookup, stepUntilStable→resolveEffectFn. core/engine/README.md로 경계 문서화. 주입 테스트 3개. 서버86 green.
 
 ## B. 서버 엔진 — 타입 / 품질
 - [~] **B-1** (판단) ws 프로토콜은 이미 **타입드 string-literal union**이라 typo는 tsc가 차단(타입안전 확보). 영향력 큰 버전(숫자 wire enum)은 클라/서버 lockstep+버저닝 필요한 고위험·저가치 → 보류.
