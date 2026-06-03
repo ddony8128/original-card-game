@@ -24,8 +24,8 @@
 - [x] **A4** 로그 발동 피드백: 최신 로그 항목 fade-in(animate-log-appear)+강조(좌측 accent border/배경/굵게). tsc/lint/build/test✓
 
 ## Epic B — 튜토리얼 + 휴리스틱 AI (server+client, 대형)
-- [ ] **B1** 엔진 `legalActions(state, playerId, lookup)` 순수 헬퍼: move/use_card/use_ritual/end_turn 열거. 단위테스트.
-- [ ] **B2** 휴리스틱 AI `chooseAction(state, playerId, lookup)`: greedy. 단위테스트.
+- [x] **B1** `core/ai/legalActions.ts` 순수 헬퍼(move/use_card/use_ritual/end_turn, 실핸들러 검증 미러링).
+- [x] **B2** `core/ai/heuristic.ts` chooseAIAction(greedy: 비싼 카드→접근 이동→턴종료, 종료보장). B1+B2 테스트 15개. tsc/lint/test✓
 - [ ] **B3** 솔로/AI 룸: 서버 SoloGameManager(또는 GameRoomManager 솔로경로) — human+AI 엔진, AI 자동ready, AI 턴 드라이버. 통합테스트.
 - [ ] **B4** 튜토리얼 오버레이(client): 게임 이벤트 연동 coach-mark 단계, 스킵/재시작.
 - [ ] **B5** 진입점: Lobby "튜토리얼" 버튼 → 솔로 AI + 오버레이.
