@@ -15,12 +15,12 @@ export function PlayerInfo({ hp, maxHp, mana, maxMana, label }: PlayerInfoProps)
   return (
     <div className="space-y-2">
       <div className="text-muted-foreground text-sm font-medium">{label}</div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 sm:gap-2">
         <Card>
-          <CardContent className="px-3 pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 text-red-500" />
-              <div className="text-lg font-bold">
+          <CardContent className="px-2 pt-3 pb-2 sm:px-3 sm:pt-4 sm:pb-3">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Heart className="h-4 w-4 shrink-0 text-red-500" />
+              <div className="min-w-0 text-base font-bold tabular-nums sm:text-lg">
                 {hp}/{displayMaxHp}
               </div>
             </div>
@@ -28,10 +28,10 @@ export function PlayerInfo({ hp, maxHp, mana, maxMana, label }: PlayerInfoProps)
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="px-3 pt-4 pb-3">
-            <div className="flex items-center gap-2">
-              <Droplet className="h-4 w-4 text-blue-500" />
-              <div className="text-lg font-bold">
+          <CardContent className="px-2 pt-3 pb-2 sm:px-3 sm:pt-4 sm:pb-3">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Droplet className="h-4 w-4 shrink-0 text-blue-500" />
+              <div className="min-w-0 text-base font-bold tabular-nums sm:text-lg">
                 {mana}/{maxMana}
               </div>
             </div>

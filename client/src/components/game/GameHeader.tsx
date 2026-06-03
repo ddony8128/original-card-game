@@ -17,10 +17,10 @@ export function GameHeader({ turn, isMyTurn }: GameHeaderProps) {
   const { remaining, tier } = useTurnTimer(`${turn}-${isMyTurn}`);
 
   return (
-    <div className="flex items-center justify-center gap-3">
+    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:gap-3">
       <span
         className={cn(
-          'rounded-full px-4 py-1 text-sm font-bold shadow-sm transition-colors',
+          'rounded-full px-3 py-1 text-sm font-bold whitespace-nowrap shadow-sm transition-colors sm:px-4',
           isMyTurn
             ? 'bg-primary text-primary-foreground ring-primary/40 ring-2'
             : 'bg-secondary text-secondary-foreground',
@@ -28,9 +28,9 @@ export function GameHeader({ turn, isMyTurn }: GameHeaderProps) {
       >
         {isMyTurn ? '내 턴' : '상대 턴'}
       </span>
-      <span className="text-muted-foreground text-sm">턴 {turn}</span>
+      <span className="text-muted-foreground text-sm whitespace-nowrap">턴 {turn}</span>
       <span
-        className={cn('font-mono text-sm font-bold tabular-nums', tierColor[tier])}
+        className={cn('font-mono text-sm font-bold whitespace-nowrap tabular-nums', tierColor[tier])}
         aria-label="턴 타이머"
       >
         ⏱ {remaining}s

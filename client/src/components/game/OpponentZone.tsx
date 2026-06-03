@@ -21,8 +21,8 @@ export function OpponentZone({ opponent, catastrophe, onViewGrave }: OpponentZon
           maxMana={opponent.maxMana}
           label="상대"
         />
-        <div className="flex flex-col justify-center">
-          <div className="text-muted-foreground mb-2 text-center text-xs">
+        <div className="flex min-w-0 flex-col justify-center">
+          <div className="text-muted-foreground mb-2 text-center text-[11px] sm:text-xs">
             상대 손패 ({opponent.handCount}장)
           </div>
           <OpponentHand cardCount={opponent.handCount} />
