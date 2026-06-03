@@ -16,7 +16,7 @@
 ---
 
 ## F. 인프라 / 안정화 (먼저)
-- [ ] **F-5** 서버 ESLint 구성 + `lint` 스크립트 추가 (양쪽 동일 규약)  — *선행: 이후 모든 서버 작업 검증에 사용*
+- [x] **F-5** 서버 ESLint 구성 + `lint` 스크립트 추가 (양쪽 동일 규약)  — *eslint.config.mjs, 0 errors/200 warns. warn 규칙은 B-4/B-5에서 error화*
 - [ ] **F-1** Node 버전 정리: README ↔ package.json `engines` 일치 확인/갱신
 - [ ] **F-2** 엔진 리팩토링 전 회귀 테스트 보강 (효과/트리거 시뮬레이션 커버리지)
 - [ ] **F-3** 레포 전반 정리(불필요 파일: `test_full_stack.sh` 등 점검)
