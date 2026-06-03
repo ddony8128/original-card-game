@@ -55,8 +55,13 @@ export async function toFoggedState(
     };
   });
 
-  // 묘지 / 보드 위 리추얼 / resolve stack 에 있는 모든 카드 ID 수집
+  // 손패 / 묘지 / 보드 위 리추얼 / resolve stack 에 있는 모든 카드 ID 수집
   const cardIdsToFetch = new Set<string>();
+
+  // 내 손패 (손패·멀리건 UI 가 카드 이름/설명을 표시하려면 메타가 필요하다)
+  meState?.hand.forEach((instance) => {
+    cardIdsToFetch.add(instance.cardId);
+  });
 
   // 내 묘지
   meState?.grave.forEach((instance) => {
