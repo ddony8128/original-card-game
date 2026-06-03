@@ -26,7 +26,7 @@
 ## Epic B — 튜토리얼 + 휴리스틱 AI (server+client, 대형)
 - [x] **B1** `core/ai/legalActions.ts` 순수 헬퍼(move/use_card/use_ritual/end_turn, 실핸들러 검증 미러링).
 - [x] **B2** `core/ai/heuristic.ts` chooseAIAction(greedy: 비싼 카드→접근 이동→턴종료, 종료보장). B1+B2 테스트 15개. tsc/lint/test✓
-- [ ] **B3** 솔로/AI 룸: 서버 SoloGameManager(또는 GameRoomManager 솔로경로) — human+AI 엔진, AI 자동ready, AI 턴 드라이버. 통합테스트.
+- [x] **B3** 솔로/AI 룸: `ws/soloGameManager.ts`(in-memory, AI=휴먼덱 클론, AI 자동멀리건, 콜백은 사람 이벤트만 전달). AI 턴 드라이버=스텝cap(30)+매스텝 try/catch+종료 안전망(hang/throw 불가), 좌표변환(toViewerPos), 입력 기본응답. socket.ts solo 라우팅 + start_solo 이벤트. 통합테스트 4개. 서버109/1skip green.
 - [ ] **B4** 튜토리얼 오버레이(client): 게임 이벤트 연동 coach-mark 단계, 스킵/재시작.
 - [ ] **B5** 진입점: Lobby "튜토리얼" 버튼 → 솔로 AI + 오버레이.
 
