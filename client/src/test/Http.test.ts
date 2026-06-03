@@ -1,4 +1,5 @@
 import { http, ApiError, shouldRetryQuery } from '@/shared/api/http';
+import { setAuthToken, clearAuthToken } from '@/shared/api/authToken';
 import { server } from './testServer';
 import { http as mswHttp, HttpResponse } from 'msw';
 
@@ -13,6 +14,35 @@ it('http 에러 시 ApiError(message) 던짐', async () => {
   );
   await expect(http('/api/auth/me')).rejects.toBeInstanceOf(ApiError);
   await expect(http('/api/auth/me')).rejects.toHaveProperty('message', 'invalid token');
+});
+
+describe('Bearer 토큰 폴백 (시크릿탭 대비)', () => {
+  it('저장된 토큰이 있으면 Authorization 헤더를 붙인다', async () => {
+    let seenAuth: string | null = 'missing';
+    server.use(
+      mswHttp.get('/api/ping', ({ request }) => {
+        seenAuth = request.headers.get('authorization');
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    setAuthToken('tok-123');
+    await http('/api/ping');
+    expect(seenAuth).toBe('Bearer tok-123');
+    clearAuthToken();
+  });
+
+  it('토큰이 없으면 Authorization 헤더를 붙이지 않는다', async () => {
+    let seenAuth: string | null = 'missing';
+    server.use(
+      mswHttp.get('/api/ping', ({ request }) => {
+        seenAuth = request.headers.get('authorization');
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    clearAuthToken();
+    await http('/api/ping');
+    expect(seenAuth).toBeNull();
+  });
 });
 
 describe('shouldRetryQuery', () => {

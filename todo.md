@@ -28,7 +28,7 @@
 - [ ] **C-4** 웹소켓 연결 재시도 로직
 - [x] **C-5** 자연종료 시 onGameOver에서 `roomsService.finishByCode` fire-and-forget 호출 → DB status='finished'. 재현 테스트. tsc/lint/test✓
 - [ ] **C-6** 버튼 클릭 반응성("끈적거림")
-- [ ] **C-7** 시크릿탭 로그인 안 됨 (쿠키/스토리지 의존)
+- [x] **C-7** 시크릿탭 로그인: cross-site 쿠키(sameSite:none) 차단이 원인. 서버가 이미 지원하던 Bearer 경로를 완성 — login 응답에 token, 클라 localStorage 저장 후 Authorization 헤더 첨부(쿠키 경로 유지, additive). 서버 테스트로 '쿠키 없이 Bearer만 /me 200' 검증. ⚠️실배포 시크릿탭 최종확인 권장. lint/tsc/test✓
 - [x] **C-8** 미인증 /me 3회 요청: `new QueryClient()` 기본 retry:3 → `shouldRetryQuery`(4xx 비재시도) 정책 주입. 1회 요청 후 즉시 redirect. 단위테스트 2개. lint/tsc/test✓
 
 ## A. 서버 엔진 — 구조 개선 (선택적, 회귀테스트 보호 하에)

@@ -84,6 +84,7 @@ authRouter.post('/login', (req, res) => {
       message: 'user logged in',
       username: user.username,
       created_at: user.created_at,
+      token,
     });
   })().catch((e) =>
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

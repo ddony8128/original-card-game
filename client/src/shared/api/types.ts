@@ -5,6 +5,8 @@ export type AuthResponse = {
   username: string;
   message: string;
   created_at: string;
+  // 시크릿탭 등 쿠키가 차단되는 환경 대비용 Bearer 토큰 (login 응답에만 포함)
+  token?: string;
 };
 
 export type Json = null | boolean | number | string | { [key: string]: Json } | Json[];
