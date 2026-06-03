@@ -63,7 +63,7 @@
 - [x] **E-6** GameCard: 호버 확대가 가려지지 않게 `hover:z-20`, 너비 출렁임 방지 `max-w-[220px]`+중앙정렬. tsc/lint/test✓. ⚠️하스스톤식 가로 축약형 덱 카드는 별도 UI 재설계로 후속(시각QA 필요).
 - [x] **E-7** 검색 캐싱: useCardsQuery에 staleTime(5분)+keepPreviousData. 같은 검색어 재방문 시 재요청 없음, 타이핑 중 깜빡임 제거. tsc/lint/test✓
 - [x] **E-8** 이탈 경고: `useBeforeUnloadWarning` 훅 — 덱 작성중/게임 진행중 새로고침·탭닫기·주소창이동 시 브라우저 확인창. ⚠️SPA 인앱 뒤로가기 차단은 react-router data-router+useBlocker 마이그레이션 필요(보류). tsc/lint/test✓
-- [ ] **E-9** 대기실 채팅 + 덱 선택 낙관적 업데이트
+- [x] **E-9** 대기실 채팅(휘발성 ws): 프로토콜 join_chat/chat 이벤트, 서버 handleJoinChat(ready/엔진과 완전 분리)+handleChat(검증·길이제한·username 조회·broadcast), 클라 chat모드 소켓+useRoomChat 훅+BackRoom 채팅 UI. 서버 테스트 2개. + 덱 선택 낙관적 업데이트(즉시 반영, 실패 시 롤백). 서버80/클라32 green.
 - [x] **E-10** 재앙 덱을 주황 테두리/색으로 시각 구분 + "특정 조건에서 자동 발동" 안내문구·툴팁 추가(공유 카드임 명시). tsc/lint/test✓ (시각QA 권장)
 
 ---

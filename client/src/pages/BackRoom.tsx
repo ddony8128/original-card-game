@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useRoomChat } from '@/features/game/hooks/useRoomChat';
 import { useDecksQuery } from '@/features/decks/queries';
 import {
   useLeaveRoomMutation,
@@ -30,6 +32,22 @@ export default function BackRoom() {
 
   const setGlobalSelectedDeckId = useGameFogStore((s) => s.setSelectedDeckId);
   const setCardMetaFromDeck = useCardMetaStore((s) => s.setFromDeck);
+
+  // 대기실 실시간 채팅(휘발성). 게임 시작/ready 와 분리된 chat 모드 소켓을 사용한다.
+  const { messages, sendChat } = useRoomChat({ roomCode, userId: me?.id });
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ block: 'end' });
+  }, [messages]);
+
+  const handleSendChat = () => {
+    const text = chatInput.trim();
+    if (!text) return;
+    sendChat(text);
+    setChatInput('');
+  };
 
   useEffect(() => {
     if (!me) navigate('/login');
@@ -63,10 +81,12 @@ export default function BackRoom() {
   const handleSelectDeck = async (deckId: string) => {
     if (!roomCode || locked) return;
     const deck = deckList.find((d) => d.id === deckId);
+    // 낙관적 업데이트: 선택을 즉시 반영하고, 실패 시 롤백한다.
+    const prevSelected = selectedDeckId;
+    setSelectedDeckId(deckId);
+    setLocked(true);
     try {
       await submitDeck.mutateAsync({ roomCode, deckId });
-      setSelectedDeckId(deckId);
-      setLocked(true);
       if (deck) {
         setGlobalSelectedDeckId(deckId);
         setCardMetaFromDeck(deck);
@@ -74,6 +94,8 @@ export default function BackRoom() {
       toast.success('덱이 제출되었습니다.');
       await refetchState();
     } catch (e: unknown) {
+      setSelectedDeckId(prevSelected);
+      setLocked(false);
       toast.error(getErrorMessage(e) ?? '덱 제출에 실패했습니다.');
     }
   };
@@ -159,6 +181,60 @@ export default function BackRoom() {
                 })}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>채팅</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="bg-secondary/30 h-64 overflow-y-auto rounded-lg p-3">
+              {messages.length === 0 ? (
+                <div className="text-muted-foreground py-8 text-center text-sm">
+                  아직 메시지가 없습니다.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {messages.map((m) => {
+                    const isMine = m.userId === me?.id;
+                    return (
+                      <div key={m.key} className="text-sm">
+                        <span
+                          className={
+                            isMine
+                              ? 'font-semibold text-primary'
+                              : 'text-muted-foreground font-semibold'
+                          }
+                        >
+                          {m.username}
+                        </span>
+                        <span className="text-muted-foreground">: </span>
+                        <span className="break-words">{m.text}</span>
+                      </div>
+                    );
+                  })}
+                  <div ref={chatEndRef} />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    handleSendChat();
+                  }
+                }}
+                placeholder="메시지를 입력하세요"
+                maxLength={500}
+              />
+              <Button onClick={handleSendChat} disabled={!chatInput.trim()}>
+                전송
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

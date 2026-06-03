@@ -9,6 +9,14 @@ import type {
   PlayerInputPayload,
 } from '@/shared/types/ws';
 
+/**
+ * 소켓 사용 모드.
+ * - 'game': 연결 시 자동으로 `ready` 를 보내 게임 시작 흐름에 참여한다(기존 동작).
+ * - 'chat': 연결 시 `ready` 대신 `join_chat` 을 보내 게임 시작을 발동시키지 않고
+ *           대기실 채팅용으로만 방에 참여한다.
+ */
+export type GameSocketMode = 'game' | 'chat';
+
 type MessageHandler = (msg: WsServerToClientMessage) => void;
 type EventHandler<E extends ServerToClientEvent> = (
   data: WsServerToClientMessage & { event: E },
@@ -20,6 +28,8 @@ export interface GameSocketOptions {
   roomCode: string;
   userId?: string;
   token?: string;
+  /** 'game'(기본): 연결 시 ready 전송 / 'chat': 연결 시 join_chat 전송 */
+  mode?: GameSocketMode;
 }
 
 export interface GameSocket {
@@ -31,6 +41,8 @@ export interface GameSocket {
     data: WsClientToServerMessage['data'],
   ) => void;
   sendReady: (payload?: Partial<ReadyPayload>) => void;
+  sendJoinChat: (payload?: Partial<ReadyPayload>) => void;
+  sendChat: (text: string) => void;
   sendAnswerMulligan: (payload: AnswerMulliganPayload) => void;
   sendPlayerAction: (payload: PlayerActionPayload) => void;
   sendPlayerInput: (payload: PlayerInputPayload) => void;
@@ -52,6 +64,7 @@ const RECONNECT_MAX_MS = 10_000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 
 export function createGameSocket(options: GameSocketOptions): GameSocket {
+  const mode: GameSocketMode = options.mode ?? 'game';
   let socket: WebSocket | null = null;
   let status: GameSocketStatus = 'idle';
 
@@ -112,15 +125,16 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     socket.onopen = () => {
       updateStatus('open');
       reconnectAttempts = 0;
-      // 서버에 이 소켓이 어떤 방/유저에 속하는지 알려주는 초기 ready 메시지
-      const readyPayload: WsClientToServerMessage = {
-        event: 'ready',
+      // 서버에 이 소켓이 어떤 방/유저에 속하는지 알려주는 초기 메시지.
+      // game 모드는 ready(게임 시작 흐름), chat 모드는 join_chat(게임 미발동)을 보낸다.
+      const initPayload: WsClientToServerMessage = {
+        event: mode === 'chat' ? 'join_chat' : 'ready',
         data: {
           roomCode: options.roomCode,
           userId: options.userId,
         },
       };
-      socket?.send(JSON.stringify(readyPayload));
+      socket?.send(JSON.stringify(initPayload));
     };
 
     socket.onmessage = (ev: MessageEvent) => {
@@ -189,6 +203,18 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     send({ event: 'ready', data: { ...base, ...payload } });
   };
 
+  const sendJoinChat = (payload?: Partial<ReadyPayload>) => {
+    const base: ReadyPayload = {
+      roomCode: options.roomCode,
+      userId: options.userId,
+    };
+    send({ event: 'join_chat', data: { ...base, ...payload } });
+  };
+
+  const sendChat = (text: string) => {
+    send({ event: 'chat', data: { text } });
+  };
+
   const sendAnswerMulligan = (payload: AnswerMulliganPayload) => {
     send({ event: 'answer_mulligan', data: payload });
   };
@@ -230,6 +256,8 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     send,
     sendEvent,
     sendReady,
+    sendJoinChat,
+    sendChat,
     sendAnswerMulligan,
     sendPlayerAction,
     sendPlayerInput,
