@@ -18,7 +18,7 @@
 ---
 
 ## Epic A — UI/UX 연출 (client, 저위험·빠른 가치)
-- [ ] **A1** 턴 상태/타이머 UI: GameHeader 강화(큰 턴 배지, 내턴/상대턴 강조), `useTurnTimer` 훅(90s 카운트다운, 색전환). 단위테스트(타이머 로직).
+- [x] **A1** 턴 상태/타이머: useTurnTimer(90s 카운트다운, 색단계 순수함수+테스트), GameHeader 강화(내턴/상대턴 배지+ring, 타이머 색전환). tsc/lint/test✓
 - [ ] **A2** 데미지/회복 floating 애니메이션: AnimationLayer를 대상 셀 위 rise+fade로. index.css keyframe 추가.
 - [ ] **A3** 카드 강조/선택 연출: 손패 playable 강조/불가 dim/선택 lift. (시각)
 - [ ] **A4** 로그/이펙트 발동 피드백: 새 로그 fade-in 강조, 보드 상 간단 액션 배너. (시각)
