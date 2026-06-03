@@ -12,6 +12,7 @@ export default function Login() {
   // 로그인 폼 상태
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   // 회원가입 모달 상태
   const [openRegister, setOpenRegister] = useState(false);
@@ -33,18 +34,19 @@ export default function Login() {
     return undefined;
   };
 
-  const doAfterAuth = async () => {
+  const goToLobbyAfterAuth = async () => {
     try {
       await refetchMe();
       navigate('/lobby', { replace: true });
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? '인증 상태 확인에 실패했습니다.');
+      setLoginError(getErrorMessage(e) ?? '인증 상태 확인에 실패했습니다.');
     }
   };
 
   const handleLogin = async () => {
+    setLoginError(null);
     if (!username.trim() || !password.trim()) {
-      return toast.error('아이디와 비밀번호를 입력하세요.');
+      return setLoginError('아이디와 비밀번호를 입력하세요.');
     }
     try {
       await loginMutation.mutateAsync({
@@ -52,9 +54,9 @@ export default function Login() {
         password: password.trim(),
       });
       await refetchMe();
-      await doAfterAuth();
+      await goToLobbyAfterAuth();
     } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? '로그인에 실패했습니다.');
+      setLoginError(getErrorMessage(e) ?? '로그인에 실패했습니다.');
     }
   };
 
@@ -76,7 +78,7 @@ export default function Login() {
       setUsername(regUsername.trim());
       setPassword(regPassword.trim());
       await refetchMe();
-      await doAfterAuth();
+      await goToLobbyAfterAuth();
     } catch (e: unknown) {
       toast.error(getErrorMessage(e) ?? '회원가입에 실패했습니다.');
     }
@@ -111,7 +113,10 @@ export default function Login() {
                 autoComplete="username"
                 placeholder="아이디를 입력하세요"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setLoginError(null);
+                }}
                 className="w-full"
               />
             </div>
@@ -123,10 +128,19 @@ export default function Login() {
                 autoComplete="current-password"
                 placeholder="비밀번호를 입력하세요"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setLoginError(null);
+                }}
                 className="w-full"
               />
             </div>
+
+            {loginError && (
+              <p role="alert" className="text-destructive text-sm font-medium">
+                {loginError}
+              </p>
+            )}
 
             <div className="flex gap-2">
               <Button type="submit" className="w-full" size="lg" disabled={loginMutation.isPending}>

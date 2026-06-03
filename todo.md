@@ -57,7 +57,7 @@
 ## E. 클라이언트 — UI/UX
 - [ ] **E-1** 로딩 스켈레톤 (Lobby 덱리스트, DeckBuilder isLoading)
 - [ ] **E-2** 모바일 반응형 (Mobile/Desktop 분리, 화면너비 기준)
-- [ ] **E-3** 로그인 에러 인라인 표시 + 로그아웃 버튼
+- [x] **E-3** 로그인 실패를 토스트→인라인 빨간 메시지(role=alert, 입력 시 클리어). `doAfterAuth`→`goToLobbyAfterAuth` 개명. 서버 `POST /api/auth/logout`(쿠키 클리어)+`useLogoutMutation`(토큰폐기+캐시clear)+Lobby 로그아웃 버튼. Login 테스트 추가. 서버78/클라32 green.
 - [x] **E-4** 게임 로그: 새 로그 도착 시 bottomRef로 자동 하단 스크롤(최신이 묻히지 않음). tsc/lint/test✓ (시각 확인 권장)
 - [ ] **E-5** 게임 이펙트 (피해 숫자/마법·덫 표시)
 - [ ] **E-6** 덱빌더 카드 크기 고정 + 호버 z-index + 축약형 덱 카드

@@ -2,9 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { LogOut } from 'lucide-react';
 import { useDecksQuery, useDeleteDeckMutation } from '@/features/decks/queries';
 import { useCreateRoomMutation, useJoinRoomMutation } from '@/features/match/queries';
-import { useMeQuery } from '@/features/auth/queries';
+import { useMeQuery, useLogoutMutation } from '@/features/auth/queries';
 import { getErrorMessage } from '@/shared/lib/errors';
 import type { DeckDto } from '@/shared/api/types';
 import { CreateRoomCard } from '@/components/lobby/CreateRoomCard';
@@ -22,6 +23,12 @@ export default function Lobby() {
   const createRoom = useCreateRoomMutation();
   const joinRoom = useJoinRoomMutation();
   const deleteDeckMutation = useDeleteDeckMutation();
+  const logout = useLogoutMutation();
+
+  const handleLogout = async () => {
+    await logout.mutateAsync().catch(() => undefined);
+    navigate('/login', { replace: true });
+  };
 
   const totalDeckCount = useMemo(() => serverDecks?.length ?? 0, [serverDecks]);
 
@@ -81,6 +88,17 @@ export default function Lobby() {
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-6">
       <div className="mx-auto max-w-4xl space-y-6">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            disabled={logout.isPending}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            {logout.isPending ? '로그아웃 중...' : '로그아웃'}
+          </Button>
+        </div>
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">로비</h1>
           <p className="text-muted-foreground">환영합니다, {me?.username}님!</p>

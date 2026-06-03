@@ -93,6 +93,17 @@ authRouter.post('/login', (req, res) => {
   );
 });
 
+// 로그아웃: auth_token 쿠키를 제거한다. (클라이언트는 별도로 Bearer 토큰을 폐기한다.)
+authRouter.post('/logout', (_req, res) => {
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    path: '/',
+  });
+  return res.status(HttpStatus.OK).json({ message: 'logged out' });
+});
+
 // 현재 로그인한 사용자 정보 조회: 쿠키 또는 Authorization 헤더의 토큰을 기반으로 /me 응답.
 authRouter.get('/me', (req, res) => {
   const cookieToken = (req as any).cookies?.auth_token as string | undefined;
