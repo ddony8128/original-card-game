@@ -47,7 +47,7 @@
 - [ ] **B-5** 설명 주석 → 함수명화, 죽은 TODO 정리
 
 ## D. 클라이언트 — 구조 (정우근)
-- [ ] **D-1** `Lobby.tsx`(302줄) → 방생성·참가/덱리스트/대기방 컴포넌트 분리
+- [x] **D-1** `Lobby.tsx` 302→124줄. `components/lobby/`로 CreateRoomCard/JoinRoomCard/MyDecksCard/WaitingRoomsList 추출, 중복 getErrorMessage→`shared/lib/errors.ts`. 동작보존, 6 Lobby 테스트+전체 31 green. tsc/lint✓
 - [ ] **D-2** `Game.tsx`(692줄) → 상대존/게임판/내존/오버레이 컴포넌트 분리
 - [ ] **D-3** `Game.tsx` 핸들러 커스텀 훅화 (handlePlayCard/EndTurn/MoveToSelected/UseRitualAtSelected)
 - [ ] **D-4** `DeckBuilder.tsx`(341줄) 분리
