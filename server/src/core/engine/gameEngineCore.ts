@@ -388,7 +388,10 @@ export class GameEngineCore {
       return this.invalidAction(playerId, 'no_pending_input');
 
     const pending = this.pendingInput;
-    this.pendingInput = null;
+    // 주의: 여기서 pendingInput 을 비우지 않는다. 아래 검증(설치 위치/선택 개수 등)에
+    // 실패해 invalidAction 으로 빠지는 경우 pendingInput 을 비웠다면 phase 는
+    // WAITING_FOR_PLAYER_INPUT 인데 pendingInput 은 null 인 모순 상태가 되어
+    // 게임이 영구히 멈춘다. 검증을 모두 통과해 실제 effect 를 push 하기 직전에만 비운다.
 
     if (
       pending.kind.type === 'map' &&
@@ -438,6 +441,8 @@ export class GameEngineCore {
           } as CardInstance),
         pos: { r, c },
       };
+      // 검증 통과 → 이제 입력을 소비한다.
+      this.pendingInput = null;
       this.effectStack.push(effect);
       // stepUntilStable에서 RESOLVING으로 설정하고 효과 처리
       return await this.stepUntilStable();
@@ -471,6 +476,8 @@ export class GameEngineCore {
       }
     }
 
+    // 검증 통과 → 이제 입력을 소비한다.
+    this.pendingInput = null;
     this.effectStack.push({
       type: 'RESOLVE_PLAYER_INPUT',
       owner: playerId,
@@ -493,7 +500,18 @@ export class GameEngineCore {
       this.state.phase = GamePhase.RESOLVING;
     }
 
+    // 안전장치: 어떤 카드 상호작용이 effect 를 무한히 재푸시하더라도(stabilize 실패)
+    // 엔진이 영원히 멈추거나 메모리를 고갈시키지 않도록 처리 횟수를 제한한다.
+    // 정상 게임은 한 액션당 수십 개 effect 면 충분하다.
+    let resolveGuard = 0;
+    const MAX_EFFECT_RESOLUTIONS = 10000;
+
     while (!this.effectStack.isEmpty()) {
+      if (resolveGuard++ >= MAX_EFFECT_RESOLUTIONS) {
+        // 무한 재푸시로 의심되는 비정상 상태 → 스택을 비워 엔진을 풀어준다.
+        this.effectStack.clear();
+        break;
+      }
       const effect = this.effectStack.pop();
       if (!effect) break;
       await this.resolveEffectFn(this, effect, localDiff);

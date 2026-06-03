@@ -38,7 +38,7 @@ const B: PlayerID = 'B';
 /** 한 턴 안에서 허용하는 최대 스텝(무한 루프 방지). */
 const MAX_STEPS_PER_TURN = 40;
 /** 전역 턴 cap(초과 시 draw). */
-const MAX_TURNS = 200;
+const MAX_TURNS = 80;
 
 export interface SelfPlayResult {
   winner: 'A' | 'B' | 'draw';
@@ -74,13 +74,16 @@ export function mulberry32(seed: number): () => number {
 function defaultAnswer(pendingInput: GameEngineCore['pendingInput']): unknown {
   if (!pendingInput) return null;
   const options = pendingInput.options;
+  const count = pendingInput.count ?? 1;
   if (Array.isArray(options) && options.length > 0) {
-    const count = pendingInput.count ?? 1;
     if (count > 1) {
       return options.slice(0, Math.min(count, options.length));
     }
     return options[0];
   }
+  // 선택지가 없는데 다중 선택을 요구받으면 빈 배열(=가능한 만큼 = 0장)로 답한다.
+  // null 을 주면 [null] 로 해석되어 선택 개수 검증에 걸린다.
+  if (count > 1) return [];
   return null;
 }
 
@@ -121,6 +124,7 @@ async function runOneAITurn(
   getMeta: (cardId: string) => CardMeta | null,
   rand: () => number,
   profileId?: string,
+  recorder?: (action: LegalAction, playerId: PlayerID) => void,
 ): Promise<void> {
   const profile = getProfile(profileId);
   let steps = 0;
@@ -146,6 +150,7 @@ async function runOneAITurn(
         rand,
         profile,
       );
+      recorder?.(action, playerId);
       if (action.kind === 'end_turn') {
         await engine.handlePlayerAction(playerId, { action: 'end_turn' });
         break;
@@ -227,6 +232,7 @@ export async function playOneGame(
 
   let turns = 0;
   let lastActive: PlayerID | null = null;
+  let stall = 0;
   while (engine.state.phase !== GamePhase.GAME_OVER && turns < MAX_TURNS) {
     const active = engine.state.activePlayer;
     // 활성 플레이어가 바뀔 때마다 1턴으로 센다.
@@ -241,6 +247,14 @@ export async function playOneGame(
     } else {
       break;
     }
+    // 턴 종료 실패로 활성 플레이어가 바뀌지 않으면(turns 가 증가하지 않으면)
+    // 위 while 조건이 영원히 깨지지 않는다. 진행이 없으면 stall 로 간주해 끊는다.
+    if (engine.state.activePlayer === active &&
+        (engine.state.phase as GamePhase) !== GamePhase.GAME_OVER) {
+      if (++stall >= 3) break;
+    } else {
+      stall = 0;
+    }
   }
 
   let winner: 'A' | 'B' | 'draw';
@@ -253,6 +267,117 @@ export async function playOneGame(
   }
 
   return { winner, turns };
+}
+
+export interface TraceEntry {
+  turn: number;
+  player: 'A' | 'B';
+  /** 행동 직전 그 플레이어의 마나. */
+  mana: number;
+  /** 행동 직전 두 마법사 사이 거리(없으면 -1). */
+  dist: number;
+  /** 사람이 읽을 수 있는 행동 설명(카드명 포함). */
+  action: string;
+  hpA: number;
+  hpB: number;
+}
+
+function describeAction(
+  action: LegalAction,
+  getMeta: (cardId: string) => CardMeta | null,
+): string {
+  switch (action.kind) {
+    case 'use_card': {
+      const name =
+        getMeta(action.cardInstance.cardId)?.name_ko ??
+        action.cardInstance.cardId;
+      return `카드 ${name}`;
+    }
+    case 'move':
+      return `이동→(${action.to.r},${action.to.c})`;
+    case 'use_ritual':
+      return `마법진 사용 ${action.ritualId}`;
+    case 'end_turn':
+    default:
+      return '턴 종료';
+  }
+}
+
+/**
+ * 한 판을 끝까지 돌리되, 양쪽 AI 의 매 행동을 사람이 읽을 수 있는 trace 로 기록한다.
+ * 휴리스틱/프로필 튜닝 시 "왜 그렇게 뒀는지"를 보기 위한 디버그용.
+ */
+export async function playOneGameTraced(
+  a: SelfPlayPlayer,
+  b: SelfPlayPlayer,
+  getMeta: (cardId: string) => CardMeta | null,
+  seed: number,
+): Promise<{ result: SelfPlayResult; trace: TraceEntry[] }> {
+  const rand = mulberry32(seed);
+  const configs: PlayerDeckConfig[] = [
+    { playerId: A, main: a.deck.main, cata: a.deck.cata },
+    { playerId: B, main: b.deck.main, cata: b.deck.cata },
+  ];
+  const initialState = createInitialGameState(configs);
+  const catalog = await ensureCardCatalog();
+  const engine = GameEngineAdapter.create({
+    roomCode: `selfplay_${seed}`,
+    players: [A, B],
+    initialState,
+    ctx: { lookupCard: async (id: CardID) => catalog.get(id) ?? null, random: rand },
+  });
+
+  await engine.markReady();
+  await engine.handleAnswerMulligan(A, { replaceIndices: [] });
+  await engine.handleAnswerMulligan(B, { replaceIndices: [] });
+
+  const trace: TraceEntry[] = [];
+  let turns = 0;
+  const recorder = (action: LegalAction, playerId: PlayerID) => {
+    const st = engine.state;
+    const wA = st.board.wizards[A];
+    const wB = st.board.wizards[B];
+    const dist =
+      wA && wB ? Math.abs(wA.r - wB.r) + Math.abs(wA.c - wB.c) : -1;
+    trace.push({
+      turn: turns,
+      player: playerId as 'A' | 'B',
+      mana: st.players[playerId].mana,
+      dist,
+      action: describeAction(action, getMeta),
+      hpA: st.players[A].hp,
+      hpB: st.players[B].hp,
+    });
+  };
+
+  let lastActive: PlayerID | null = null;
+  let stall = 0;
+  while (engine.state.phase !== GamePhase.GAME_OVER && turns < MAX_TURNS) {
+    const active = engine.state.activePlayer;
+    if (active !== lastActive) {
+      turns += 1;
+      lastActive = active;
+    }
+    if (active === A) {
+      await runOneAITurn(engine, A, getMeta, rand, a.profileId, recorder);
+    } else if (active === B) {
+      await runOneAITurn(engine, B, getMeta, rand, b.profileId, recorder);
+    } else break;
+    if (engine.state.activePlayer === active &&
+        (engine.state.phase as GamePhase) !== GamePhase.GAME_OVER) {
+      if (++stall >= 3) break;
+    } else {
+      stall = 0;
+    }
+  }
+
+  let winner: 'A' | 'B' | 'draw';
+  if (engine.state.phase === GamePhase.GAME_OVER) {
+    const w = engine.state.winner;
+    winner = w === A ? 'A' : w === B ? 'B' : 'draw';
+  } else winner = 'draw';
+
+  return { result: { winner, turns }, trace };
 }
 
 /**

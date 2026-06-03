@@ -307,6 +307,32 @@ export async function resolveDiscard(
     // 실제 클라이언트로는 cardId 문자열이 아니라
     // CardInstance 전체를 전달해야, 중복 카드 구분 및 UI 표시가 가능하다.
     const options: CardInstance[] = target.hand.map((ci) => ({ ...ci }));
+    // 손패가 요구 수량 이하이면 고를 여지가 없으므로(빈 손 포함) 입력을 요청하지
+    // 않고 가진 카드를 즉시 전부 버린다. (빈 options 로 request_input 을 보내면
+    // 클라이언트/AI 가 답할 수 없어 게임이 WAITING_FOR_PLAYER_INPUT 에서 멈춘다.)
+    if (options.length <= e.value) {
+      const discarded = [...target.hand];
+      target.hand = [];
+      for (const card of discarded) {
+        target.grave.push(card);
+        engine.enqueueTriggeredEffects('onDiscard', {
+          playerId: targetId,
+          sourceCardId: card.cardId,
+          amount: 1,
+        });
+      }
+      if (discarded.length > 0) {
+        diff.animations.push({
+          kind: 'discard',
+          player: targetId,
+          amount: discarded.length,
+        } as any);
+        diff.log.push(
+          `플레이어 ${targetId}가 손패 ${discarded.length}장을 모두 버렸습니다.`,
+        );
+      }
+      return;
+    }
     engine.pendingInput = {
       playerId: targetId,
       kind: requestKind,
@@ -315,6 +341,7 @@ export async function resolveDiscard(
     };
     engine.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
     diff.log.push('손패에서 버릴 카드를 선택하세요.');
+    return;
   }
 
   // 엔진 내부에서 특정 인스턴스를 지정해서 버릴 때 사용 (method === 'instance')
