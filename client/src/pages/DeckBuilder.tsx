@@ -73,7 +73,7 @@ const DeckBuilder = () => {
           </Button>
         </div>
 
-        <div className="grid h-[calc(100vh-240px)] grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
+        <div className="grid grid-cols-1 gap-6 lg:h-[calc(100vh-240px)] lg:grid-cols-[1fr_400px]">
           {/* Left Panel - Card Collction */}
           <div className="flex min-h-0 flex-col gap-4">
             <CardFilters
@@ -101,7 +101,7 @@ const DeckBuilder = () => {
               </Button>
             </div>
 
-            <div className="bg-card border-border flex-1 overflow-hidden rounded-lg border">
+            <div className="bg-card border-border h-[60vh] overflow-hidden rounded-lg border lg:h-auto lg:flex-1">
               <ScrollArea className="h-full p-4">
                 {loadingCards ? (
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
