@@ -96,9 +96,11 @@ export interface CardInstance {
 export interface PublicHandCard {
   id: CardID;
   name: string;
+  nameEn?: string;
   mana: number;
   type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
   description: string;
+  descriptionEn?: string;
 }
 
 export interface FoggedGameState {

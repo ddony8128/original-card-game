@@ -15,11 +15,13 @@ export type CardDto = {
   id: string;
   name_dev: string;
   name_ko: string;
+  name_en: string;
   type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
   mana: number | null;
   effect_json: Json | null;
   token: boolean;
   description_ko: string;
+  description_en: string;
 };
 
 export type CardsListResponse = {

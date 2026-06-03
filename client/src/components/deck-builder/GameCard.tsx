@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Card } from '@/shared/types/deck';
 import { cn } from '@/shared/lib/utils';
 
@@ -16,6 +17,11 @@ const manaColors = {
 };
 
 export const GameCard = ({ card, onClick, count }: GameCardProps) => {
+  const { i18n } = useTranslation();
+  const isEn = i18n.language === 'en';
+  const displayName = isEn && card.name_en ? card.name_en : card.name_ko;
+  const displayDesc =
+    isEn && card.description_en ? card.description_en : card.description_ko;
   const manaValue = card.mana ?? 0;
   const manaColor = manaColors[Math.min(manaValue, 5) as keyof typeof manaColors];
 
@@ -60,9 +66,9 @@ export const GameCard = ({ card, onClick, count }: GameCardProps) => {
 
       {/* Card Content */}
       <div className="space-y-2 p-3">
-        <h3 className="text-foreground line-clamp-1 text-sm font-bold">{card.name_ko}</h3>
+        <h3 className="text-foreground line-clamp-1 text-sm font-bold">{displayName}</h3>
         <p className="text-muted-foreground line-clamp-3 min-h-[3.5rem] text-xs">
-          {card.description_ko}
+          {displayDesc}
         </p>
       </div>
 

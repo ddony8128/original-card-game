@@ -200,17 +200,23 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
             id: instance.cardId,
             name_dev: '',
             name_ko: instance.cardId,
+            name_en: instance.cardId,
             description_ko: '',
+            description_en: '',
             type: 'instant' as const,
             mana: null,
             count: 1,
           };
         }
+        // getCardMeta 는 이미 현재 언어로 name/description 을 해석해 돌려준다.
+        // GameCard 가 언어별 필드를 보더라도 동일 값이 보이도록 양쪽에 채운다.
         return {
           id: instance.cardId,
           name_dev: meta.name || '',
           name_ko: meta.name,
+          name_en: meta.name,
           description_ko: meta.description || '',
+          description_en: meta.description || '',
           type: meta.type,
           mana: meta.mana,
           count: 1,

@@ -10,7 +10,9 @@ export type CardRow = {
   id: string;
   name_dev: string;
   name_ko: string;
+  name_en: string;
   description_ko: string | null;
+  description_en: string | null;
   type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
   mana: number | null;
   token: boolean;

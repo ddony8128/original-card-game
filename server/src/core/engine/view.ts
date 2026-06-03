@@ -100,9 +100,11 @@ export async function toFoggedState(
     return {
       id: cardId,
       name: meta.name_ko || meta.name_dev,
+      nameEn: meta.name_en || meta.name_dev,
       mana: meta.mana ?? 0,
       type: meta.type,
       description: meta.description_ko || '',
+      descriptionEn: meta.description_en || '',
     } as PublicHandCard;
   });
 

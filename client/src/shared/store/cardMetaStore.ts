@@ -1,14 +1,19 @@
 import { create } from 'zustand';
+import i18n from '@/i18n';
 import type { DeckDto } from '@/shared/api/types';
 import type { PublicHandCard } from '@/shared/types/game';
 
 export type GameCardMeta = {
   id: string;
   name: string;
+  /** 영어 이름(있을 때). getById 가 현재 언어에 맞춰 name 으로 해석한다. */
+  nameEn?: string;
   mana: number;
   // 서버 CardDto 기준 전체 타입을 허용하되, 실제 게임에서는 주로 instant/ritual 을 쓴다.
   type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
   description?: string;
+  /** 영어 설명(있을 때). getById 가 현재 언어에 맞춰 description 으로 해석한다. */
+  descriptionEn?: string;
 };
 
 type CardMetaState = {
@@ -68,9 +73,11 @@ export const useCardMetaStore = create<CardMetaState & CardMetaActions>((set, ge
             id: entry.id,
             // 한국어 이름이 있으면 우선 사용, 없으면 개발용 이름/기존 값 사용
             name: entry.name_ko || existing?.name || entry.name_dev,
+            nameEn: entry.name_en || existing?.nameEn,
             mana: entry.mana ?? existing?.mana ?? 0,
             type: entry.type,
             description: entry.description_ko ?? existing?.description,
+            descriptionEn: entry.description_en ?? existing?.descriptionEn,
           };
         });
       };
@@ -100,14 +107,29 @@ export const useCardMetaStore = create<CardMetaState & CardMetaActions>((set, ge
     const metas: GameCardMeta[] = cards.map((c) => ({
       id: c.id,
       name: c.name,
+      nameEn: c.nameEn,
       mana: c.mana,
       type: c.type,
       description: c.description,
+      descriptionEn: c.descriptionEn,
     }));
     get().upsertMany(metas);
   },
 
-  getById: (id) => get().byId[id],
+  // 저장된 메타는 한국어/영어를 모두 보관하고, 조회 시점의 현재 언어로
+  // name/description 을 해석해 돌려준다(언어 토글 시 재조회로 즉시 반영).
+  getById: (id) => {
+    const meta = get().byId[id];
+    if (!meta) return undefined;
+    if (i18n.language === 'en') {
+      return {
+        ...meta,
+        name: meta.nameEn || meta.name,
+        description: meta.descriptionEn ?? meta.description,
+      };
+    }
+    return meta;
+  },
 
   clear: () => set({ byId: {} }),
 }));

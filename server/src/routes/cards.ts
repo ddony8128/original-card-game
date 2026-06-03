@@ -73,11 +73,13 @@ cardsRouter.get('/', (req, res) => {
       id: r.id,
       name_dev: r.name_dev,
       name_ko: r.name_ko,
+      name_en: r.name_en,
       type: r.type,
       mana: r.mana,
       effect_json: r.effect_json ?? null,
       token: r.token,
       description_ko: r.description_ko,
+      description_en: r.description_en,
     }));
     res.status(HttpStatus.OK).json({ cards: normalized, total });
   })().catch((e) =>

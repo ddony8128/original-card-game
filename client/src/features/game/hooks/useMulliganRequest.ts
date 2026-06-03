@@ -21,15 +21,21 @@ export function useMulliganRequest({
   const mulligan = useGameFogStore((s) => s.mulligan) as AskMulliganPayload | null;
   const setMulligan = useGameFogStore((s) => s.setMulligan);
   const cardMetaById = useCardMetaStore((s) => s.byId);
+  // 현재 언어(en/ko)에 맞춰 카드 이름/설명을 고른다(영어 전환 대응).
+  const lang = i18n.language;
 
   const mulliganRequest: InputRequest | null = useMemo(() => {
     if (!mulligan) return null;
+    const isEn = lang === 'en';
     return {
       type: 'mulligan',
       prompt: i18n.t('game.promptMulligan'),
       options: mulligan.initialHand.map((inst, idx) => {
         const cardId = inst.cardId;
         const meta = cardMetaById[cardId];
+        const name = (isEn && meta?.nameEn) || meta?.name || cardId;
+        const description =
+          (isEn && meta?.descriptionEn) || meta?.description;
         const option: InputOption & {
           idx: number;
           cardId: string;
@@ -40,16 +46,16 @@ export function useMulliganRequest({
           idx,
           cardId,
           instanceId: inst.id,
-          name: meta?.name ?? cardId,
+          name,
           mana: meta?.mana,
-          description: meta?.description,
+          description,
         };
         return option;
       }),
       minSelect: 0,
       maxSelect: mulligan.initialHand.length,
     };
-  }, [mulligan, cardMetaById]);
+  }, [mulligan, cardMetaById, lang]);
 
   const handleMulliganResponse = useCallback(
     (response: InputOption[]) => {
