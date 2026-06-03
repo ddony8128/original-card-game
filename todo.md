@@ -52,7 +52,7 @@
 - [x] **D-3** Game 4개 핸들러를 `features/game/hooks/useGameActions.ts`로 verbatim 추출(Game 692→610줄). rules-of-hooks 위해 position 계산을 early return 앞으로 이동, 훅 무조건 호출. tsc/lint/test31✓ (게임플레이 수동QA 권장)
 - [x] **D-4** `DeckBuilder.tsx` 341→150줄. 상태/로직 전체를 `features/decks/hooks/useDeckBuilder.ts`(244줄)로 추출, 페이지는 기존 CardFilters/DeckPanel/GameCard 조합. C-1 isPending 보존, 3 테스트+전체 31 green. tsc/lint✓
 - [x] **D-5** `useMulliganRequest.ts` → `features/game/hooks/`로 이동(컴포넌트 폴더에 있던 훅 정리). tsc/lint/test✓
-- [ ] **D-6** 폴더 컨벤션 마무리 (pages 얇게 / features / shared / ws)
+- [x] **D-6** 폴더 컨벤션 확립·문서화: D-1~D-5로 pages 슬림화(Game 449/Lobby124/DeckBuilder150) 완료. 구조(components/<area>·features/<domain>+hooks·shared·ws)를 `client/src/README.md`에 코드화(대규모 이동 대신 문서로 일관성 확보)
 
 ## E. 클라이언트 — UI/UX
 - [ ] **E-1** 로딩 스켈레톤 (Lobby 덱리스트, DeckBuilder isLoading)
