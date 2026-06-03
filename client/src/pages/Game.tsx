@@ -406,6 +406,7 @@ export default function Game() {
           onEndTurn={handleEndTurn}
           isMyTurn={isMyTurn}
           myId={myId}
+          canAfford={hasEnoughMana}
         />
       </div>
 

@@ -14,6 +14,8 @@ interface MyHandProps {
   onEndTurn: () => void;
   isMyTurn: (id: string) => boolean;
   myId: string | undefined;
+  /** 마나 충분 & 행동 가능 여부(마나 비용 입력). */
+  canAfford: (manaCost: number) => boolean;
 }
 
 export function MyHand({
@@ -25,7 +27,9 @@ export function MyHand({
   onEndTurn,
   isMyTurn,
   myId,
+  canAfford,
 }: MyHandProps) {
+  const myTurn = !!myId && isMyTurn(myId);
   return (
     <Card>
       <CardContent className="pt-6">
@@ -52,6 +56,7 @@ export function MyHand({
               const displayName = meta?.name ?? handEntry.cardId;
               const mana = meta?.mana ?? 0;
               const description = meta?.description ?? '';
+              const playable = myTurn && canAfford(mana);
 
               return (
                 <div key={handEntry.id} className="relative">
@@ -60,7 +65,10 @@ export function MyHand({
                     onClick={() => onSelectCard(index)}
                     className={cn(
                       'bg-card text-card-foreground w-full cursor-pointer rounded-lg border p-3 text-left shadow-sm transition-all hover:scale-105 hover:shadow-lg',
-                      selectedCardIndex === index && 'ring-primary scale-105 ring-2',
+                      playable
+                        ? 'ring-primary/40 ring-1'
+                        : 'opacity-55 saturate-50',
+                      selectedCardIndex === index && 'ring-primary scale-105 ring-2 opacity-100',
                     )}
                   >
                     <div className="mb-2 flex items-center justify-between">
