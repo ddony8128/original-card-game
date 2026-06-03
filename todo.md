@@ -29,7 +29,7 @@
 - [x] **C-5** 자연종료 시 onGameOver에서 `roomsService.finishByCode` fire-and-forget 호출 → DB status='finished'. 재현 테스트. tsc/lint/test✓
 - [ ] **C-6** 버튼 클릭 반응성("끈적거림")
 - [ ] **C-7** 시크릿탭 로그인 안 됨 (쿠키/스토리지 의존)
-- [ ] **C-8** 미인증 lobby 접근 시 `/api/auth/me` 3회 요청
+- [x] **C-8** 미인증 /me 3회 요청: `new QueryClient()` 기본 retry:3 → `shouldRetryQuery`(4xx 비재시도) 정책 주입. 1회 요청 후 즉시 redirect. 단위테스트 2개. lint/tsc/test✓
 
 ## A. 서버 엔진 — 구조 개선 (선택적, 회귀테스트 보호 하에)
 - [x] **A-7** `type/gameEngine.ts`(GameEngineAdapter 클래스) → `core/engine/gameEngineAdapter.ts`로 이동. type 폴더는 순수 타입만 남음. tsc/lint/test✓

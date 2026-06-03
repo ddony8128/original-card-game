@@ -10,6 +10,15 @@ export class ApiError extends Error {
   }
 }
 
+const MAX_QUERY_RETRIES = 2;
+
+export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    return false;
+  }
+  return failureCount < MAX_QUERY_RETRIES;
+}
+
 export async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(API_BASE_URL + path, {
     headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },

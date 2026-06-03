@@ -11,8 +11,15 @@ import NotFound from './pages/NotFound';
 import Review from './pages/Review';
 import RequireAuth from './components/auth/RequireAuth';
 import RequireParticipant from './components/auth/RequireParticipant';
+import { shouldRetryQuery } from '@/shared/api/http';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: shouldRetryQuery,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
