@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { createGameSocket, type GameSocket, type GameSocketMode } from '@/ws/gameSocket';
+import type { SoloMode } from '@/shared/types/ws';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import type {
   GameInitPayload,
@@ -17,6 +18,10 @@ interface UseGameSocketParams {
   mode?: GameSocketMode;
   /** 'solo' 모드에서 사용할 덱 id */
   deckId?: string;
+  /** 'solo' 모드 종류(미지정 시 tutorial). 'pve' 면 stageId 와 함께 start_solo 로 전송. */
+  soloMode?: SoloMode;
+  /** soloMode==='pve' 일 때 대상 스테이지 id */
+  stageId?: string;
   /** false 면 소켓 연결을 보류한다(기본 true). 솔로 모드에서 덱 로딩 대기에 사용. */
   enabled?: boolean;
 }
@@ -33,6 +38,8 @@ export function useGameSocket({
   userId,
   mode,
   deckId,
+  soloMode,
+  stageId,
   enabled = true,
 }: UseGameSocketParams) {
   const setFromGameInit = useGameFogStore((s) => s.setFromGameInit);
@@ -48,8 +55,10 @@ export function useGameSocket({
         userId,
         mode,
         deckId,
+        soloMode,
+        stageId,
       }),
-    [roomCode, userId, mode, deckId],
+    [roomCode, userId, mode, deckId, soloMode, stageId],
   );
 
   useEffect(() => {

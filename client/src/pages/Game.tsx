@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { type BoardPosition } from '@/components/game/GameBoard';
 import { GameHeader } from '@/components/game/GameHeader';
 import { OpponentZone } from '@/components/game/OpponentZone';
@@ -25,19 +26,31 @@ import { useMulliganRequest } from '@/features/game/hooks/useMulliganRequest';
 import { useGameActions } from '@/features/game/hooks/useGameActions';
 import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
+import { pveProgressQueryKey } from '@/features/pve/queries';
 import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
 
 interface GameProps {
   solo?: boolean;
+  /** 설정 시 PvE 모드로 solo 게임을 시작한다(해당 stageId 의 AI 와 대전). */
+  pveStageId?: string;
 }
 
-export default function Game({ solo = false }: GameProps) {
+export default function Game({ solo = false, pveStageId }: GameProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { roomId: roomCode } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
   const { data: decks, isLoading: decksLoading } = useDecksQuery();
-  const soloDeckId = solo ? decks?.[0]?.id : undefined;
+  // PvE 도 튜토리얼과 동일하게 solo 연결 경로를 사용한다(사람 덱 = 첫 번째 덱).
+  const isSolo = solo || Boolean(pveStageId);
+  // 튜토리얼 모드(solo && !pveStageId)는 회원가입 시 제공되는 기본 덱 "기본 덱"으로 진행한다.
+  const isTutorial = solo && !pveStageId;
+  const soloDeckId = isSolo
+    ? isTutorial
+      ? (decks?.find((d) => d.name === '기본 덱')?.id ?? decks?.[0]?.id)
+      : decks?.[0]?.id
+    : undefined;
   const fogged = useGameFogStore((s) => s.fogged);
   const lastDiff = useGameFogStore((s) => s.lastDiff);
   const logs = useGameFogStore((s) => s.logs);
@@ -60,22 +73,25 @@ export default function Game({ solo = false }: GameProps) {
   }, [clearGameState]);
 
   const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } = useGameSocket({
-    roomCode: solo ? 'solo' : (roomCode ?? ''),
+    roomCode: isSolo ? 'solo' : (roomCode ?? ''),
     userId: me?.id,
-    mode: solo ? 'solo' : 'game',
+    mode: isSolo ? 'solo' : 'game',
     deckId: soloDeckId,
+    // pveStageId 가 있으면 pve, 없으면(튜토리얼) 기존대로 tutorial.
+    soloMode: pveStageId ? 'pve' : undefined,
+    stageId: pveStageId,
     // 솔로 모드는 덱 id 가 준비된 뒤에만 연결해 start_solo 에 올바른 덱을 전달한다.
-    enabled: solo ? Boolean(soloDeckId) : true,
+    enabled: isSolo ? Boolean(soloDeckId) : true,
   });
 
   // 솔로 모드에서 사용할 덱이 없으면 덱 빌더로 안내한다.
   useEffect(() => {
-    if (!solo || decksLoading) return;
+    if (!isSolo || decksLoading) return;
     if (!decks || decks.length === 0) {
       toast.error('덱을 먼저 만들어주세요');
       navigate('/deck-builder');
     }
-  }, [solo, decks, decksLoading, navigate]);
+  }, [isSolo, decks, decksLoading, navigate]);
 
   useEffect(() => {
     if (!me) {
@@ -84,10 +100,10 @@ export default function Game({ solo = false }: GameProps) {
     }
 
     // 솔로 모드는 소켓 open 시 start_solo 를 자동 전송하므로 ready 를 보내지 않는다.
-    if (solo) return;
+    if (isSolo) return;
 
     sendReady();
-  }, [me, navigate, sendReady, solo]);
+  }, [me, navigate, sendReady, isSolo]);
 
   const myId = me?.id;
 
@@ -248,6 +264,14 @@ export default function Game({ solo = false }: GameProps) {
       getCardMeta,
       setSelectedCardIndex,
     });
+
+  // PvE 게임이 끝나면(특히 승리 시 서버가 클리어를 기록하므로) 진행도 캐시를 무효화해
+  // 스테이지 선택/뱃지가 최신 상태로 갱신되게 한다.
+  useEffect(() => {
+    if (pveStageId && fogged?.phase === 'GAME_OVER') {
+      queryClient.invalidateQueries({ queryKey: pveProgressQueryKey });
+    }
+  }, [pveStageId, fogged?.phase, queryClient]);
 
   useBeforeUnloadWarning(!!fogged && fogged.phase !== 'GAME_OVER');
 
@@ -469,12 +493,14 @@ export default function Game({ solo = false }: GameProps) {
         title={graveModalTitle}
       />
 
-      {isGameOver && (
+      {/* 튜토리얼 모드의 게임 종료 안내는 /tutorial 라우트의 TutorialOutro 가 담당하므로
+          여기서는 PvE/2인전에서만 기본 게임 종료 오버레이를 노출한다. */}
+      {isGameOver && !isTutorial && (
         <GameOverOverlay
           isWin={Boolean(isWin)}
           isLose={Boolean(isLose)}
           onReview={() => navigate('/review')}
-          onLobby={() => navigate('/lobby')}
+          onLobby={() => navigate(pveStageId ? '/pve' : '/lobby')}
         />
       )}
     </div>

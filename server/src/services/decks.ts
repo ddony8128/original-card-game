@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { coerceDeckList, DeckList } from '../type/deck';
 import { getCardRowsByIds } from '../core/resources/cardResource';
+import { getDefaultDeck } from '../core/resources/defaultDeck';
 
 export type DeckRow = {
   id: string;
@@ -137,6 +138,16 @@ export const decksService = {
       .single();
     if (error) throw error;
     return data as DeckRow;
+  },
+  // 신규 가입자에게 기본 덱("기본 덱")을 생성한다.
+  // 기존 deck 검증/저장 경로(validateAndHydrate + create)를 그대로 재사용한다.
+  async createDefaultDeckFor(userId: string): Promise<DeckRow> {
+    const def = getDefaultDeck();
+    const { main, cata } = await this.validateAndHydrate(def.main, def.cata);
+    return this.create(userId, def.name, {
+      main_cards: main,
+      cata_cards: cata,
+    });
   },
   async update(
     deckId: string,

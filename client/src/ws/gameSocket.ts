@@ -8,6 +8,7 @@ import type {
   PlayerActionPayload,
   PlayerInputPayload,
   StartSoloPayload,
+  SoloMode,
 } from '@/shared/types/ws';
 
 /**
@@ -34,6 +35,10 @@ export interface GameSocketOptions {
   mode?: GameSocketMode;
   /** 'solo' 모드에서 사용할 덱 id */
   deckId?: string;
+  /** 'solo' 모드에서 사용할 솔로 게임 종류(미지정 시 tutorial). pve 일 때 stageId 와 함께 전송된다. */
+  soloMode?: SoloMode;
+  /** soloMode==='pve' 일 때 대상 스테이지 id */
+  stageId?: string;
 }
 
 export interface GameSocket {
@@ -135,12 +140,16 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
       // solo 모드는 start_solo(AI 싱글플레이 시작)을 보낸다.
       let initPayload: WsClientToServerMessage;
       if (mode === 'solo') {
+        const soloData: StartSoloPayload = {
+          userId: options.userId ?? '',
+          deckId: options.deckId ?? '',
+        };
+        // pve 모드일 때만 mode/stageId 를 실어 보낸다. 튜토리얼은 기존대로 둘 다 생략.
+        if (options.soloMode) soloData.mode = options.soloMode;
+        if (options.stageId) soloData.stageId = options.stageId;
         initPayload = {
           event: 'start_solo',
-          data: {
-            userId: options.userId ?? '',
-            deckId: options.deckId ?? '',
-          },
+          data: soloData,
         };
       } else {
         initPayload = {
@@ -233,6 +242,8 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
       userId: options.userId ?? '',
       deckId: options.deckId ?? '',
     };
+    if (options.soloMode) base.mode = options.soloMode;
+    if (options.stageId) base.stageId = options.stageId;
     send({ event: 'start_solo', data: { ...base, ...payload } });
   };
 

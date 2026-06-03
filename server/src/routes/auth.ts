@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { usersService } from '../services/users';
+import { decksService } from '../services/decks';
 import { HttpStatus } from '../type/status';
 import 'dotenv/config';
 
@@ -29,6 +30,17 @@ authRouter.post('/register', (req, res) => {
     }
 
     const created = await usersService.create(username, password);
+
+    // 신규 가입자에게 기본 덱("기본 덱")을 자동 생성한다.
+    // 덱 생성 실패가 회원가입 자체를 막지 않도록 non-fatal 로 처리한다.
+    try {
+      await decksService.createDefaultDeckFor(created.id);
+    } catch (e) {
+      console.warn(
+        `[auth/register] failed to create default deck for user ${created.id}:`,
+        e,
+      );
+    }
 
     res.status(HttpStatus.CREATED).json({
       message: 'user created',

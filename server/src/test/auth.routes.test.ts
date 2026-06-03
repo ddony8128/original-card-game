@@ -28,6 +28,33 @@ describe('Auth routes', () => {
     expect(res.body).toHaveProperty('username', username);
   });
 
+  it('register -> auto-creates a "기본 덱" default deck for the new user', async () => {
+    const u = `u_deck_${Date.now()}`;
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ username: u, password });
+    expect(res.status).toBe(201);
+    const userId = res.body.id as string;
+    expect(userId).toBeTruthy();
+
+    const { __getTables } = await import('./__mocks__/supabase.js');
+    const decks = __getTables().decks.filter((d: any) => d.user_id === userId);
+    expect(decks).toHaveLength(1);
+    const deck = decks[0];
+    expect(deck.name).toBe('기본 덱');
+    // 검증 규칙: main 16장 / cata 4장
+    const mainSum = (deck.main_cards as Array<{ count: number }>).reduce(
+      (s, e) => s + e.count,
+      0,
+    );
+    const cataSum = (deck.cata_cards as Array<{ count: number }>).reduce(
+      (s, e) => s + e.count,
+      0,
+    );
+    expect(mainSum).toBe(16);
+    expect(cataSum).toBe(4);
+  });
+
   it('login -> httpOnly cookie set', async () => {
     const res = await request(app)
       .post('/api/auth/login')

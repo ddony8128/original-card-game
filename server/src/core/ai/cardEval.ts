@@ -283,3 +283,13 @@ export function isUtilityCard(meta: CardMeta | null): boolean {
   if (isPureSelfHarm(meta)) return false;
   return true;
 }
+
+/**
+ * 카드를 사용하면 ritual 이 보드에 설치되는지(=ritual 타입 카드인지) 판정한다.
+ * 프로필의 prioritizeRituals 가 설치 셋업을 우선시할 때 사용한다.
+ */
+export function isRitualInstallCard(meta: CardMeta | null): boolean {
+  if (!meta) return false;
+  const parsed = parseCardEffectJson(meta.effectJson);
+  return parsed?.type === 'ritual';
+}

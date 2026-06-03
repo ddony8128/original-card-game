@@ -417,6 +417,34 @@ export const handlers = [
     const { roomCode } = (await request.json()) as { roomCode: string };
     return HttpResponse.json({ roomCode, status: 'left' });
   }),
+  // pve stages
+  http.get('/api/pve/stages', () =>
+    HttpResponse.json({
+      stages: [
+        { id: 'stage-1', name: '스테이지 1' },
+        { id: 'stage-2', name: '스테이지 2' },
+        { id: 'stage-3', name: '스테이지 3' },
+      ],
+      total: 3,
+    }),
+  ),
+  http.get(/https?:\/\/.*\/api\/pve\/stages$/, () =>
+    HttpResponse.json({
+      stages: [
+        { id: 'stage-1', name: '스테이지 1' },
+        { id: 'stage-2', name: '스테이지 2' },
+        { id: 'stage-3', name: '스테이지 3' },
+      ],
+      total: 3,
+    }),
+  ),
+  // pve progress (none cleared by default)
+  http.get('/api/pve/progress', () =>
+    HttpResponse.json({ clearedStageIds: [], allCleared: false }),
+  ),
+  http.get(/https?:\/\/.*\/api\/pve\/progress$/, () =>
+    HttpResponse.json({ clearedStageIds: [], allCleared: false }),
+  ),
   // match waiting rooms list
   http.get('/api/match/waiting', () =>
     HttpResponse.json([

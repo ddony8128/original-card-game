@@ -118,13 +118,13 @@ export function attachWebSocket(server: http.Server): WsApi {
 
         // 3) start_solo: 싱글플레이(vs AI) 시작. ready 처럼 인증(roomCode 기록) 이전에도 허용한다.
         if (event === 'start_solo') {
-          const { userId, deckId } = data as StartSoloPayload;
+          const { userId, deckId, mode, stageId } = data as StartSoloPayload;
           if (!userId || !deckId) {
             registerStrike();
             return;
           }
           void soloManager
-            .handleStartSolo(socket, { userId, deckId })
+            .handleStartSolo(socket, { userId, deckId, mode, stageId })
             .catch((err) =>
               console.error('[WS] handleStartSolo error', {
                 err,

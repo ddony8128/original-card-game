@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, GraduationCap } from 'lucide-react';
+import { LogOut, GraduationCap, Swords, Trophy } from 'lucide-react';
 import { useDecksQuery, useDeleteDeckMutation } from '@/features/decks/queries';
+import { usePveProgressQuery } from '@/features/pve/queries';
 import { useCreateRoomMutation, useJoinRoomMutation } from '@/features/match/queries';
 import { useMeQuery, useLogoutMutation } from '@/features/auth/queries';
 import { getErrorMessage } from '@/shared/lib/errors';
@@ -20,6 +21,7 @@ export default function Lobby() {
   const [roomName, setRoomName] = useState('');
 
   const { data: serverDecks, isLoading: loadingDecks } = useDecksQuery();
+  const { data: pveProgress } = usePveProgressQuery();
   const createRoom = useCreateRoomMutation();
   const joinRoom = useJoinRoomMutation();
   const deleteDeckMutation = useDeleteDeckMutation();
@@ -104,11 +106,27 @@ export default function Lobby() {
           <p className="text-muted-foreground">환영합니다, {me.username}님!</p>
         </div>
 
-        <div className="flex justify-center">
-          <Button onClick={() => navigate('/tutorial')}>
-            <GraduationCap className="mr-2 h-4 w-4" />
-            튜토리얼 (AI 연습)
-          </Button>
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button onClick={() => navigate('/tutorial')}>
+              <GraduationCap className="mr-2 h-4 w-4" />
+              튜토리얼 (AI 연습)
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/pve')}>
+              <Swords className="mr-2 h-4 w-4" />
+              PvE (AI 도전)
+            </Button>
+          </div>
+          {pveProgress?.allCleared ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1 text-sm font-bold text-amber-300 ring-1 ring-amber-300/60 drop-shadow-[0_0_8px_rgba(252,211,77,0.6)]">
+              <Trophy className="h-4 w-4" />
+              황금 뱃지 획득!
+            </span>
+          ) : (
+            <span className="text-muted-foreground text-xs">
+              PvE 3스테이지 클리어 시 황금 뱃지 ({pveProgress?.clearedStageIds.length ?? 0}/3)
+            </span>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

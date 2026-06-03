@@ -122,10 +122,17 @@ export interface ReadyPayload {
   userId?: string;
 }
 
+/** 솔로 게임 모드. tutorial = AI 가 사람 덱 클론 + default 프로필, pve = 스테이지 덱/프로필. */
+export type SoloMode = 'tutorial' | 'pve';
+
 // 싱글플레이(솔로 vs AI) 시작 요청
 export interface StartSoloPayload {
   userId: string;
   deckId: string;
+  /** 미지정 시 'tutorial'(기존 동작). 'pve' 면 stageId 의 스테이지 덱/프로필을 사용한다. */
+  mode?: SoloMode;
+  /** mode==='pve' 일 때 대상 스테이지 id. */
+  stageId?: string;
 }
 
 // 채팅 전용 방 입장(게임 시작/ready 와 분리)
