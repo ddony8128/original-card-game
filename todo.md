@@ -51,7 +51,7 @@
 - [ ] **D-2** `Game.tsx`(692줄) → 상대존/게임판/내존/오버레이 컴포넌트 분리
 - [ ] **D-3** `Game.tsx` 핸들러 커스텀 훅화 (handlePlayCard/EndTurn/MoveToSelected/UseRitualAtSelected)
 - [ ] **D-4** `DeckBuilder.tsx`(341줄) 분리
-- [ ] **D-5** `useMulliganRequest.ts` 위치 정리 (features/game)
+- [x] **D-5** `useMulliganRequest.ts` → `features/game/hooks/`로 이동(컴포넌트 폴더에 있던 훅 정리). tsc/lint/test✓
 - [ ] **D-6** 폴더 컨벤션 마무리 (pages 얇게 / features / shared / ws)
 
 ## E. 클라이언트 — UI/UX

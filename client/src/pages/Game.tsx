@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { useMeQuery } from '@/features/auth/queries';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import { useGameSocket } from '@/ws/useGameSocket';
-import { useMulliganRequest } from '@/components/game/useMulliganRequest';
+import { useMulliganRequest } from '@/features/game/hooks/useMulliganRequest';
 import { cn } from '@/shared/lib/utils';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 import type { PlayerActionPayload, RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
