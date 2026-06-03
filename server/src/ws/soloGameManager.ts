@@ -97,6 +97,8 @@ export class SoloGameManager {
     let aiCata: DeckList = deck.cata_cards;
     let aiProfile: AIProfile = getProfile();
     let stageId: string | undefined;
+    // 스테이지가 보스 시작 HP 를 지정하면(하드 스테이지) AI 만 해당 HP 로 시작한다.
+    let aiHp: number | undefined;
 
     if (mode === 'pve') {
       const stage = getPveStage(payload.stageId ?? '');
@@ -111,6 +113,7 @@ export class SoloGameManager {
       aiCata = stage.deck.cata;
       aiProfile = getProfile(stage.profileId);
       stageId = stage.id;
+      aiHp = stage.aiHp;
     }
 
     const soloId = this.nextSoloId(userId);
@@ -126,6 +129,15 @@ export class SoloGameManager {
     ];
 
     const initialState = createInitialGameState(playerDeckConfigs);
+    // 하드 스테이지: 보스 AI 만 더 높은 HP 로 시작시킨다(사람은 기본값 유지).
+    // heal/percent 로직 일관성을 위해 hp 와 maxHp 를 모두 덮어쓴다.
+    if (aiHp !== undefined) {
+      const aiState = initialState.players[AI_PLAYER_ID];
+      if (aiState) {
+        aiState.hp = aiHp;
+        aiState.maxHp = aiHp;
+      }
+    }
     const ctx = await buildEngineContextFromDecks(playerDeckConfigs);
     const engine = GameEngineAdapter.create({
       roomCode: soloId,

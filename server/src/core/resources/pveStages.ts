@@ -19,6 +19,11 @@ export interface PveStage {
   name: string;
   /** AI 행동 프로필 식별자(heuristic 프로필 레지스트리 키). */
   profileId: string;
+  /**
+   * 보스 AI 의 시작 HP. 지정되지 않으면 기본값(INITIAL_HP)을 사용한다.
+   * 하드 스테이지처럼 보스만 더 높은 HP 로 시작시킬 때 사용한다(사람 HP 는 영향 없음).
+   */
+  aiHp?: number;
   deck: {
     main: DeckEntry[];
     cata: DeckEntry[];

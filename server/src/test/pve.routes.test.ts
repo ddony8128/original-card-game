@@ -38,16 +38,16 @@ describe('PvE routes', () => {
     expect(res.status).toBe(401);
   });
 
-  it('GET /api/pve/stages 는 3개 스테이지(id+name)를 반환하고 덱/프로필을 노출하지 않는다', async () => {
+  it('GET /api/pve/stages 는 6개 스테이지(id+name)를 반환하고 덱/프로필을 노출하지 않는다', async () => {
     const { cookie } = await registerAndLogin(app);
     const res = await request(app)
       .get('/api/pve/stages')
       .set('Cookie', cookie);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('total', 3);
+    expect(res.body).toHaveProperty('total', 6);
     expect(Array.isArray(res.body.stages)).toBe(true);
-    expect(res.body.stages.length).toBe(3);
+    expect(res.body.stages.length).toBe(6);
     for (const s of res.body.stages) {
       expect(typeof s.id).toBe('string');
       expect(typeof s.name).toBe('string');
@@ -74,7 +74,7 @@ describe('PvE routes', () => {
     expect(res0.body.clearedStageIds).toEqual([]);
     expect(res0.body.allCleared).toBe(false);
 
-    // 2/3 클리어 → 여전히 allCleared=false.
+    // 일부만 클리어 → 여전히 allCleared=false.
     await pveProgressService.markCleared(userId, 'stage-1');
     await pveProgressService.markCleared(userId, 'stage-2');
     const res1 = await request(app)
@@ -84,8 +84,11 @@ describe('PvE routes', () => {
     expect(res1.body.clearedStageIds.sort()).toEqual(['stage-1', 'stage-2']);
     expect(res1.body.allCleared).toBe(false);
 
-    // 3/3 클리어 → allCleared=true (골드 뱃지 조건).
+    // 전체 스테이지(일반 1~3 + 하드 4~6) 클리어 → allCleared=true (골드 뱃지 조건).
     await pveProgressService.markCleared(userId, 'stage-3');
+    await pveProgressService.markCleared(userId, 'stage-4');
+    await pveProgressService.markCleared(userId, 'stage-5');
+    await pveProgressService.markCleared(userId, 'stage-6');
     const res2 = await request(app)
       .get('/api/pve/progress')
       .set('Cookie', cookie);
@@ -94,6 +97,9 @@ describe('PvE routes', () => {
       'stage-1',
       'stage-2',
       'stage-3',
+      'stage-4',
+      'stage-5',
+      'stage-6',
     ]);
     expect(res2.body.allCleared).toBe(true);
   });

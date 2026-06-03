@@ -2,10 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { getPveStages, getPveStage } from '../resources/pveStages';
 
 describe('pveStages 리소스 (P0-1)', () => {
-  it('스테이지 3개를 로드한다', () => {
+  it('스테이지 6개를 로드한다(일반 1~3 + 하드 4~6)', () => {
     const stages = getPveStages();
-    expect(stages.length).toBe(3);
-    expect(stages.map((s) => s.id)).toEqual(['stage-1', 'stage-2', 'stage-3']);
+    expect(stages.length).toBe(6);
+    expect(stages.map((s) => s.id)).toEqual([
+      'stage-1',
+      'stage-2',
+      'stage-3',
+      'stage-4',
+      'stage-5',
+      'stage-6',
+    ]);
   });
 
   it('각 스테이지 덱은 메인 16 / 재앙 4 이다', () => {
@@ -21,5 +28,26 @@ describe('pveStages 리소스 (P0-1)', () => {
   it('getPveStage 로 단건 조회', () => {
     expect(getPveStage('stage-2')?.name).toBe('게임 개같이 하네');
     expect(getPveStage('nope')).toBeNull();
+  });
+
+  it('하드 스테이지(4~6)는 일반 스테이지(1~3)의 덱/프로필을 재사용하고 aiHp=30 이다', () => {
+    const pairs: Array<[string, string]> = [
+      ['stage-4', 'stage-1'],
+      ['stage-5', 'stage-2'],
+      ['stage-6', 'stage-3'],
+    ];
+    for (const [hardId, baseId] of pairs) {
+      const hard = getPveStage(hardId);
+      const base = getPveStage(baseId);
+      expect(hard, hardId).not.toBeNull();
+      expect(base, baseId).not.toBeNull();
+      // 덱(메인/재앙)과 프로필을 그대로 재사용한다.
+      expect(hard?.profileId).toBe(base?.profileId);
+      expect(hard?.deck).toEqual(base?.deck);
+      // 보스 AI 시작 HP 는 30(하드).
+      expect(hard?.aiHp).toBe(30);
+      // 일반 스테이지는 aiHp 를 지정하지 않는다(기본값 사용).
+      expect(base?.aiHp).toBeUndefined();
+    }
   });
 });
