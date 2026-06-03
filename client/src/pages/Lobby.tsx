@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
+import { LangToggle } from '@/i18n/LangToggle';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -15,7 +16,7 @@ import { MyDecksCard } from '@/components/lobby/MyDecksCard';
 import { WaitingRoomsList } from '@/components/lobby/WaitingRoomsList';
 
 export default function Lobby() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const { data: me } = useMeQuery();
   const [roomCode, setRoomCode] = useState('');
   const [roomName, setRoomName] = useState('');
@@ -90,7 +91,8 @@ export default function Lobby() {
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4 sm:p-6">
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-2">
+          <LangToggle />
           <Button
             variant="outline"
             size="sm"

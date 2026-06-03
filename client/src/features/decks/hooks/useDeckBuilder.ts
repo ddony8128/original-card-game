@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { toast } from 'sonner';
 import type { DeckCard, Card as LocalCard } from '@/shared/types/deck';
 import { useCardsQuery } from '@/features/cards/queries';
@@ -11,7 +12,7 @@ const MAX_CATA_SIZE = 4;
 const MAX_DUPLICATE = 2;
 
 export const useDeckBuilder = () => {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const [searchParams] = useSearchParams();
   // 로컬 스토어 제거: 서버만 사용
 

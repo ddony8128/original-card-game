@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { Hammer, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { useGameFogStore } from '@/shared/store/gameStore';
  * 게임 종료 전에는 아무것도 렌더하지 않는다.
  */
 export function TutorialOutro() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const fogged = useGameFogStore((s) => s.fogged);
 
   const isGameOver = fogged?.phase === 'GAME_OVER' || Boolean(fogged?.winner);

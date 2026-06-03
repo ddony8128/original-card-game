@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
+import { LangToggle } from '@/i18n/LangToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sparkles, X } from 'lucide-react';
@@ -7,7 +8,7 @@ import { useLoginMutation, useRegisterMutation, useMeQuery } from '@/features/au
 import { toast } from 'sonner';
 
 export default function Login() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
 
   // 로그인 폼 상태
   const [username, setUsername] = useState('');
@@ -87,6 +88,9 @@ export default function Login() {
   return (
     <div className="from-background via-background to-accent/10 flex min-h-screen items-center justify-center bg-linear-to-br p-4">
       <div className="w-full max-w-md space-y-8">
+        <div className="flex justify-end">
+          <LangToggle />
+        </div>
         <div className="space-y-4 text-center">
           <div className="flex justify-center">
             <Sparkles className="text-primary h-20 w-20 animate-pulse" />

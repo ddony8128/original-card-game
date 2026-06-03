@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useCreateReviewMutation } from '@/features/reviews/queries';
 
 export default function Review() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const createReview = useCreateReviewMutation();

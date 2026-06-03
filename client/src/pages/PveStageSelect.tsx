@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { ArrowLeft, Trophy, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { usePveStagesQuery, usePveProgressQuery } from '@/features/pve/queries';
 
 export default function PveStageSelect() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const { data: stagesData, isLoading: stagesLoading } = usePveStagesQuery();
   const { data: progress, isLoading: progressLoading } = usePveProgressQuery();
 

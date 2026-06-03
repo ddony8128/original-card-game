@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { LangNavigate } from '@/i18n/LangNav';
 import { useMeQuery } from '@/features/auth/queries';
 
 type RequireAuthProps = {
@@ -11,7 +12,7 @@ export default function RequireAuth({ children }: RequireAuthProps) {
   const location = useLocation();
   if (isLoading) return null;
   if (isError || !data) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <LangNavigate to="/login" replace state={{ from: location }} />;
   }
   return <>{children}</>;
 }

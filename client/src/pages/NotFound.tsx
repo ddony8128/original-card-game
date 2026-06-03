@@ -1,11 +1,12 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useMeQuery } from '@/features/auth/queries';
 
 const NotFound = () => {
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const { data: me } = useMeQuery();
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { useQueryClient } from '@tanstack/react-query';
 import { type BoardPosition } from '@/components/game/GameBoard';
 import { GameHeader } from '@/components/game/GameHeader';
@@ -37,7 +38,7 @@ interface GameProps {
 }
 
 export default function Game({ solo = false, pveStageId }: GameProps) {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const queryClient = useQueryClient();
   const { roomId: roomCode } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();

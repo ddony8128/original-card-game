@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, RefreshCw } from 'lucide-react';
@@ -7,7 +7,7 @@ import { useJoinRoomMutation, useWaitingRoomsQuery } from '@/features/match/quer
 import { getErrorMessage } from '@/shared/lib/errors';
 
 export function WaitingRoomsList() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const { data: waitingRooms, refetch, isLoading } = useWaitingRoomsQuery(true);
   const joinRoom = useJoinRoomMutation();
 

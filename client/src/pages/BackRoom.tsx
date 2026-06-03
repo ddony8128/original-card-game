@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import { useLangNavigate } from '@/i18n/nav';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ import { useGameFogStore } from '@/shared/store/gameStore';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 
 export default function BackRoom() {
-  const navigate = useNavigate();
+  const navigate = useLangNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
   // URL 파라미터는 roomId지만 실제로는 roomCode를 전달받음
