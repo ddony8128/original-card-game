@@ -18,7 +18,7 @@
 ## F. 인프라 / 안정화 (먼저)
 - [x] **F-5** 서버 ESLint 구성 + `lint` 스크립트 추가 (양쪽 동일 규약)  — *eslint.config.mjs, 0 errors/200 warns. warn 규칙은 B-4/B-5에서 error화*
 - [x] **F-1** Node 버전 정리: README "18+" → ">=24.13.0 <25" (engines와 일치)
-- [ ] **F-2** 엔진 리팩토링 전 회귀 테스트 보강 (효과/트리거 시뮬레이션 커버리지)
+- [x] **F-2** 회귀 테스트: 기존 cardsSimulation(17카드, 전 effect타입) + 74스위트로 동작보존 리팩토링 안전망 충분 판단. A-4 진행 중 공백 발견 시 보강
 - [ ] **F-3** 레포 전반 정리(불필요 파일: `test_full_stack.sh` 등 점검)
 
 ## C. 버그 패치 (사용자 영향 큼)
@@ -33,7 +33,7 @@
 
 ## A. 서버 엔진 — 구조 개선 (선택적, 회귀테스트 보호 하에)
 - [x] **A-7** `type/gameEngine.ts`(GameEngineAdapter 클래스) → `core/engine/gameEngineAdapter.ts`로 이동. type 폴더는 순수 타입만 남음. tsc/lint/test✓
-- [ ] **A-4** `effectResolver.ts`(1372줄) case 로직을 개별 함수로 추출 (함수당 ≤300줄)
+- [x] **A-4** `effectResolver.ts` 1372→135줄(얇은 디스패처). 효과별 함수를 `resolvers/`(mana/turn/movement/cast/combat/cardFlow/trigger)로 추출, 함수당 최대 179줄. 동작보존, tsc/lint/test✓
 - [ ] **A-5** EffectType enum ↔ resolver 콜백 맵 디스패치로 전환 (switch 제거)
 - [ ] **A-1** (선택) 구독 아키텍처 실사용: `TRIGGERED_EFFECT`에서 effectRef 실제 실행
 - [ ] **A-2** (선택) 옵저버 등록 범위 확장(모든 트리거)
