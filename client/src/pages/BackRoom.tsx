@@ -90,8 +90,12 @@ export default function BackRoom() {
               {state?.roomName || '방 이름 없음'} · 코드: {roomCode}
             </div>
           </div>
-          <Button variant="outline" onClick={handleLeave}>
-            나가기
+          <Button
+            variant="outline"
+            onClick={handleLeave}
+            disabled={leaveRoom.isPending}
+          >
+            {leaveRoom.isPending ? '나가는 중...' : '나가기'}
           </Button>
         </div>
 
