@@ -74,11 +74,30 @@ const CONTROL_PROFILE: AIProfile = {
   cycleCards: ['c01-027', 'c01-029', 'c01-003', 'c01-008'],
 };
 
+/**
+ * basic = 자기대전에서 "기본 덱" 상대를 더 사람답게 두기 위한 측정 전용 프로필.
+ * 스테이지나 튜토리얼에는 절대 배정하지 않는다(튜토리얼은 default 유지). 스테이지
+ * AI 의 승률을 "생짜 휴리스틱"이 아니라 "합리적으로 플레이하는 기본 덱"에 대해
+ * 측정하기 위한 기준선이다.
+ *
+ * 기본 덱(마력탄/마력저격/화염구/운석 등 전부 원거리)에 맞춘 튜닝:
+ *  - holdUntilKill: 운석 떨구기(10뎀 피니셔)를 킬각에서만 commit(사거리에 들어온다고
+ *    바로 소모해 버리던 낭비 방지 — 작은 카드로 먼저 압박하고 운석은 막타용).
+ *  - preferredDistance: 근접 카드가 없으므로, 마땅한 수가 없을 때 2칸을 유지해
+ *    불필요한 점착(point-blank)을 피한다(사거리 안 데미지는 base 사다리가 처리).
+ */
+const BASIC_PROFILE: AIProfile = {
+  id: 'basic',
+  holdUntilKill: ['c01-026'],
+  preferredDistance: 2,
+};
+
 const PROFILES: Record<string, AIProfile> = {
   default: DEFAULT_PROFILE,
   bruiser: BRUISER_PROFILE,
   disruptor: DISRUPTOR_PROFILE,
   control: CONTROL_PROFILE,
+  basic: BASIC_PROFILE,
 };
 
 /**

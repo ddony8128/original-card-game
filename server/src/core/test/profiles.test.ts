@@ -134,6 +134,37 @@ describe('getProfile', () => {
       'c01-003',
       'c01-008',
     ]);
+    // basic: 측정 전용 — 운석(피니셔)을 킬각까지 아끼고, 2칸 유지.
+    expect(getProfile('basic').holdUntilKill).toEqual(['c01-026']);
+    expect(getProfile('basic').preferredDistance).toBe(2);
+  });
+});
+
+describe('basic profile (measurement-only basic-deck pilot)', () => {
+  // c01-026 운석(10뎀 r4 피니셔, holdUntilKill), bolt(4뎀) 작은 데미지 카드.
+  const getMeta = makeGetMetaRich({
+    'c01-026': { mana: 5, effectJson: onCast(dmg(10, 'near_enemy', { range: 4 })) },
+    bolt: { mana: 1, effectJson: onCast(dmg(4, 'near_enemy', { range: 4 })) },
+  });
+
+  it('HOLDS 운석 and pokes with a smaller card when not a kill-angle', () => {
+    const state = makeState({
+      p1: { mana: 5, hand: [card('h1', 'c01-026'), card('h2', 'bolt')] },
+      p2: { hp: 20 }, // 10뎀으로 못 잡음 → 운석 아낌, bolt 로 압박.
+      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } },
+    });
+    const action = chooseAIAction(state, P1, getMeta, zeroRand, getProfile('basic'));
+    expect(action.kind === 'use_card' && action.cardInstance.cardId).toBe('bolt');
+  });
+
+  it('FIRES 운석 when it is lethal', () => {
+    const state = makeState({
+      p1: { mana: 5, hand: [card('h1', 'c01-026'), card('h2', 'bolt')] },
+      p2: { hp: 8 }, // 10뎀으로 잡힘 → 막타.
+      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } },
+    });
+    const action = chooseAIAction(state, P1, getMeta, zeroRand, getProfile('basic'));
+    expect(action.kind === 'use_card' && action.cardInstance.cardId).toBe('c01-026');
   });
 });
 
