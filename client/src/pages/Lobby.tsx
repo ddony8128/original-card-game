@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut } from 'lucide-react';
+import { LogOut, GraduationCap } from 'lucide-react';
 import { useDecksQuery, useDeleteDeckMutation } from '@/features/decks/queries';
 import { useCreateRoomMutation, useJoinRoomMutation } from '@/features/match/queries';
 import { useMeQuery, useLogoutMutation } from '@/features/auth/queries';
@@ -102,6 +102,13 @@ export default function Lobby() {
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">로비</h1>
           <p className="text-muted-foreground">환영합니다, {me.username}님!</p>
+        </div>
+
+        <div className="flex justify-center">
+          <Button onClick={() => navigate('/tutorial')}>
+            <GraduationCap className="mr-2 h-4 w-4" />
+            튜토리얼 (AI 연습)
+          </Button>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

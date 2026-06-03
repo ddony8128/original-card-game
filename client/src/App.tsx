@@ -7,6 +7,7 @@ import Lobby from './pages/Lobby';
 import DeckBuilder from './pages/DeckBuilder';
 import BackRoom from './pages/BackRoom';
 import Game from './pages/Game';
+import { TutorialOverlay } from './features/game/components/TutorialOverlay';
 import NotFound from './pages/NotFound';
 import Review from './pages/Review';
 import RequireAuth from './components/auth/RequireAuth';
@@ -59,6 +60,15 @@ const App = () => (
               <RequireParticipant>
                 <BackRoom />
               </RequireParticipant>
+            }
+          />
+          <Route
+            path="/tutorial"
+            element={
+              <RequireAuth>
+                <Game solo />
+                <TutorialOverlay />
+              </RequireAuth>
             }
           />
           <Route

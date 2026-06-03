@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/shared/lib/utils';
 
+export type AnimationSide = 'me' | 'opponent' | 'center';
+
 export type SimpleAnimation =
   | { type: 'draw'; value?: number }
   | { type: 'discard'; value?: number }
   | { type: 'burn'; value?: number }
-  | { type: 'damage'; value?: number }
-  | { type: 'heal'; value?: number }
+  | { type: 'damage'; value?: number; side?: AnimationSide }
+  | { type: 'heal'; value?: number; side?: AnimationSide }
   | { type: 'move' }
   | { type: 'ritual_place' }
   | { type: 'ritual_destroy' }
@@ -38,13 +40,22 @@ export function AnimationLayer({ animations, onAnimationComplete }: AnimationLay
   return (
     <div className="pointer-events-none fixed inset-0 z-50">
       {activeAnimations.map((anim, index) => (
-        <AnimationEffect key={index} animation={anim} />
+        <AnimationEffect key={index} animation={anim} index={index} />
       ))}
     </div>
   );
 }
 
-function AnimationEffect({ animation }: { animation: SimpleAnimation }) {
+function AnimationEffect({
+  animation,
+  index,
+}: {
+  animation: SimpleAnimation;
+  index: number;
+}) {
+  const side: AnimationSide =
+    ('side' in animation && animation.side) || 'center';
+
   const getAnimationClass = () => {
     switch (animation.type) {
       case 'draw':
@@ -54,13 +65,21 @@ function AnimationEffect({ animation }: { animation: SimpleAnimation }) {
       case 'burn':
         return 'animate-scale-out';
       case 'damage':
-        return 'animate-shake';
       case 'heal':
-        return 'animate-pulse';
+        return 'animate-float-up';
       default:
         return 'animate-fade-in';
     }
   };
+
+  // 대상 측(나=하단 / 상대=상단)으로 띄우고, 동시 다중 연출은 가로로 살짝 분산.
+  const positionClass =
+    side === 'opponent'
+      ? 'top-[20%]'
+      : side === 'me'
+        ? 'bottom-[24%]'
+        : 'top-1/2 -translate-y-1/2';
+  const offsetStyle = { marginLeft: `${(index % 3) * 56 - 56}px` };
 
   const getIcon = () => {
     switch (animation.type) {
@@ -114,10 +133,11 @@ function AnimationEffect({ animation }: { animation: SimpleAnimation }) {
   return (
     <div
       className={cn(
-        'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
-        'text-6xl',
+        'absolute left-1/2 -translate-x-1/2 text-6xl',
+        positionClass,
         getAnimationClass(),
       )}
+      style={offsetStyle}
     >
       {getIcon()}
       {renderValue()}

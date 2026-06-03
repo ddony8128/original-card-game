@@ -6,6 +6,8 @@
 export type SocketClient = import('ws').WebSocket & {
   roomCode?: string;
   userId?: string;
+  /** 솔로(싱글플레이 vs AI) 게임 소켓 여부. true 면 SoloGameManager 로 라우팅한다. */
+  solo?: boolean;
   /** 허용되지 않은(악용성) 메시지 누적 횟수. 임계 초과 시 연결을 차단한다. */
   invalidStrikes?: number;
 };

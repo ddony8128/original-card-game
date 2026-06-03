@@ -1,0 +1,366 @@
+import { GamePhase } from '../type/gameState';
+import type { PlayerID } from '../type/gameState';
+import type {
+  AnswerMulliganPayload,
+  AskMulliganPayload,
+  GameOverPayload,
+  InvalidActionPayload,
+  PlayerActionPayload,
+  PlayerInputPayload,
+  RequestInputPayload,
+  ServerToClientMessage,
+  StatePatchPayload,
+  StartSoloPayload,
+} from '../type/wsProtocol';
+import { decksService } from '../services/decks';
+import { GameEngineAdapter } from '../core/engine/gameEngineAdapter';
+import type { GameEngineCore } from '../core/engine/gameEngineCore';
+import {
+  buildEngineContextFromDecks,
+  createInitialGameState,
+  type PlayerDeckConfig,
+} from '../state/gameInit';
+import { getCardMeta } from '../core/resources/cardCatalog';
+import { chooseAIAction } from '../core/ai/heuristic';
+import type { LegalAction } from '../core/ai/legalActions';
+import { toViewerPos } from '../core/engine/boardUtils';
+import type { SocketManager, SocketClient } from './socketManager';
+
+/** 솔로(싱글플레이) 게임에서 AI 플레이어를 식별하는 고정 ID. DB 유저가 아니다. */
+export const AI_PLAYER_ID = '__AI__';
+
+/** AI 턴 드라이버가 한 턴 안에서 수행할 수 있는 최대 스텝(무한 루프 방지). */
+const MAX_AI_STEPS = 30;
+
+// 솔로 방 하나의 메타정보.
+type SoloRoom = {
+  soloId: string;
+  engine: GameEngineAdapter;
+  humanId: PlayerID;
+  socket: SocketClient;
+  /** game_init 메시지를 사람에게 한 번만 보내기 위한 플래그. */
+  initialized: boolean;
+};
+
+/**
+ * 싱글플레이("솔로") 게임 vs 휴리스틱 AI 를 서버 메모리에서 관리하는 객체.
+ *
+ * - DB 방 row / AI 유저를 만들지 않고, 메모리상의 soloId 로만 식별한다.
+ * - 2인용 GameRoomManager 경로와 완전히 분리되어 있다.
+ * - AI 턴 드라이버는 절대 hang/throw 하지 않도록(스텝 cap + end_turn fallback + try/catch)
+ *   설계되어 있다. 견고함이 최우선이다.
+ */
+export class SoloGameManager {
+  private readonly rooms = new Map<string, SoloRoom>();
+  private counter = 0;
+
+  constructor(private readonly socketManager: SocketManager) {}
+
+  /** 사람 userId 와 내부 카운터로 충돌 없는 솔로 방 id 를 생성한다. */
+  private nextSoloId(userId: string): string {
+    this.counter += 1;
+    return `solo_${userId}_${this.counter}`;
+  }
+
+  /**
+   * 솔로 게임 시작.
+   * - 사람 덱을 로드(없으면 warn + return)
+   * - AI 는 사람 덱의 클론을 사용(항상 유효한 카드 보장)
+   * - 엔진/콜백 구성 후 markReady → AI 멀리건 자동 응답 → AI 선공이면 즉시 진행
+   */
+  async handleStartSolo(
+    socket: SocketClient,
+    payload: StartSoloPayload,
+  ): Promise<void> {
+    const { userId, deckId } = payload;
+
+    const deck = await decksService.getById(deckId);
+    if (!deck) {
+      console.warn('[SoloGameManager] deck not found', { userId, deckId });
+      return;
+    }
+
+    const soloId = this.nextSoloId(userId);
+
+    // AI 는 사람 덱의 클론을 사용한다(유효성 보장).
+    const playerDeckConfigs: PlayerDeckConfig[] = [
+      { playerId: userId, main: deck.main_cards, cata: deck.cata_cards },
+      {
+        playerId: AI_PLAYER_ID,
+        main: deck.main_cards,
+        cata: deck.cata_cards,
+      },
+    ];
+
+    const initialState = createInitialGameState(playerDeckConfigs);
+    const ctx = await buildEngineContextFromDecks(playerDeckConfigs);
+    const engine = GameEngineAdapter.create({
+      roomCode: soloId,
+      players: [userId, AI_PLAYER_ID],
+      initialState,
+      ctx,
+    });
+
+    socket.userId = userId;
+    socket.roomCode = soloId;
+    socket.solo = true;
+    this.socketManager.joinRoom(soloId, socket, userId);
+
+    const room: SoloRoom = {
+      soloId,
+      engine,
+      humanId: userId,
+      socket,
+      initialized: false,
+    };
+    this.rooms.set(soloId, room);
+    this.attachEngineCallbacks(room);
+
+    // 멀리건/상태 패치 콜백이 모두 연결된 뒤 게임을 시작한다.
+    await engine.markReady();
+    // AI 멀리건은 즉시 자동 응답(교체 없음).
+    await engine.handleAnswerMulligan(AI_PLAYER_ID, { replaceIndices: [] });
+    // AI 가 선공이면 곧바로 AI 턴을 진행한다.
+    await this.maybeRunAITurn(soloId);
+  }
+
+  // ---- 사람 액션 핸들러 (socket.ts 에서 solo 소켓에 대해 호출) ----
+
+  async handlePlayerAction(
+    soloId: string,
+    action: PlayerActionPayload,
+  ): Promise<void> {
+    const room = this.rooms.get(soloId);
+    if (!room) return;
+    await room.engine.handlePlayerAction(room.humanId, action);
+    await this.maybeRunAITurn(soloId);
+  }
+
+  async handleAnswerMulligan(
+    soloId: string,
+    payload: AnswerMulliganPayload,
+  ): Promise<void> {
+    const room = this.rooms.get(soloId);
+    if (!room) return;
+    await room.engine.handleAnswerMulligan(room.humanId, payload);
+    await this.maybeRunAITurn(soloId);
+  }
+
+  async handlePlayerInput(
+    soloId: string,
+    payload: PlayerInputPayload,
+  ): Promise<void> {
+    const room = this.rooms.get(soloId);
+    if (!room) return;
+    await room.engine.handlePlayerInput(room.humanId, payload);
+    await this.maybeRunAITurn(soloId);
+  }
+
+  /**
+   * AI 턴 드라이버. **절대 hang 하지 않음을 보장한다.**
+   * - 스텝 cap(MAX_AI_STEPS) 으로 무한 루프 차단
+   * - 매 스텝 try/catch 로 감싸 실패 시 end_turn 으로 강제 종료
+   * - 루프 종료 후에도 AI 턴이면 안전망으로 end_turn 강제
+   */
+  private async maybeRunAITurn(soloId: string): Promise<void> {
+    const room = this.rooms.get(soloId);
+    if (!room) return;
+    const { engine } = room;
+
+    let steps = 0;
+    while (
+      engine.state.activePlayer === AI_PLAYER_ID &&
+      engine.state.phase !== GamePhase.GAME_OVER &&
+      steps++ < MAX_AI_STEPS
+    ) {
+      try {
+        const core = engine.getCore();
+        // AI 가 입력 대기 중이면 드라이버가 직접 안전한 기본값으로 답한다.
+        if (core.pendingInput && core.pendingInput.playerId === AI_PLAYER_ID) {
+          await engine.handlePlayerInput(AI_PLAYER_ID, {
+            answer: defaultAnswer(core.pendingInput),
+          });
+          continue;
+        }
+
+        const action = chooseAIAction(
+          engine.state,
+          AI_PLAYER_ID,
+          getCardMeta,
+          Math.random,
+        );
+        if (action.kind === 'end_turn') {
+          await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
+          break;
+        }
+        await engine.handlePlayerAction(
+          AI_PLAYER_ID,
+          toActionPayload(engine, action),
+        );
+      } catch (err) {
+        console.warn('[solo] AI step failed, ending AI turn', err);
+        try {
+          await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
+        } catch {
+          // end_turn 마저 실패해도 루프를 빠져나가 안전망으로 처리한다.
+        }
+        break;
+      }
+    }
+
+    // 안전망: 루프를 빠져나왔는데 여전히 AI 턴이면(게임오버 아님) 강제 종료한다.
+    if (
+      engine.state.activePlayer === AI_PLAYER_ID &&
+      engine.state.phase !== GamePhase.GAME_OVER
+    ) {
+      try {
+        await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
+      } catch {
+        // 더 이상 할 수 있는 것이 없다. (ws 경로로 throw 하지 않는다.)
+      }
+    }
+  }
+
+  /**
+   * 솔로 엔진 이벤트 → 사람 소켓 메시지 변환.
+   * AI 대상 이벤트는 사람에게 노출하지 않는다.
+   */
+  private attachEngineCallbacks(room: SoloRoom): void {
+    const { soloId, engine, humanId } = room;
+
+    const sendInitIfNeeded = (payload: StatePatchPayload): boolean => {
+      if (room.initialized) return false;
+      const initMsg: ServerToClientMessage = {
+        event: 'game_init',
+        data: {
+          state: payload.fogged_state,
+          version: payload.version,
+        },
+      };
+      this.socketManager.sendTo(soloId, humanId, initMsg);
+      room.initialized = true;
+      return true;
+    };
+
+    // state_patch: AI 대상 패치는 무시, 사람에게는 최초 1회 game_init 후 state_patch.
+    engine.onStatePatch(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: StatePatchPayload,
+      ) => {
+        if (targetPlayer === AI_PLAYER_ID) return;
+        const msg: ServerToClientMessage = {
+          event: 'state_patch',
+          data: payload,
+        };
+        if (sendInitIfNeeded(payload)) return;
+        this.socketManager.sendTo(soloId, humanId, msg);
+      },
+    );
+
+    // ask_mulligan: 사람에게만 전달(AI 멀리건은 handleStartSolo 가 자동 응답).
+    engine.onAskMulligan(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: AskMulliganPayload,
+      ) => {
+        if (targetPlayer !== humanId) return;
+        const msg: ServerToClientMessage = {
+          event: 'ask_mulligan',
+          data: payload,
+        };
+        this.socketManager.sendTo(soloId, humanId, msg);
+      },
+    );
+
+    // request_input: 사람에게만 전달(AI 입력은 드라이버가 직접 처리).
+    engine.onRequestInput(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: RequestInputPayload,
+      ) => {
+        if (targetPlayer !== humanId) return;
+        const msg: ServerToClientMessage = {
+          event: 'request_input',
+          data: payload,
+        };
+        this.socketManager.sendTo(soloId, humanId, msg);
+      },
+    );
+
+    // game_over: 사람에게 전달 후 방 정리.
+    engine.onGameOver((payload: GameOverPayload) => {
+      const msg: ServerToClientMessage = {
+        event: 'game_over',
+        data: payload,
+      };
+      this.socketManager.sendTo(soloId, humanId, msg);
+      this.rooms.delete(soloId);
+    });
+
+    // invalid_action: 사람 대상만 전달.
+    engine.onInvalidAction(
+      (
+        targetPlayer: PlayerID | null | undefined,
+        payload: InvalidActionPayload,
+      ) => {
+        if (targetPlayer !== humanId) return;
+        const msg: ServerToClientMessage = {
+          event: 'invalid_action',
+          data: payload,
+        };
+        this.socketManager.sendTo(soloId, humanId, msg);
+      },
+    );
+  }
+}
+
+/**
+ * 휴리스틱이 고른 LegalAction(절대 좌표 기준) 을 엔진이 기대하는
+ * PlayerActionPayload(AI 시점 viewer 좌표) 로 변환한다.
+ */
+function toActionPayload(
+  engine: GameEngineAdapter,
+  action: LegalAction,
+): PlayerActionPayload {
+  switch (action.kind) {
+    case 'move': {
+      const core = engine.getCore();
+      const viewer = toViewerPos(
+        engine.state.board,
+        core.bottomSidePlayerId,
+        action.to,
+        AI_PLAYER_ID,
+      );
+      return { action: 'move', to: [viewer.r, viewer.c] };
+    }
+    case 'use_card':
+      return { action: 'use_card', cardInstance: action.cardInstance };
+    case 'use_ritual':
+      return { action: 'use_ritual', ritualId: action.ritualId };
+    case 'end_turn':
+    default:
+      return { action: 'end_turn' };
+  }
+}
+
+/**
+ * AI 입력 요청에 대한 방어적 기본 답변.
+ *
+ * - option 류: count 만큼 앞에서 선택(기본 1). 단일 선택이면 첫 옵션.
+ * - 옵션이 없으면 null.
+ *
+ * 루프의 try/catch + 스텝 cap 덕분에 답이 틀려도 한 스텝을 낭비할 뿐 hang 하지 않는다.
+ */
+function defaultAnswer(pendingInput: GameEngineCore['pendingInput']): unknown {
+  if (!pendingInput) return null;
+  const options = pendingInput.options;
+  if (Array.isArray(options) && options.length > 0) {
+    const count = pendingInput.count ?? 1;
+    if (count > 1) {
+      return options.slice(0, Math.min(count, options.length));
+    }
+    return options[0];
+  }
+  return null;
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/shared/lib/utils';
 import type { ClientSideActionLog } from '@/shared/types/game';
 
 interface GameLogProps {
@@ -29,11 +30,22 @@ export function GameLog({ logs }: GameLogProps) {
             </div>
           ) : (
             <div className="space-y-1">
-              {items.map((log, index) => (
-                <div key={index} className="text-muted-foreground text-xs">
-                  <span className="font-semibold">턴 {log.turn}</span> - {log.text}
-                </div>
-              ))}
+              {items.map((log, index) => {
+                const isLatest = index === items.length - 1;
+                return (
+                  <div
+                    key={index}
+                    className={cn(
+                      'text-xs',
+                      isLatest
+                        ? 'animate-log-appear text-foreground border-primary/60 bg-primary/5 rounded border-l-2 px-1.5 py-0.5 font-medium'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    <span className="font-semibold">턴 {log.turn}</span> - {log.text}
+                  </div>
+                );
+              })}
               <div ref={bottomRef} />
             </div>
           )}

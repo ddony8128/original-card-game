@@ -110,6 +110,7 @@ export type WsServerToClientMessage = {
 
 export type ClientToServerEvent =
   | 'ready'
+  | 'start_solo'
   | 'answer_mulligan'
   | 'player_action'
   | 'player_input'
@@ -119,6 +120,12 @@ export type ClientToServerEvent =
 export interface ReadyPayload {
   roomCode: string;
   userId?: string;
+}
+
+// 싱글플레이(솔로 vs AI) 시작 요청
+export interface StartSoloPayload {
+  userId: string;
+  deckId: string;
 }
 
 // 채팅 전용 방 입장(게임 시작/ready 와 분리)
@@ -180,6 +187,7 @@ export interface PlayerInputPayload {
 
 export interface ClientToServerPayloadMap {
   ready: ReadyPayload;
+  start_solo: StartSoloPayload;
   answer_mulligan: AnswerMulliganPayload;
   player_action: PlayerActionPayload;
   player_input: PlayerInputPayload;

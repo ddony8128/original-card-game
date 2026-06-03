@@ -5,6 +5,7 @@ import type {
   ClientToServerEvent,
   ClientToServerMessage,
   ReadyPayload,
+  StartSoloPayload,
   JoinChatPayload,
   ChatPayload,
   PlayerActionPayload,
@@ -12,6 +13,7 @@ import type {
   PlayerInputPayload,
 } from '../type/wsProtocol';
 import { GameRoomManager } from './gameRoomManager';
+import { SoloGameManager } from './soloGameManager';
 import type { SocketClient } from './socketManager';
 import { registerInvalidStrike } from './abuseGuard';
 
@@ -37,6 +39,7 @@ export function attachWebSocket(server: http.Server): WsApi {
 
   const socketManager = new SocketManager();
   const roomManager = new GameRoomManager(socketManager);
+  const soloManager = new SoloGameManager(socketManager);
 
   function broadcast(roomCode: string, data: unknown) {
     socketManager.broadcast(roomCode, data);
@@ -113,6 +116,25 @@ export function attachWebSocket(server: http.Server): WsApi {
           return;
         }
 
+        // 3) start_solo: 싱글플레이(vs AI) 시작. ready 처럼 인증(roomCode 기록) 이전에도 허용한다.
+        if (event === 'start_solo') {
+          const { userId, deckId } = data as StartSoloPayload;
+          if (!userId || !deckId) {
+            registerStrike();
+            return;
+          }
+          void soloManager
+            .handleStartSolo(socket, { userId, deckId })
+            .catch((err) =>
+              console.error('[WS] handleStartSolo error', {
+                err,
+                userId,
+                deckId,
+              }),
+            );
+          return;
+        }
+
         // ready/join_chat 이전에는 roomCode/userId 정보가 없으므로, 그 외 이벤트는 차단 카운트 후 무시
         if (!socket.roomCode || !socket.userId) {
           registerStrike();
@@ -125,41 +147,44 @@ export function attachWebSocket(server: http.Server): WsApi {
         switch (event) {
           case 'player_action': {
             const action = data as PlayerActionPayload;
-            void roomManager
-              .handlePlayerAction(roomCode, userId, action)
-              .catch((err) =>
-                console.error('[WS] handlePlayerAction error', {
-                  err,
-                  roomCode,
-                  userId,
-                }),
-              );
+            const promise = socket.solo
+              ? soloManager.handlePlayerAction(roomCode, action)
+              : roomManager.handlePlayerAction(roomCode, userId, action);
+            void promise.catch((err) =>
+              console.error('[WS] handlePlayerAction error', {
+                err,
+                roomCode,
+                userId,
+              }),
+            );
             break;
           }
           case 'answer_mulligan': {
             const payload = data as AnswerMulliganPayload;
-            void roomManager
-              .handleAnswerMulligan(roomCode, userId, payload)
-              .catch((err) =>
-                console.error('[WS] handleAnswerMulligan error', {
-                  err,
-                  roomCode,
-                  userId,
-                }),
-              );
+            const promise = socket.solo
+              ? soloManager.handleAnswerMulligan(roomCode, payload)
+              : roomManager.handleAnswerMulligan(roomCode, userId, payload);
+            void promise.catch((err) =>
+              console.error('[WS] handleAnswerMulligan error', {
+                err,
+                roomCode,
+                userId,
+              }),
+            );
             break;
           }
           case 'player_input': {
             const payload = data as PlayerInputPayload;
-            void roomManager
-              .handlePlayerInput(roomCode, userId, payload)
-              .catch((err) =>
-                console.error('[WS] handlePlayerInput error', {
-                  err,
-                  roomCode,
-                  userId,
-                }),
-              );
+            const promise = socket.solo
+              ? soloManager.handlePlayerInput(roomCode, payload)
+              : roomManager.handlePlayerInput(roomCode, userId, payload);
+            void promise.catch((err) =>
+              console.error('[WS] handlePlayerInput error', {
+                err,
+                roomCode,
+                userId,
+              }),
+            );
             break;
           }
           case 'chat': {

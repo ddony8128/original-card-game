@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { createGameSocket, type GameSocket } from '@/ws/gameSocket';
+import { createGameSocket, type GameSocket, type GameSocketMode } from '@/ws/gameSocket';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import type {
   GameInitPayload,
@@ -13,6 +13,12 @@ import type {
 interface UseGameSocketParams {
   roomCode: string;
   userId?: string;
+  /** 기본 'game'. 'solo' 면 연결 시 start_solo 를 전송한다. */
+  mode?: GameSocketMode;
+  /** 'solo' 모드에서 사용할 덱 id */
+  deckId?: string;
+  /** false 면 소켓 연결을 보류한다(기본 true). 솔로 모드에서 덱 로딩 대기에 사용. */
+  enabled?: boolean;
 }
 
 /**
@@ -22,7 +28,13 @@ interface UseGameSocketParams {
  *   서버에서 내려오는 게임 관련 이벤트들을 Zustand `useGameFogStore` 에 반영한다.
  * - 컴포넌트 입장에서는 `sendReady / sendPlayerAction` 등만 사용하면 된다.
  */
-export function useGameSocket({ roomCode, userId }: UseGameSocketParams) {
+export function useGameSocket({
+  roomCode,
+  userId,
+  mode,
+  deckId,
+  enabled = true,
+}: UseGameSocketParams) {
   const setFromGameInit = useGameFogStore((s) => s.setFromGameInit);
   const applyStatePatch = useGameFogStore((s) => s.applyStatePatch);
   const setRequestInput = useGameFogStore((s) => s.setRequestInput);
@@ -34,11 +46,14 @@ export function useGameSocket({ roomCode, userId }: UseGameSocketParams) {
       createGameSocket({
         roomCode,
         userId,
+        mode,
+        deckId,
       }),
-    [roomCode, userId],
+    [roomCode, userId, mode, deckId],
   );
 
   useEffect(() => {
+    if (!enabled) return;
     socket.connect();
 
     const offGameInit = socket.onEvent('game_init', (msg) => {
@@ -80,10 +95,11 @@ export function useGameSocket({ roomCode, userId }: UseGameSocketParams) {
       offGameOver();
       socket.close();
     };
-  }, [socket, setFromGameInit, applyStatePatch, setMulligan, setRequestInput]);
+  }, [socket, enabled, setFromGameInit, applyStatePatch, setMulligan, setRequestInput]);
 
   return {
     sendReady: socket.sendReady,
+    sendStartSolo: socket.sendStartSolo,
     sendAnswerMulligan: socket.sendAnswerMulligan,
     sendPlayerAction: socket.sendPlayerAction,
     sendPlayerInput: socket.sendPlayerInput,
