@@ -25,6 +25,21 @@
   animation: float-up 1s ease-out forwards;
 }
 
+/* 새 게임 로그 항목 등장 강조(GameLog). */
+@keyframes log-appear {
+  0% {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-log-appear {
+  animation: log-appear 0.35s ease-out;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */

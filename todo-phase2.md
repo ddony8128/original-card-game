@@ -21,7 +21,7 @@
 - [x] **A1** 턴 상태/타이머: useTurnTimer(90s 카운트다운, 색단계 순수함수+테스트), GameHeader 강화(내턴/상대턴 배지+ring, 타이머 색전환). tsc/lint/test✓
 - [x] **A2** 데미지/회복 floating: SimpleAnimation에 side(나/상대), 대상 측 상/하단에서 `animate-float-up`(rise+fade, index.css keyframe) + 다중 가로 분산. 기존 no-op animate-* 대체. tsc/lint/build/test✓
 - [x] **A3** 카드 강조: MyHand에 canAfford prop. 사용가능(내턴- [ ] **A3** 카드 강조/선택 연출: 손패 playable 강조/불가 dim/선택 lift. (시각)마나충분) 카드=ring 강조, 불가=흐리게(opacity/saturate), 선택=lift 유지. tsc/lint/test✓
-- [ ] **A4** 로그/이펙트 발동 피드백: 새 로그 fade-in 강조, 보드 상 간단 액션 배너. (시각)
+- [x] **A4** 로그 발동 피드백: 최신 로그 항목 fade-in(animate-log-appear)+강조(좌측 accent border/배경/굵게). tsc/lint/build/test✓
 
 ## Epic B — 튜토리얼 + 휴리스틱 AI (server+client, 대형)
 - [ ] **B1** 엔진 `legalActions(state, playerId, lookup)` 순수 헬퍼: move/use_card/use_ritual/end_turn 열거. 단위테스트.
