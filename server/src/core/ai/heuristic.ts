@@ -314,39 +314,6 @@ export function chooseAIAction(
     return ev.aiDamage <= ev.oppDamage + ev.harm;
   };
 
-  // ── 5b. Approach a harmful enemy ritual to destroy it next turn ─────────
-  // 매 턴 AI 에게 지속 피해를 주는 적 ritual(예: 설치형 저주인형)이 깔려 있는데
-  // 이번 턴에 바로 밟아 없앨 수 없으면(rung 5 미발동), 그 칸으로 거리를 좁혀
-  // 다음 턴에 파괴한다. (rung 5 는 인접 step-on 만 처리해, 멀리 깔린 유해 ritual 을
-  // 카이팅/수비형 AI 가 방치하던 문제를 보완한다. 밟으면 손해인 net-trap 은 제외.)
-  if (aiWizard) {
-    let target: Pos | null = null;
-    let targetDist = Infinity;
-    for (const rt of state.board.rituals) {
-      if (rt.owner === playerId) continue;
-      const meta = getMeta(rt.cardId);
-      if (ongoingHarm(meta, ownRitualCount) <= 0) continue;
-      const { aiDamage, oppDamage } = evalStepOnRitual(meta, ownRitualCount);
-      const harm = ongoingHarm(meta, ownRitualCount);
-      // 밟았을 때 손해(net-trap)면 접근 대상에서 제외.
-      if (aiDamage > oppDamage + harm) continue;
-      const d = manhattan(aiWizard, rt.pos);
-      if (d < targetDist) {
-        targetDist = d;
-        target = rt.pos;
-      }
-    }
-    if (target) {
-      const best = bestDistReducingMoves(
-        moveActions,
-        target,
-        targetDist,
-        isSafeMove,
-      );
-      if (best.length > 0) return pickRandom(best, rand);
-    }
-  }
-
   // ── 6. Close into range for an out-of-range damage card ─────────────────
   // belowAggressionThreshold 이면 아직 거리를 좁히지 않고(셋업/유지) 넘어간다.
   if (oppWizard && aiWizard && !belowAggressionThreshold) {
@@ -362,6 +329,43 @@ export function chooseAIAction(
         moveActions,
         oppWizard,
         dist,
+        isSafeMove,
+      );
+      if (best.length > 0) return pickRandom(best, rand);
+    }
+  }
+
+  // ── 6b. Approach a harmful enemy ritual to destroy it next turn ─────────
+  // 매 턴 AI 에게 지속 피해를 주는 적 ritual(예: 설치형 저주인형)이 깔려 있는데
+  // 이번 턴에 바로 밟아 없앨 수 없으면(rung 5 미발동), 그 칸으로 거리를 좁혀
+  // 다음 턴에 파괴한다. (rung 5 는 인접 step-on 만 처리해, 멀리 깔린 유해 ritual 을
+  // 카이팅/수비형 AI 가 방치하던 문제를 보완.) 밸런스상 in-range 데미지(3)·접근
+  // 후 데미지(6)보다 뒤에 둬, 마땅한 공격이 없을 때만 정리하러 간다. 또 너무 먼
+  // ritual 을 가로질러 쫓느라 게임을 내주지 않도록 접근 거리 상한(MAX_RITUAL_CHASE)을 둔다.
+  if (aiWizard) {
+    const MAX_RITUAL_CHASE = 4;
+    let target: Pos | null = null;
+    let targetDist = Infinity;
+    for (const rt of state.board.rituals) {
+      if (rt.owner === playerId) continue;
+      const meta = getMeta(rt.cardId);
+      if (ongoingHarm(meta, ownRitualCount) <= 0) continue;
+      const { aiDamage, oppDamage } = evalStepOnRitual(meta, ownRitualCount);
+      const harm = ongoingHarm(meta, ownRitualCount);
+      // 밟았을 때 손해(net-trap)면 접근 대상에서 제외.
+      if (aiDamage > oppDamage + harm) continue;
+      const d = manhattan(aiWizard, rt.pos);
+      if (d > MAX_RITUAL_CHASE) continue; // 너무 멀면 방치(과몰입 방지).
+      if (d < targetDist) {
+        targetDist = d;
+        target = rt.pos;
+      }
+    }
+    if (target) {
+      const best = bestDistReducingMoves(
+        moveActions,
+        target,
+        targetDist,
         isSafeMove,
       );
       if (best.length > 0) return pickRandom(best, rand);
