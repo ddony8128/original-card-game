@@ -64,7 +64,7 @@
 - [x] **E-7** 검색 캐싱: useCardsQuery에 staleTime(5분)+keepPreviousData. 같은 검색어 재방문 시 재요청 없음, 타이핑 중 깜빡임 제거. tsc/lint/test✓
 - [x] **E-8** 이탈 경고: `useBeforeUnloadWarning` 훅 — 덱 작성중/게임 진행중 새로고침·탭닫기·주소창이동 시 브라우저 확인창. ⚠️SPA 인앱 뒤로가기 차단은 react-router data-router+useBlocker 마이그레이션 필요(보류). tsc/lint/test✓
 - [ ] **E-9** 대기실 채팅 + 덱 선택 낙관적 업데이트
-- [ ] **E-10** 재앙 카드 작동 직관화 (UI)
+- [x] **E-10** 재앙 덱을 주황 테두리/색으로 시각 구분 + "특정 조건에서 자동 발동" 안내문구·툴팁 추가(공유 카드임 명시). tsc/lint/test✓ (시각QA 권장)
 
 ---
 

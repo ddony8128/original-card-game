@@ -65,14 +65,20 @@ export function CatastropheDeckInfo({
 }: CatastropheDeckInfoProps) {
   return (
     <div className="flex justify-center">
-      <Card className="w-full max-w-xs">
+      <Card
+        className="w-full max-w-xs border-orange-500/40 bg-orange-500/5"
+        title="재앙 카드는 양 플레이어가 공유하며, 특정 조건에서 자동으로 발동됩니다."
+      >
         <CardContent className="px-3 pt-4 pb-3">
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-1 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Flame className="h-4 w-4 text-orange-500" />
-              <div className="text-muted-foreground text-sm font-medium">재앙 덱 (공유)</div>
+              <div className="text-sm font-medium text-orange-500">재앙 덱 (공유)</div>
             </div>
             <div className="text-lg font-bold">{deckCount}</div>
+          </div>
+          <div className="text-muted-foreground mb-2 text-[11px]">
+            특정 조건에서 자동 발동
           </div>
           <div className="flex items-center justify-between">
             <div className="text-muted-foreground text-xs">버린 카드: {graveCount}</div>
