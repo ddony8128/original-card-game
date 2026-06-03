@@ -17,6 +17,7 @@ src/
 ├─ shared/       # 횡단 관심사
 │  ├─ api/       # http wrapper, 공용 DTO 타입, authToken
 │  ├─ lib/       # 순수 유틸 (cn, getErrorMessage ...)
+│  ├─ hooks/     # 도메인 무관 재사용 훅 (useBeforeUnloadWarning ...)
 │  ├─ store/     # 전역 zustand 스토어 (gameStore, cardMetaStore)
 │  └─ types/     # 공용 타입 (game, ws, deck)
 ├─ ws/           # 웹소켓 클라이언트 (gameSocket) 와 연결 훅 (useGameSocket)

@@ -6,6 +6,7 @@ import { CardFilters } from '@/components/deck-builder/CardFilters';
 import { DeckPanel } from '@/components/deck-builder/DeckPanel';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useDeckBuilder } from '@/features/decks/hooks/useDeckBuilder';
+import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 
 /**
  * 서버 기반 덱 빌더 화면.
@@ -38,6 +39,8 @@ const DeckBuilder = () => {
     MAX_MAIN_SIZE,
     MAX_CATA_SIZE,
   } = useDeckBuilder();
+
+  useBeforeUnloadWarning(deckCards.length > 0);
 
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br">

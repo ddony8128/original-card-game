@@ -21,6 +21,7 @@ import { useGameFogStore } from '@/shared/store/gameStore';
 import { useGameSocket } from '@/ws/useGameSocket';
 import { useMulliganRequest } from '@/features/game/hooks/useMulliganRequest';
 import { useGameActions } from '@/features/game/hooks/useGameActions';
+import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
@@ -223,6 +224,8 @@ export default function Game() {
       getCardMeta,
       setSelectedCardIndex,
     });
+
+  useBeforeUnloadWarning(!!fogged && fogged.phase !== 'GAME_OVER');
 
   if (!fogged) {
     return (

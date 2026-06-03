@@ -62,7 +62,7 @@
 - [ ] **E-5** 게임 이펙트 (피해 숫자/마법·덫 표시)
 - [ ] **E-6** 덱빌더 카드 크기 고정 + 호버 z-index + 축약형 덱 카드
 - [x] **E-7** 검색 캐싱: useCardsQuery에 staleTime(5분)+keepPreviousData. 같은 검색어 재방문 시 재요청 없음, 타이핑 중 깜빡임 제거. tsc/lint/test✓
-- [ ] **E-8** 페이지 이탈 경고 (덱수정/게임중 뒤로가기)
+- [x] **E-8** 이탈 경고: `useBeforeUnloadWarning` 훅 — 덱 작성중/게임 진행중 새로고침·탭닫기·주소창이동 시 브라우저 확인창. ⚠️SPA 인앱 뒤로가기 차단은 react-router data-router+useBlocker 마이그레이션 필요(보류). tsc/lint/test✓
 - [ ] **E-9** 대기실 채팅 + 덱 선택 낙관적 업데이트
 - [ ] **E-10** 재앙 카드 작동 직관화 (UI)
 
