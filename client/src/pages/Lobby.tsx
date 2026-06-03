@@ -123,6 +123,7 @@ export default function Lobby() {
         <MyDecksCard
           decks={serverDecks}
           totalDeckCount={totalDeckCount}
+          isLoading={loadingDecks}
           onEditDeck={(id) => navigate(`/deck-builder?sid=${id}`)}
           onDeleteDeck={handleDeleteDeck}
           onCreateDeck={() => navigate('/deck-builder')}

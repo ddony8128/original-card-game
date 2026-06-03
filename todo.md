@@ -55,7 +55,7 @@
 - [x] **D-6** 폴더 컨벤션 확립·문서화: D-1~D-5로 pages 슬림화(Game 449/Lobby124/DeckBuilder150) 완료. 구조(components/<area>·features/<domain>+hooks·shared·ws)를 `client/src/README.md`에 코드화(대규모 이동 대신 문서로 일관성 확보)
 
 ## E. 클라이언트 — UI/UX
-- [ ] **E-1** 로딩 스켈레톤 (Lobby 덱리스트, DeckBuilder isLoading)
+- [x] **E-1** 스켈레톤 UI: `components/ui/skeleton.tsx` 추가. Lobby 덱리스트 로딩 시 스켈레톤 행("(0/4)" 깜빡임 제거, 헤더는 '…'), DeckBuilder 카드목록 로딩 시 스켈레톤 그리드. tsc/lint/test✓
 - [ ] **E-2** 모바일 반응형 (Mobile/Desktop 분리, 화면너비 기준)
 - [x] **E-3** 로그인 실패를 토스트→인라인 빨간 메시지(role=alert, 입력 시 클리어). `doAfterAuth`→`goToLobbyAfterAuth` 개명. 서버 `POST /api/auth/logout`(쿠키 클리어)+`useLogoutMutation`(토큰폐기+캐시clear)+Lobby 로그아웃 버튼. Login 테스트 추가. 서버78/클라32 green.
 - [x] **E-4** 게임 로그: 새 로그 도착 시 bottomRef로 자동 하단 스크롤(최신이 묻히지 않음). tsc/lint/test✓ (시각 확인 권장)

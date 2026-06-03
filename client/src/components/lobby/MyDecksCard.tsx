@@ -1,11 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BookOpen, Pencil, Trash2 } from 'lucide-react';
 import type { DeckDto } from '@/shared/api/types';
 
 interface MyDecksCardProps {
   decks: DeckDto[] | undefined;
   totalDeckCount: number;
+  isLoading?: boolean;
   onEditDeck: (id: string) => void;
   onDeleteDeck: (deck: DeckDto) => void;
   onCreateDeck: () => void;
@@ -14,6 +16,7 @@ interface MyDecksCardProps {
 export function MyDecksCard({
   decks,
   totalDeckCount,
+  isLoading = false,
   onEditDeck,
   onDeleteDeck,
   onCreateDeck,
@@ -22,11 +25,16 @@ export function MyDecksCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5" />내 덱 ({totalDeckCount}/4)
+          <BookOpen className="h-5 w-5" />내 덱 ({isLoading ? '…' : `${totalDeckCount}/4`})
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {(decks?.length ?? 0) === 0 ? (
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-[60px] w-full" />
+            <Skeleton className="h-[60px] w-full" />
+          </div>
+        ) : (decks?.length ?? 0) === 0 ? (
           <div className="space-y-4 py-8 text-center">
             <p className="text-muted-foreground">아직 덱이 없습니다</p>
             <Button onClick={onCreateDeck}>첫 번째 덱 만들기</Button>

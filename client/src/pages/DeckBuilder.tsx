@@ -2,6 +2,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { GameCard } from '@/components/deck-builder/GameCard';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CardFilters } from '@/components/deck-builder/CardFilters';
 import { DeckPanel } from '@/components/deck-builder/DeckPanel';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -103,8 +104,10 @@ const DeckBuilder = () => {
             <div className="bg-card border-border flex-1 overflow-hidden rounded-lg border">
               <ScrollArea className="h-full p-4">
                 {loadingCards ? (
-                  <div className="text-muted-foreground flex h-64 items-center justify-center">
-                    <p>카드를 불러오는 중...</p>
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <Skeleton key={i} className="h-40 w-full" />
+                    ))}
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
