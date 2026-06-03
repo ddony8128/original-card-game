@@ -504,3 +504,73 @@ describe('control profile (rituals + aggression threshold)', () => {
     );
   });
 });
+
+describe('rung 5b: approach a harmful enemy ritual to destroy it', () => {
+  // 저주인형류: onTurnStart 로 매 턴 적(=AI)에게 2 피해를 주는 적 ritual.
+  const dollMeta = makeGetMetaRich({
+    'curse-doll': {
+      mana: 1,
+      effectJson: {
+        type: 'ritual',
+        install: { range: 2 },
+        triggers: [
+          {
+            trigger: 'onTurnStart',
+            effects: [{ type: 'damage', value: 2, target: 'enemy' }],
+          },
+        ],
+      },
+    },
+  });
+
+  it('moves toward a distant harmful enemy ritual when nothing better to do', () => {
+    // P1(2,2), 적 ritual(4,4) — 이번 턴 밟을 수 없는 거리. 손패 비어 달리 할 게 없음.
+    const state = makeState({
+      p1: { hand: [] },
+      p2: { hp: 20 },
+      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 0, c: 0 } },
+      rituals: [
+        { id: 'rit1', cardId: 'curse-doll', owner: P2, pos: { r: 4, c: 4 } },
+      ],
+    });
+    const action = chooseAIAction(state, P1, dollMeta, zeroRand, getProfile());
+    expect(action.kind).toBe('move');
+    if (action.kind === 'move') {
+      const before = Math.abs(2 - 4) + Math.abs(2 - 4); // 4
+      const after = Math.abs(action.to.r - 4) + Math.abs(action.to.c - 4);
+      expect(after).toBeLessThan(before);
+    }
+  });
+
+  it('does NOT chase a harmless enemy ritual (no ongoing harm)', () => {
+    const manaRit = makeGetMetaRich({
+      'mana-rit': {
+        mana: 4,
+        effectJson: {
+          type: 'ritual',
+          install: { range: 1 },
+          triggers: [
+            {
+              trigger: 'onTurnStart',
+              effects: [{ type: 'mana_gain', value: 1, target: 'self' }],
+            },
+          ],
+        },
+      },
+    });
+    const state = makeState({
+      p1: { hand: [] },
+      p2: { hp: 20 },
+      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 0, c: 0 } },
+      rituals: [
+        { id: 'rit1', cardId: 'mana-rit', owner: P2, pos: { r: 4, c: 4 } },
+      ],
+    });
+    const action = chooseAIAction(state, P1, manaRit, zeroRand, getProfile());
+    // 유해 ritual 이 아니므로 5b 미발동 → (4,4) 쪽으로 가까워지는 선택이 아니어야 한다.
+    if (action.kind === 'move') {
+      const after = Math.abs(action.to.r - 4) + Math.abs(action.to.c - 4);
+      expect(after).toBeGreaterThanOrEqual(4);
+    }
+  });
+});
