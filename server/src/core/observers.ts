@@ -34,6 +34,8 @@ export interface ObserverEntry {
   id: string; // 유니크 키 (cardId + trigger + index 등)
   owner: PlayerID;
   cardId: CardID;
+  /** 옵저버를 등록한 보드 리추얼 인스턴스 id (해제/중복등록 판별용) */
+  ritualId?: string;
   trigger: TriggerType;
   /**
    * 어떤 effectJson을 실행할지 식별하기 위한 메타 정보
@@ -65,6 +67,13 @@ export class ObserverRegistry {
     });
   }
 
+  unregisterByRitual(ritualId: string) {
+    this.map.forEach((list, trigger) => {
+      const next = list.filter((e) => e.ritualId !== ritualId);
+      this.map.set(trigger, next);
+    });
+  }
+
   clear() {
     this.map.clear();
   }
@@ -73,12 +82,18 @@ export class ObserverRegistry {
     return this.map.get(trigger) ?? [];
   }
 
+  hasRitual(trigger: TriggerType, ritualId: string): boolean {
+    return this.getEntries(trigger).some((e) => e.ritualId === ritualId);
+  }
+
   /**
    * 현재로서는 ObserverEntry를 기반으로 `TRIGGERED_EFFECT` 타입의 Effect를 만들어 리턴한다.
    * 실제 effectJson 실행은 effectStack에서 하나씩 꺼내 `resolveEffect`에서 처리한다.
    */
   collectTriggeredEffects(trigger: TriggerType, ctx: TriggerContext): Effect[] {
-    const entries = this.getEntries(trigger);
+    const entries = this.getEntries(trigger).filter(
+      (e) => e.owner === ctx.playerId,
+    );
     return entries.map<Effect>(
       (entry) =>
         ({

@@ -35,9 +35,9 @@
 - [x] **A-7** `type/gameEngine.ts`(GameEngineAdapter 클래스) → `core/engine/gameEngineAdapter.ts`로 이동. type 폴더는 순수 타입만 남음. tsc/lint/test✓
 - [x] **A-4** `effectResolver.ts` 1372→135줄(얇은 디스패처). 효과별 함수를 `resolvers/`(mana/turn/movement/cast/combat/cardFlow/trigger)로 추출, 함수당 최대 179줄. 동작보존, tsc/lint/test✓
 - [x] **A-5** switch 제거 → `EFFECT_RESOLVERS` Record<type, fn> 맵 디스패치. (키를 진짜 enum화하는 건 B-1) tsc/lint/test✓
-- [ ] **A-1** (선택) 구독 아키텍처 실사용: `TRIGGERED_EFFECT`에서 effectRef 실제 실행
-- [ ] **A-2** (선택) 옵저버 등록 범위 확장(모든 트리거)
-- [ ] **A-3** (선택) 옵저버 생명주기(파괴 시 unregister, 종료 시 clear)
+- [x] **A-1** TRIGGERED_EFFECT가 effectRef(트리거 config)를 실제 빌드·실행. 구독 경로 활성화.
+- [x] **A-2** turnResolvers의 직접 발화 루프 제거 → enqueueTriggeredEffects(구독)로 교체. reconcileRitualObservers로 보드 리추얼을 트리거 직전 레지스트리에 동기화(INSTALL/직접배치 모두 커버, hasRitual로 중복 방지). collectTriggeredEffects에 owner 필터(턴 소유자만).
+- [x] **A-3** 생명주기: destroyRitual→unregisterByRitual, checkGameOver(GAME_OVER)→observers.clear. 신규 테스트 3개(단일발화/상대미발화/파괴후미발화), fail-before 검증. 서버83 green.
 - [ ] **A-6** (대규모) 순수 엔진 / 스크립트 해석기 폴더 분리 + 주입
 
 ## B. 서버 엔진 — 타입 / 품질

@@ -543,6 +543,7 @@ export class GameEngineCore {
     if (alive.length <= 1) {
       this.state.phase = GamePhase.GAME_OVER;
       this.state.winner = alive[0]?.[0] ?? null;
+      this.observers.clear();
       return true;
     }
     return false;
@@ -582,6 +583,10 @@ export class GameEngineCore {
 
     const ritual = rituals[idx];
     rituals.splice(idx, 1);
+
+    // 보드를 떠나는 리추얼의 onTurnStart/onTurnEnd 옵저버를 해제한다.
+    // 같은 cardId 의 다른 리추얼은 유지되도록 인스턴스 id 기준으로 해제한다.
+    this.observers.unregisterByRitual(ritual.id);
 
     const ownerState = this.state.players[owner];
     if (!ownerState) return;
@@ -655,7 +660,13 @@ export class GameEngineCore {
     return card;
   }
 
-  enqueueTriggeredEffects(trigger: string, context: unknown) {
+  async enqueueTriggeredEffects(trigger: string, context: unknown) {
+    // 보드에 올라온 리추얼 중 아직 옵저버가 등록되지 않은 것(직접 board 에
+    // 배치된 경우 등)을 해당 트리거 발사 직전에 등록해, board 상태와
+    // ObserverRegistry 를 일치시킨다.
+    if (trigger === 'onTurnEnd' || trigger === 'onTurnStart') {
+      await this.reconcileRitualObservers(trigger);
+    }
     const effects = this.observers.collectTriggeredEffects(
       trigger as any,
       {
@@ -665,6 +676,29 @@ export class GameEngineCore {
     );
     if (effects.length > 0) {
       this.effectStack.push(effects);
+    }
+  }
+
+  private async reconcileRitualObservers(
+    trigger: 'onTurnEnd' | 'onTurnStart',
+  ) {
+    for (const ritual of this.state.board.rituals) {
+      if (this.observers.hasRitual(trigger, ritual.id)) continue;
+      const meta = await this.ctx.lookupCard(ritual.cardId);
+      if (!meta || !meta.effectJson) continue;
+      const parsed = parseCardEffectJson(meta.effectJson);
+      if (!parsed) continue;
+      parsed.triggers.forEach((t, index) => {
+        if (t.trigger !== trigger) return;
+        this.observers.register({
+          id: `${ritual.cardId}:${t.trigger}:${index}:${ritual.id}`,
+          owner: ritual.owner,
+          cardId: ritual.cardId,
+          ritualId: ritual.id,
+          trigger: t.trigger as any,
+          effectRef: t,
+        });
+      });
     }
   }
 

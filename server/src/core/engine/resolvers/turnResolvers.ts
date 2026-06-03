@@ -48,16 +48,8 @@ export async function resolveTurnEnd(
   }
 
   // 리추얼 onTurnEnd 트리거 실행 (스택 최상단에 올라가서 가장 먼저 해석됨)
-  for (const r of engine.state.board.rituals.filter(
-    (r) => r.owner === turnEnd.owner,
-  )) {
-    await engine.enqueueCardTriggerEffects(
-      r.cardId,
-      'onTurnEnd',
-      turnEnd.owner,
-      diff,
-    );
-  }
+  // 직접 발사 대신 ObserverRegistry 에 등록된 onTurnEnd 옵저버를 통해 실행한다.
+  await engine.enqueueTriggeredEffects('onTurnEnd', { playerId: turnEnd.owner });
 }
 
 export async function resolveTurnStart(
@@ -82,16 +74,10 @@ export async function resolveTurnStart(
   diff.log.push(`플레이어 ${turnStart.owner} 턴 시작`);
 
   // 리추얼 onTurnStart 트리거 실행 이펙트를 먼저 스택에 올린다.
-  for (const r of engine.state.board.rituals.filter(
-    (ritual) => ritual.owner === turnStart.owner,
-  )) {
-    await engine.enqueueCardTriggerEffects(
-      r.cardId,
-      'onTurnStart',
-      turnStart.owner,
-      diff,
-    );
-  }
+  // 직접 발사 대신 ObserverRegistry 에 등록된 onTurnStart 옵저버를 통해 실행한다.
+  await engine.enqueueTriggeredEffects('onTurnStart', {
+    playerId: turnStart.owner,
+  });
 
   // 마나 회복은 별도 Effect로 처리 (스택을 통해 일관성 유지)
   const manaGain: ManaGainEffect = {

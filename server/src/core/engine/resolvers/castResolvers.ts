@@ -76,6 +76,7 @@ export async function resolveInstall(
               id: `${cardId}:${t.trigger}:${index}:${id}`,
               owner: inst.owner,
               cardId,
+              ritualId: id,
               trigger: t.trigger as any,
               effectRef: t,
             });
@@ -129,6 +130,7 @@ export async function resolveInstall(
               id: `${cardId}:${t.trigger}:${index}:${id}`,
               owner: inst.owner,
               cardId,
+              ritualId: id,
               trigger: t.trigger as any,
               effectRef: t,
             });

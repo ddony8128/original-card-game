@@ -8,18 +8,28 @@ import type {
   MoveEffect,
 } from '../../effects/effectTypes';
 import { fromViewerPos } from '../boardUtils';
+import {
+  buildEffectsFromConfigs,
+  type TriggerConfig,
+} from '../../effects/schema';
 
 export async function resolveTriggeredEffect(
-  _engine: GameEngineCore,
+  engine: GameEngineCore,
   effect: TriggeredEffect,
   diff: DiffPatch,
 ) {
   const trig = effect;
-  // TODO: trig.effectRef + trig.context를 이용해 effectJson 실행
-  // 현재는 로그만 남긴다.
   diff.log.push(
     `TriggeredEffect 실행: card=${trig.cardId}, trigger=${trig.trigger}`,
   );
+
+  const ref = trig.effectRef as TriggerConfig | undefined;
+  if (!ref || !Array.isArray(ref.effects) || ref.effects.length === 0) return;
+
+  const effects = buildEffectsFromConfigs(ref.effects, trig.owner, trig.cardId);
+  if (effects.length > 0) {
+    engine.effectStack.push(effects);
+  }
 }
 
 export async function resolvePlayerInput(
