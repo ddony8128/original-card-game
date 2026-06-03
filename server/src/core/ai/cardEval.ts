@@ -230,6 +230,7 @@ export function ritualUseEnemyDamage(
 export function ritualUseValue(
   meta: CardMeta | null,
   ownRitualCount = 0,
+  countSelfHeal = true,
 ): number {
   let value = 0;
   for (const eff of effectsForTrigger(meta, 'onUsePerTurn')) {
@@ -239,7 +240,9 @@ export function ritualUseValue(
       value += d.target === 'self' ? -v : v;
     } else if (eff.type === 'heal') {
       const h = eff as HealEffectConfig;
-      value += h.target === 'self' ? h.value : -h.value;
+      // 이미 만피라 회복이 무의미하면(countSelfHeal=false) self-heal 은 가치 0 으로
+      // 본다 → 순수 힐 리추얼을 만피에서 매 턴 사용(오버힐)하는 낭비를 막는다.
+      value += h.target === 'self' ? (countSelfHeal ? h.value : 0) : -h.value;
     } else if (eff.type === 'draw') {
       const dr = eff as DrawEffectConfig;
       if (dr.target === 'self') value += dr.value;

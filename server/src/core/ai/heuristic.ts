@@ -178,7 +178,10 @@ export function chooseAIAction(
       if (!ritual) continue;
       const meta = getMeta(ritual.cardId);
       // 데미지뿐 아니라 회복/드로우 등 유익한 ritual 이면 사용한다.
-      const value = ritualUseValue(meta, ownRitualCount);
+      // 단, 이미 만피면 self-heal 은 가치로 치지 않는다(오버힐 방지) → 순수 힐
+      // ritual 은 부상 시에만 사용하고, 만피에선 다른 수(데미지/셋업)로 넘어간다.
+      const healUseful = !ai || ai.hp < ai.maxHp;
+      const value = ritualUseValue(meta, ownRitualCount, healUseful);
       if (value > 0) {
         if (value > bestValue) {
           bestValue = value;

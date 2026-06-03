@@ -190,6 +190,22 @@ describe('ritualUseValue (유익한 ritual 사용 판단)', () => {
   it('자기 회복 ritual 도 양수(지력 흡수류)', () => {
     expect(ritualUseValue(meta([{ type: 'heal', value: 3, target: 'self' }]))).toBe(3);
   });
+  it('만피면(countSelfHeal=false) 순수 self-heal ritual 은 가치 0(오버힐 방지)', () => {
+    expect(
+      ritualUseValue(meta([{ type: 'heal', value: 3, target: 'self' }]), 0, false),
+    ).toBe(0);
+    // 데미지가 함께 있으면 만피라도 데미지분은 유지된다.
+    expect(
+      ritualUseValue(
+        meta([
+          { type: 'damage', value: 2, target: 'enemy' },
+          { type: 'heal', value: 3, target: 'self' },
+        ]),
+        0,
+        false,
+      ),
+    ).toBe(2);
+  });
   it('드로우+회복 ritual 도 양수(균형의 수호자류)', () => {
     expect(ritualUseValue(meta([
       { type: 'draw', value: 1, target: 'self' },
