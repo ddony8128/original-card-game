@@ -41,10 +41,10 @@
 - [ ] **A-6** (대규모) 순수 엔진 / 스크립트 해석기 폴더 분리 + 주입
 
 ## B. 서버 엔진 — 타입 / 품질
-- [ ] **B-1** 문자열 → enum/const 전환 (wsProtocol 메시지·액션·사유, TriggerType, AnimationKind)
+- [~] **B-1** (판단) ws 프로토콜은 이미 **타입드 string-literal union**이라 typo는 tsc가 차단(타입안전 확보). 영향력 큰 버전(숫자 wire enum)은 클라/서버 lockstep+버저닝 필요한 고위험·저가치 → 보류.
 - [x] **B-3** 초기 드로우 2/3 → FIRST/SECOND_PLAYER_INITIAL_DRAW 상수. heal 상한 하드코딩 20 → player.maxHp. (주요 규칙은 이미 constants에 집약돼 있었음) tsc/lint/test✓
-- [ ] **B-4** `as any` 캐스팅 정리 / 타입 안정화
-- [ ] **B-5** 설명 주석 → 함수명화, 죽은 TODO 정리
+- [x] **B-4** action 디스패치 `as any` 제거: `UseRitualActionPayload` 추가, move/use_card/use_ritual을 판별 union 특정 타입으로 캐스트. any경고 203→198. tsc/lint/test✓ (엔진 내부 effect 동적처리용 any는 정당하여 유지)
+- [~] **B-5** (판단) A-4 분해 후 주석 대부분 정확. resolveTriggeredEffect TODO는 거짓이 아니라 보류된 A-1 작업 표시→유지. 대량 주석정리는 저가치·노이즈 위험으로 보류.
 
 ## D. 클라이언트 — 구조 (정우근)
 - [x] **D-1** `Lobby.tsx` 302→124줄. `components/lobby/`로 CreateRoomCard/JoinRoomCard/MyDecksCard/WaitingRoomsList 추출, 중복 getErrorMessage→`shared/lib/errors.ts`. 동작보존, 6 Lobby 테스트+전체 31 green. tsc/lint✓

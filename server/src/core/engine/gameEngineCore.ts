@@ -14,6 +14,9 @@ import type {
   AnswerMulliganPayload,
   PlayerActionPayload,
   PlayerInputPayload,
+  MoveActionPayload,
+  UseCardActionPayload,
+  UseRitualActionPayload,
 } from '../../type/wsProtocol';
 import type { EngineContext } from '../context';
 import { EffectStack } from '../effects/effectStack';
@@ -215,20 +218,25 @@ export class GameEngineCore {
     switch (actionType) {
       case 'move':
         return await handleMoveAction(this, playerId, {
-          to: (action as any).to as [number, number],
+          to: (action as MoveActionPayload).to,
         });
       case 'end_turn':
         return await handleEndTurnAction(this, playerId);
-      case 'use_card':
+      case 'use_card': {
+        const useCard = action as UseCardActionPayload;
         return await handleUseCardAction(
           this,
           playerId,
-          (action as any).cardInstance as CardInstance,
-          (action as any).target as [number, number] | undefined,
+          useCard.cardInstance,
+          useCard.target,
         );
+      }
       case 'use_ritual':
         // 보드 위에 설치된 자신의 ritual 을 1턴 1회 사용(onUsePerTurn)하는 액션
-        return await this.handleUseRitualAction(playerId, action as any);
+        return await this.handleUseRitualAction(
+          playerId,
+          action as UseRitualActionPayload,
+        );
       default:
         return [
           {
@@ -704,7 +712,7 @@ export class GameEngineCore {
 
   async handleUseRitualAction(
     playerId: PlayerID,
-    action: PlayerActionPayload,
+    action: UseRitualActionPayload,
   ): Promise<EngineResult[]> {
     const checkIsActivePlayer = this.require(
       this.state.activePlayer === playerId,
@@ -713,7 +721,7 @@ export class GameEngineCore {
     );
     if (checkIsActivePlayer) return checkIsActivePlayer;
 
-    const ritualId = (action as any).ritualId as string | undefined;
+    const ritualId = action.ritualId as string | undefined;
     const checkRitualIdExists = this.require(
       !!ritualId,
       playerId,

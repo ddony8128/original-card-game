@@ -147,6 +147,11 @@ export interface MoveActionPayload extends PlayerActionPayloadBase {
   to: [number, number];
 }
 
+export interface UseRitualActionPayload extends PlayerActionPayloadBase {
+  action: 'use_ritual';
+  ritualId: string;
+}
+
 export interface EndTurnActionPayload extends PlayerActionPayloadBase {
   action: 'end_turn';
 }
@@ -158,6 +163,7 @@ export interface SurrenderActionPayload extends PlayerActionPayloadBase {
 export type PlayerActionPayload =
   | UseCardActionPayload
   | MoveActionPayload
+  | UseRitualActionPayload
   | EndTurnActionPayload
   | SurrenderActionPayload
   | (PlayerActionPayloadBase & Record<string, unknown>); // 확장용
