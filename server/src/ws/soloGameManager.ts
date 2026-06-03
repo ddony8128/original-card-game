@@ -182,6 +182,9 @@ export class SoloGameManager {
           });
           continue;
         }
+        // 사람이 입력해야 하는 상황(예: AI 카드가 사람 선택을 요구)이면
+        // 제어를 사람에게 넘긴다. 사람이 응답하면 maybeRunAITurn 이 다시 이어간다.
+        if (core.pendingInput) break;
 
         const action = chooseAIAction(
           engine.state,
@@ -209,14 +212,31 @@ export class SoloGameManager {
     }
 
     // 안전망: 루프를 빠져나왔는데 여전히 AI 턴이면(게임오버 아님) 강제 종료한다.
-    if (
+    // 단, 스텝 cap 직후 AI 입력이 남아 있을 수 있으므로 먼저 비운 뒤 end_turn 한다.
+    // 사람 입력 대기 상태(사람 카드 선택 등)면 종료하지 않고 제어를 사람에게 남긴다.
+    let drain = 0;
+    while (
       engine.state.activePlayer === AI_PLAYER_ID &&
-      engine.state.phase !== GamePhase.GAME_OVER
+      engine.state.phase !== GamePhase.GAME_OVER &&
+      drain++ < 5
     ) {
+      const core = engine.getCore();
+      if (core.pendingInput && core.pendingInput.playerId === AI_PLAYER_ID) {
+        try {
+          await engine.handlePlayerInput(AI_PLAYER_ID, {
+            answer: defaultAnswer(core.pendingInput),
+          });
+        } catch {
+          break;
+        }
+        continue;
+      }
+      // 사람이 응답해야 하는 입력이 남아 있으면 종료하지 않는다.
+      if (core.pendingInput) break;
       try {
         await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
       } catch {
-        // 더 이상 할 수 있는 것이 없다. (ws 경로로 throw 하지 않는다.)
+        break;
       }
     }
   }
