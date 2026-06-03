@@ -31,6 +31,7 @@ import { fromViewerPos, shuffle, canInstallAt } from './boardUtils';
 import {
   FIRST_PLAYER_INITIAL_DRAW,
   SECOND_PLAYER_INITIAL_DRAW,
+  MAX_GAME_TURNS,
 } from '../rules/constants';
 import { buildStatePatchForAllView } from './view';
 import type { EffectResolverFn } from './effectResolver';
@@ -561,6 +562,8 @@ export class GameEngineCore {
     return results;
   }
 
+  private gameOverReason: 'hp_zero' | 'turn_limit' = 'hp_zero';
+
   private checkGameOver(): boolean {
     const alive = Object.entries(this.state.players).filter(
       ([_, p]) => p.hp > 0,
@@ -568,6 +571,16 @@ export class GameEngineCore {
     if (alive.length <= 1) {
       this.state.phase = GamePhase.GAME_OVER;
       this.state.winner = alive[0]?.[0] ?? null;
+      this.gameOverReason = 'hp_zero';
+      this.observers.clear();
+      return true;
+    }
+    // 턴 상한 초과 → 무승부(무한 교착 방지). PvE 에선 사람이 이긴 게 아니므로
+    // 클리어 실패로 처리된다(soloGameManager 는 winner===humanId 일 때만 클리어).
+    if (this.state.turn > MAX_GAME_TURNS) {
+      this.state.phase = GamePhase.GAME_OVER;
+      this.state.winner = null;
+      this.gameOverReason = 'turn_limit';
       this.observers.clear();
       return true;
     }
@@ -577,7 +590,7 @@ export class GameEngineCore {
   private buildGameOver(): GameOverPayload {
     return {
       winner: this.state.winner ?? 'draw',
-      reason: 'hp_zero',
+      reason: this.gameOverReason,
     };
   }
 
