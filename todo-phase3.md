@@ -19,7 +19,7 @@
 
 ## P0 — 데이터/DB 기반
 - [x] **P0-1** `resources/pveStages.json`(3스테이지, 16/4 검증)+`pveStages.ts` 로더+테스트. profileId=bruiser/disruptor/control. tsc/lint/test✓
-- [ ] **P0-2** 기본 덱 정의 + register 시 decks 테이블 자동 insert (기존 decks 테이블=service key CRUD, DDL 불필요).
+- [x] **P0-2** `resources/defaultDeck.json`+로더, `decksService.createDefaultDeckFor`, register에 비치명적 배선(실패해도 가입 성공). 테스트(가입→기본 덱 존재). 로그인 백필은 보류. tsc/lint/test✓
 - [!] **P0-3** `pve_progress` 테이블 — **사용자가 migrations/001 실행 대기**. 그 후 service(getCleared/markCleared) 구현. (코드는 미리 작성 가능)
 
 ## P1 — AI
