@@ -7,6 +7,8 @@ import Lobby from './pages/Lobby';
 import DeckBuilder from './pages/DeckBuilder';
 import BackRoom from './pages/BackRoom';
 import Game from './pages/Game';
+import PveStageSelect from './pages/PveStageSelect';
+import PvePlay from './pages/PvePlay';
 import { TutorialOverlay } from './features/game/components/TutorialOverlay';
 import NotFound from './pages/NotFound';
 import Review from './pages/Review';
@@ -68,6 +70,22 @@ const App = () => (
               <RequireAuth>
                 <Game solo />
                 <TutorialOverlay />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/pve"
+            element={
+              <RequireAuth>
+                <PveStageSelect />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/pve/play/:stageId"
+            element={
+              <RequireAuth>
+                <PvePlay />
               </RequireAuth>
             }
           />
