@@ -53,7 +53,9 @@ export function MyDecksCard({
                   className="bg-secondary/50 border-border flex items-center justify-between rounded-lg border p-3"
                 >
                   <div>
-                    <h3 className="font-semibold">{deck.name}</h3>
+                    <h3 className="font-semibold">
+                      {deck.name === '기본 덱' ? t('common.basicDeck') : deck.name}
+                    </h3>
                     <p className="text-muted-foreground text-xs">
                       {t('lobby.deckCardCount', { main: mainCount, cata: cataCount })}
                     </p>

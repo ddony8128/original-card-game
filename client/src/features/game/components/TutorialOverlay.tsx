@@ -4,11 +4,14 @@ import { GraduationCap, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { tutorialSteps } from './tutorialSteps';
+import { useGameFogStore } from '@/shared/store/gameStore';
 
 export function TutorialOverlay() {
   const { t } = useTranslation();
   const [closed, setClosed] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  // 멀리건 다이얼로그가 떠 있는 동안에는 튜토리얼 팝업을 숨겨 겹침을 피한다.
+  const mulligan = useGameFogStore((s) => s.mulligan);
 
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === tutorialSteps.length - 1;
@@ -34,6 +37,8 @@ export function TutorialOverlay() {
     setStepIndex(0);
     setClosed(false);
   };
+
+  if (mulligan) return null;
 
   if (closed) {
     return (

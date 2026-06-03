@@ -7,7 +7,8 @@
     "passwordLabel": "Password",
     "usernamePlaceholder": "Enter your username",
     "passwordPlaceholder": "Enter your password",
-    "waiting": "(waiting)"
+    "waiting": "(waiting)",
+    "basicDeck": "Basic Deck"
   },
   "login": {
     "title": "Wizard Duel",
@@ -239,7 +240,7 @@
     "outroBuildDeck": "Build a Deck",
     "outroLobby": "To Lobby",
     "step1Title": "Welcome to the Tutorial",
-    "step1Body": "The goal of this game is to reduce the opponent wizard's HP to 0. Let's learn the basic rules with the AI. If you're curious about a term, tap the ? icon at the top of the screen to see term definitions. (Tap the ? icon at the top to see term definitions.)",
+    "step1Body": "The goal of this game is to reduce the opponent wizard's HP to 0. Let's learn the basic rules with the AI. If you're curious about a term, tap the ? icon at the top of the screen to see term definitions.",
     "step2Title": "The Board and Wizards",
     "step2Body": "Your wizard is at the bottom of the board, and the opponent wizard is at the top. Attack the opponent wizard with cards and movement.",
     "step3Title": "Mana and Playing Cards",

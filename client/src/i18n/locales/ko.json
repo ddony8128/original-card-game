@@ -7,7 +7,8 @@
     "passwordLabel": "비밀번호",
     "usernamePlaceholder": "아이디를 입력하세요",
     "passwordPlaceholder": "비밀번호를 입력하세요",
-    "waiting": "(대기 중)"
+    "waiting": "(대기 중)",
+    "basicDeck": "기본 덱"
   },
   "login": {
     "title": "마법사 대전",
@@ -239,7 +240,7 @@
     "outroBuildDeck": "덱 만들러 가기",
     "outroLobby": "로비로",
     "step1Title": "튜토리얼에 오신 것을 환영합니다",
-    "step1Body": "이 게임의 목표는 상대 마법사의 HP를 0으로 만드는 것입니다. AI와 함께 기본 규칙을 익혀봅시다. 용어가 궁금하면 화면 상단의 ? 아이콘을 눌러 용어 설명을 확인하세요. (Tap the ? icon at the top to see term definitions.)",
+    "step1Body": "이 게임의 목표는 상대 마법사의 HP를 0으로 만드는 것입니다. AI와 함께 기본 규칙을 익혀봅시다. 용어가 궁금하면 화면 상단의 ? 아이콘을 눌러 용어 설명을 확인하세요.",
     "step2Title": "게임판과 마법사",
     "step2Body": "게임판 아래쪽에는 내 마법사가, 위쪽에는 상대 마법사가 있습니다. 카드와 이동으로 상대 마법사를 공격하세요.",
     "step3Title": "마나와 카드 사용",
