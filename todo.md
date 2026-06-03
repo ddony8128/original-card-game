@@ -23,7 +23,7 @@
 
 ## C. 버그 패치 (사용자 영향 큼)
 - [x] **C-1** 덱 2번 생성: DeckBuilder 저장 버튼이 비활성화 안 됨이 원인. raw decksApi 호출 → `useSaveDeckMutation`(분기형 create/update)로 전환, `isPending`으로 버튼 disabled + 가드. 재현 테스트(지연응답 중 재클릭→POST 1회). lint/tsc/test✓
-- [ ] **C-2** 버리기 상황에서 바탕(빈 칸) 클릭 시 게임 멈춤
+- [x] **C-2** 버리기 중 바탕 클릭 멈춤: RequestInputModal 백드롭/ESC/X가 `onCancel`→`setRequestInput(null)`만 호출(답 미전송)→서버 WAITING_FOR_PLAYER_INPUT 영구대기. `dismissible` prop 추가, 비-멀리건 필수입력은 닫기 차단(멀리건은 빈 응답 전송하므로 닫기 허용 유지). 테스트 2개. lint/tsc/test✓
 - [x] **C-3** 연속 게임 시작 안 됨: 실제 원인은 game_over 콜백을 안 타는 종료(leave/host-delete) 시 in-memory 엔진이 GAME_OVER로 잔존. `ensureRoom`에서 GAME_OVER 엔진 폐기 후 재생성. 재현 테스트 2개. tsc/lint/test✓
 - [ ] **C-4** 웹소켓 연결 재시도 로직
 - [x] **C-5** 자연종료 시 onGameOver에서 `roomsService.finishByCode` fire-and-forget 호출 → DB status='finished'. 재현 테스트. tsc/lint/test✓

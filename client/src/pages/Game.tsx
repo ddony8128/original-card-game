@@ -620,6 +620,7 @@ export default function Game() {
       />
       <RequestInputModal
         request={activeRequest}
+        dismissible={activeRequest?.type === 'mulligan'}
         onResponse={(response) => {
           if (!activeRequest) return;
           if (activeRequest.type === 'mulligan') {
