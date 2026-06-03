@@ -1,0 +1,80 @@
+{
+  "common": {
+    "glossary": "Glossary",
+    "close": "Close"
+  },
+  "glossary": {
+    "title": "Glossary",
+    "description": "Key terms you'll encounter throughout the game.",
+    "terms": [
+      {
+        "term": "Mana",
+        "def": "The resource spent to play cards or trigger abilities. If you don't have enough mana, you can't play that card."
+      },
+      {
+        "term": "Range",
+        "def": "The distance in tiles between two targets. \"Within range N\" means the effect only applies to targets within N tiles."
+      },
+      {
+        "term": "Damage",
+        "def": "An effect that reduces a target's HP. If a wizard's HP reaches 0, that player loses."
+      },
+      {
+        "term": "Heal",
+        "def": "Restores lost HP. Healing never raises HP above its maximum."
+      },
+      {
+        "term": "Draw",
+        "def": "Taking a card from your deck into your hand. You usually draw a card at the start of each turn."
+      },
+      {
+        "term": "Discard",
+        "def": "Sending a card from your hand to the graveyard. Discarded cards may be reused from the graveyard."
+      },
+      {
+        "term": "Hand",
+        "def": "The cards you currently hold and can play."
+      },
+      {
+        "term": "Deck",
+        "def": "Your pile of undrawn cards. You draw cards from here."
+      },
+      {
+        "term": "Catastrophe",
+        "def": "A card that triggers automatically from the catastrophe deck when your own deck runs empty. It has a powerful, board-shaking effect."
+      },
+      {
+        "term": "Ritual",
+        "def": "A card installed on the board that produces an ongoing effect. It stays on its tile and acts each turn."
+      },
+      {
+        "term": "Install",
+        "def": "Placing a ritual onto a specific tile on the board. An installed ritual provides an ongoing effect."
+      },
+      {
+        "term": "Burn",
+        "def": "Removing a card from the game entirely instead of sending it to the graveyard. Burned cards can never be used again."
+      },
+      {
+        "term": "Move",
+        "def": "Relocating your wizard to another tile on the board. Position affects your range and damage."
+      },
+      {
+        "term": "Wizard",
+        "def": "The avatar you control on the board. If your wizard's HP reaches 0, you lose."
+      },
+      {
+        "term": "Turn",
+        "def": "One player's phase of playing cards, moving, and so on before passing play. End your turn to hand play to your opponent."
+      },
+      {
+        "term": "Mulligan",
+        "def": "The chance at the start of the game to swap an unwanted opening hand for new cards."
+      },
+      {
+        "term": "Graveyard",
+        "def": "Where discarded or used cards collect. Some effects reuse cards from the graveyard."
+      }
+    ]
+  }
+}

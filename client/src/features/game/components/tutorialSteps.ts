@@ -6,7 +6,7 @@ export interface TutorialStep {
 export const tutorialSteps: TutorialStep[] = [
   {
     title: '튜토리얼에 오신 것을 환영합니다',
-    body: '이 게임의 목표는 상대 마법사의 HP를 0으로 만드는 것입니다. AI와 함께 기본 규칙을 익혀봅시다.',
+    body: '이 게임의 목표는 상대 마법사의 HP를 0으로 만드는 것입니다. AI와 함께 기본 규칙을 익혀봅시다. 용어가 궁금하면 화면 상단의 ? 아이콘을 눌러 용어 설명을 확인하세요. (Tap the ? icon at the top to see term definitions.)',
   },
   {
     title: '게임판과 마법사',

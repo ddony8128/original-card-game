@@ -17,7 +17,9 @@ import {
 } from '@/components/game/RequestInputModal';
 import { DiscardPileModal } from '@/components/game/DiscardPileModal';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { GlossaryModal } from '@/components/glossary/GlossaryModal';
 import { toast } from 'sonner';
 import { useMeQuery } from '@/features/auth/queries';
 import { useDecksQuery } from '@/features/decks/queries';
@@ -39,6 +41,7 @@ interface GameProps {
 
 export default function Game({ solo = false, pveStageId }: GameProps) {
   const navigate = useLangNavigate();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { roomId: roomCode } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
@@ -64,6 +67,7 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
   const [selectedBoardPosition, setSelectedBoardPosition] = useState<BoardPosition | null>(null);
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const [graveModalOpen, setGraveModalOpen] = useState(false);
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [graveModalType, setGraveModalType] = useState<'me' | 'opponent' | 'catastrophe' | null>(
     null,
   );
@@ -414,6 +418,15 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
             <ArrowLeft className="mr-2 h-4 w-4" />
             로비
           </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('common.glossary')}
+            title={t('common.glossary')}
+            onClick={() => setGlossaryOpen(true)}
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
         </div>
 
         {/* Turn Header */}
@@ -493,6 +506,7 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
         cards={graveCards}
         title={graveModalTitle}
       />
+      <GlossaryModal open={glossaryOpen} onOpenChange={setGlossaryOpen} />
 
       {/* 튜토리얼 모드의 게임 종료 안내는 /tutorial 라우트의 TutorialOutro 가 담당하므로
           여기서는 PvE/2인전에서만 기본 게임 종료 오버레이를 노출한다. */}

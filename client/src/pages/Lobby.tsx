@@ -1,9 +1,11 @@
 import { useLangNavigate } from '@/i18n/nav';
 import { LangToggle } from '@/i18n/LangToggle';
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { LogOut, GraduationCap, Swords, Trophy } from 'lucide-react';
+import { LogOut, GraduationCap, Swords, Trophy, BookOpen } from 'lucide-react';
+import { GlossaryModal } from '@/components/glossary/GlossaryModal';
 import { useDecksQuery, useDeleteDeckMutation } from '@/features/decks/queries';
 import { usePveProgressQuery } from '@/features/pve/queries';
 import { useCreateRoomMutation, useJoinRoomMutation } from '@/features/match/queries';
@@ -17,9 +19,11 @@ import { WaitingRoomsList } from '@/components/lobby/WaitingRoomsList';
 
 export default function Lobby() {
   const navigate = useLangNavigate();
+  const { t } = useTranslation();
   const { data: me } = useMeQuery();
   const [roomCode, setRoomCode] = useState('');
   const [roomName, setRoomName] = useState('');
+  const [glossaryOpen, setGlossaryOpen] = useState(false);
 
   const { data: serverDecks, isLoading: loadingDecks } = useDecksQuery();
   const { data: pveProgress } = usePveProgressQuery();
@@ -96,6 +100,14 @@ export default function Lobby() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setGlossaryOpen(true)}
+          >
+            <BookOpen className="mr-2 h-4 w-4" />
+            {t('common.glossary')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleLogout}
             disabled={logout.isPending}
           >
@@ -165,6 +177,8 @@ export default function Lobby() {
           </Button>
         </div>
       </div>
+
+      <GlossaryModal open={glossaryOpen} onOpenChange={setGlossaryOpen} />
     </div>
   );
 }
