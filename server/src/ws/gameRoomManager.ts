@@ -1,3 +1,4 @@
+import { GamePhase } from '../type/gameState';
 import type { PlayerID, GameState } from '../type/gameState';
 import type {
   AnswerMulliganPayload,
@@ -179,7 +180,12 @@ export class GameRoomManager {
     roomRowCache?: RoomRow,
   ): Promise<RoomEngine | null> {
     const existing = this.roomEngines.get(roomCode);
-    if (existing) return existing;
+    if (existing) {
+      // 이전 게임이 끝난 엔진(GAME_OVER)이 남아 있으면 폐기하고 새로 만든다.
+      // (leave / host-delete 등 game_over 콜백을 타지 않은 종료 경로 대비)
+      if (existing.engine.state.phase !== GamePhase.GAME_OVER) return existing;
+      this.roomEngines.delete(roomCode);
+    }
 
     let roomRow: RoomRow | undefined | null = roomRowCache;
 
@@ -337,6 +343,14 @@ export class GameRoomManager {
       };
       this.socketManager.broadcast(roomCode, msg);
       this.roomEngines.delete(roomCode);
+      // 자연 종료(HP 0) 시 DB 방 상태를 finished 로 마무리.
+      // ws 이벤트 경로를 막지 않도록 fire-and-forget 으로 처리한다.
+      roomsService.finishByCode(roomCode).catch((err) => {
+        console.warn('[GameRoomManager] finishByCode failed', {
+          roomCode,
+          err,
+        });
+      });
     });
 
     // === 잘못된 액션(예외) 알림 ===
