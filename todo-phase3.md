@@ -23,9 +23,9 @@
 - [!] **P0-3** `pve_progress` 테이블 — **사용자가 migrations/001 실행 대기**. 그 후 service(getCleared/markCleared) 구현. (코드는 미리 작성 가능)
 
 ## P1 — AI
-- [ ] **P1-1** 휴리스틱 로직 개선(킬각 정교화/거리유지/리추얼 타이밍/마나임계).
-- [ ] **P1-2** AI 프로필 파라미터화: chooseAIAction(... profile). 스테이지별 특성.
-- [ ] **P1-3** 자기대전 하네스(헤드리스 AI vs AI, 승률 지표) — 튜닝/디버깅.
+- [x] **P1-1** 킬각 정교화(이번 턴 도달 총데미지≥opp.hp), 거리 규율, 리추얼 셋업 타이밍, 마나 임계 게이팅.
+- [x] **P1-2** `profiles.ts`: AIProfile + getProfile. default(레거시동일)/bruiser/disruptor/control. chooseAIAction(...,profile?)로 사다리에 얇게 적용.
+- [x] **P1-3** `selfPlay.ts`: 시드드(mulberry32) 헤드리스 AI vs AI, 종료보장(스텝/턴 cap). runSelfPlay 승률 지표. 테스트 4. (bruiser vs control=control~65%)
 
 ## P2 — 솔로/PvE 서버
 - [ ] **P2-1** start_solo 확장: mode(tutorial|pve)+stageId, PvE는 AI덱=스테이지덱+프로필.
