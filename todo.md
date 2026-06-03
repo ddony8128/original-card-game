@@ -19,7 +19,7 @@
 - [x] **F-5** 서버 ESLint 구성 + `lint` 스크립트 추가 (양쪽 동일 규약)  — *eslint.config.mjs, 0 errors/200 warns. warn 규칙은 B-4/B-5에서 error화*
 - [x] **F-1** Node 버전 정리: README "18+" → ">=24.13.0 <25" (engines와 일치)
 - [x] **F-2** 회귀 테스트: 기존 cardsSimulation(17카드, 전 effect타입) + 74스위트로 동작보존 리팩토링 안전망 충분 판단. A-4 진행 중 공백 발견 시 보강
-- [ ] **F-3** 레포 전반 정리(불필요 파일: `test_full_stack.sh` 등 점검)
+- [~] **F-3** 정리: 클라 프로덕션 코드 디버그 `console.log` 7개 제거(gameStore/useGameActions). `test_full_stack.sh`는 로컬 개발용 스크립트(어디서도 미참조)지만 유용할 수 있어 **삭제 보류, 사용자 확인 권장**. tsc/lint/test✓
 
 ## C. 버그 패치 (사용자 영향 큼)
 - [x] **C-1** 덱 2번 생성: DeckBuilder 저장 버튼이 비활성화 안 됨이 원인. raw decksApi 호출 → `useSaveDeckMutation`(분기형 create/update)로 전환, `isPending`으로 버튼 disabled + 가드. 재현 테스트(지연응답 중 재클릭→POST 1회). lint/tsc/test✓

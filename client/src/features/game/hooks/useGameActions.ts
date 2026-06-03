@@ -55,7 +55,6 @@ export function useGameActions({
     }
 
     sendPlayerAction({ action: 'use_card', cardInstance: handEntry });
-    console.log('sendPlayerAction', { action: 'use_card', cardInstance: handEntry });
 
     setSelectedCardIndex(null);
     toast.info('카드 사용', {
@@ -70,7 +69,6 @@ export function useGameActions({
     }
 
     sendPlayerAction({ action: 'end_turn' });
-    console.log('sendPlayerAction', { action: 'end_turn' });
   };
 
   const handleMoveToSelected = () => {
@@ -104,7 +102,6 @@ export function useGameActions({
     toast.info('이동 시도', {
       description: `셀 (${position.x}, ${position.y})으로 이동을 시도합니다.`,
     });
-    console.log('sendPlayerAction', { action: 'move', to: [position.y, position.x] });
   };
 
   const handleUseRitualAtSelected = () => {
@@ -130,7 +127,6 @@ export function useGameActions({
     toast.info('마법진 사용', {
       description: `마법진 ${ritual.cardId}을(를) 사용했습니다.`,
     });
-    console.log('sendPlayerAction', { action: 'use_ritual', ritualId: ritual.id });
   };
 
   return {
