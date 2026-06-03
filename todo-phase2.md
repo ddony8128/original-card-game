@@ -32,3 +32,6 @@
 
 ## 진행 로그
 - (시작) phase-2 브랜치 생성, 계획 확정.
+- **Phase 2 전체 완료**: Epic A(4) + Epic B(5). 서버 109 test/1skip, 클라 38 test, tsc/lint/build 전부 green.
+- ⚠️ 실플레이 시각 QA(애니메이션 체감, 솔로 AI 대국 흐름)는 사용자 몫. 로직은 테스트로 보호됨.
+
