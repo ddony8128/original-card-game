@@ -4,6 +4,7 @@ import {
   type EffectConfig,
   type DamageEffectConfig,
   type HealEffectConfig,
+  type DrawEffectConfig,
   type TriggerConfig,
 } from '../effects/schema';
 
@@ -218,6 +219,33 @@ export function ritualUseEnemyDamage(
     if (d.target === 'enemy') total += damageValue(d.value, ownRitualCount);
   }
   return total;
+}
+
+/**
+ * 소유 ritual 을 매 턴 사용(onUsePerTurn)했을 때의 종합 가치.
+ *
+ * 데미지뿐 아니라 자기 회복/드로우(예: 지력 흡수=회복, 균형의 수호자=드로우+회복)도
+ * 이득으로 본다. value > 0 이면 사용할 가치가 있는 ritual 이다.
+ */
+export function ritualUseValue(
+  meta: CardMeta | null,
+  ownRitualCount = 0,
+): number {
+  let value = 0;
+  for (const eff of effectsForTrigger(meta, 'onUsePerTurn')) {
+    if (eff.type === 'damage') {
+      const d = eff as DamageEffectConfig;
+      const v = damageValue(d.value, ownRitualCount);
+      value += d.target === 'self' ? -v : v;
+    } else if (eff.type === 'heal') {
+      const h = eff as HealEffectConfig;
+      value += h.target === 'self' ? h.value : -h.value;
+    } else if (eff.type === 'draw') {
+      const dr = eff as DrawEffectConfig;
+      if (dr.target === 'self') value += dr.value;
+    }
+  }
+  return value;
 }
 
 /**

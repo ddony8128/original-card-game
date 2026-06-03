@@ -8,6 +8,7 @@ import {
   evalStepOnRitual,
   ongoingHarm,
   ritualUseEnemyDamage,
+  ritualUseValue,
   hasAnyOffensiveOnCast,
   maxOffensiveRange,
   isUtilityCard,
@@ -172,5 +173,28 @@ describe('classification helpers', () => {
     expect(isUtilityCard(meta(onCast(dmg(2, 'enemy'))))).toBe(false);
     expect(isUtilityCard(meta(onCast(dmg(2, 'self'))))).toBe(false); // pure self-harm
     expect(isUtilityCard(meta(null))).toBe(false);
+  });
+});
+
+describe('ritualUseValue (유익한 ritual 사용 판단)', () => {
+  const meta = (effects: unknown[]): any => ({
+    id: 'r', name_dev: 'r', name_ko: 'r', description_ko: null,
+    type: 'ritual', mana: 0, token: false,
+    effectJson: { type: 'ritual', triggers: [{ trigger: 'onUsePerTurn', effects }] },
+  });
+  it('적 데미지 ritual 은 양수', () => {
+    expect(ritualUseValue(meta([{ type: 'damage', value: 3, target: 'enemy' }]))).toBe(3);
+  });
+  it('자기 회복 ritual 도 양수(지력 흡수류)', () => {
+    expect(ritualUseValue(meta([{ type: 'heal', value: 3, target: 'self' }]))).toBe(3);
+  });
+  it('드로우+회복 ritual 도 양수(균형의 수호자류)', () => {
+    expect(ritualUseValue(meta([
+      { type: 'draw', value: 1, target: 'self' },
+      { type: 'heal', value: 1, target: 'self' },
+    ]))).toBe(2);
+  });
+  it('자기 피해만 있으면 음수', () => {
+    expect(ritualUseValue(meta([{ type: 'damage', value: 2, target: 'self' }]))).toBe(-2);
   });
 });

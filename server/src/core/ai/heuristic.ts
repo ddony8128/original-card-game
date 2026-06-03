@@ -8,7 +8,7 @@ import {
   onCastSelfHeal,
   evalStepOnRitual,
   ongoingHarm,
-  ritualUseEnemyDamage,
+  ritualUseValue,
   hasAnyOffensiveOnCast,
   maxOffensiveRange,
   isUtilityCard,
@@ -98,18 +98,19 @@ export function chooseAIAction(
 
   // ── 2. Use own ready ritual that damages the enemy ─────────────────────
   {
-    let bestDmg = 0;
+    let bestValue = 0;
     let best: UseRitualAction[] = [];
     for (const a of ritualActions) {
       const ritual = state.board.rituals.find((r) => r.id === a.ritualId);
       if (!ritual) continue;
       const meta = getMeta(ritual.cardId);
-      const dmg = ritualUseEnemyDamage(meta, ownRitualCount);
-      if (dmg > 0) {
-        if (dmg > bestDmg) {
-          bestDmg = dmg;
+      // 데미지뿐 아니라 회복/드로우 등 유익한 ritual 이면 사용한다.
+      const value = ritualUseValue(meta, ownRitualCount);
+      if (value > 0) {
+        if (value > bestValue) {
+          bestValue = value;
           best = [a];
-        } else if (dmg === bestDmg) {
+        } else if (value === bestValue) {
           best.push(a);
         }
       }
