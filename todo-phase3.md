@@ -28,7 +28,7 @@
 - [x] **P1-3** `selfPlay.ts`: 시드드(mulberry32) 헤드리스 AI vs AI, 종료보장(스텝/턴 cap). runSelfPlay 승률 지표. 테스트 4. (bruiser vs control=control~65%)
 
 ## P2 — 솔로/PvE 서버
-- [ ] **P2-1** start_solo 확장: mode(tutorial|pve)+stageId, PvE는 AI덱=스테이지덱+프로필.
+- [x] **P2-1** start_solo에 mode(tutorial|pve)+stageId. PvE는 AI덱=스테이지덱, AI프로필=스테이지프로필; 드라이버가 room.aiProfile를 chooseAIAction에 전달. 튜토리얼 불변. PvE 테스트 2. tsc/lint/test✓
 - [ ] **P2-2** PvE 승리 시 markCleared.
 - [ ] **P2-3** `GET /api/pve/progress`(클리어 목록 + allCleared).
 

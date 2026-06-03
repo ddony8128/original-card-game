@@ -22,6 +22,9 @@ import {
 } from '../state/gameInit';
 import { getCardMeta } from '../core/resources/cardCatalog';
 import { chooseAIAction } from '../core/ai/heuristic';
+import { getProfile, type AIProfile } from '../core/ai/profiles';
+import { getPveStage } from '../core/resources/pveStages';
+import type { DeckList } from '../type/deck';
 import type { LegalAction } from '../core/ai/legalActions';
 import { toViewerPos } from '../core/engine/boardUtils';
 import type { SocketManager, SocketClient } from './socketManager';
@@ -40,6 +43,10 @@ type SoloRoom = {
   socket: SocketClient;
   /** game_init 메시지를 사람에게 한 번만 보내기 위한 플래그. */
   initialized: boolean;
+  /** AI 휴리스틱 프로필. tutorial 은 default, pve 는 스테이지 프로필. */
+  aiProfile: AIProfile;
+  /** pve 모드일 때 대상 스테이지 id(클리어 기록 등 후속 단계용). tutorial 이면 undefined. */
+  stageId?: string;
 };
 
 /**
@@ -65,7 +72,8 @@ export class SoloGameManager {
   /**
    * 솔로 게임 시작.
    * - 사람 덱을 로드(없으면 warn + return)
-   * - AI 는 사람 덱의 클론을 사용(항상 유효한 카드 보장)
+   * - tutorial(기본): AI 는 사람 덱의 클론 + default 프로필을 사용(항상 유효한 카드 보장)
+   * - pve: AI 는 스테이지 덱 + 스테이지 프로필을 사용(스테이지 없으면 warn + return)
    * - 엔진/콜백 구성 후 markReady → AI 멀리건 자동 응답 → AI 선공이면 즉시 진행
    */
   async handleStartSolo(
@@ -73,6 +81,7 @@ export class SoloGameManager {
     payload: StartSoloPayload,
   ): Promise<void> {
     const { userId, deckId } = payload;
+    const mode = payload.mode ?? 'tutorial';
 
     const deck = await decksService.getById(deckId);
     if (!deck) {
@@ -80,15 +89,38 @@ export class SoloGameManager {
       return;
     }
 
+    // AI 덱/프로필 결정.
+    // - tutorial: 사람 덱의 클론 + default 프로필(유효성 보장, 기존 동작).
+    // - pve: 스테이지 덱 + 스테이지 프로필.
+    let aiMain: DeckList = deck.main_cards;
+    let aiCata: DeckList = deck.cata_cards;
+    let aiProfile: AIProfile = getProfile();
+    let stageId: string | undefined;
+
+    if (mode === 'pve') {
+      const stage = getPveStage(payload.stageId ?? '');
+      if (!stage) {
+        console.warn('[SoloGameManager] pve stage not found', {
+          userId,
+          stageId: payload.stageId,
+        });
+        return;
+      }
+      aiMain = stage.deck.main;
+      aiCata = stage.deck.cata;
+      aiProfile = getProfile(stage.profileId);
+      stageId = stage.id;
+    }
+
     const soloId = this.nextSoloId(userId);
 
-    // AI 는 사람 덱의 클론을 사용한다(유효성 보장).
+    // 사람은 자신의 덱, AI 는 tutorial=사람 덱 클론 / pve=스테이지 덱을 사용한다.
     const playerDeckConfigs: PlayerDeckConfig[] = [
       { playerId: userId, main: deck.main_cards, cata: deck.cata_cards },
       {
         playerId: AI_PLAYER_ID,
-        main: deck.main_cards,
-        cata: deck.cata_cards,
+        main: aiMain,
+        cata: aiCata,
       },
     ];
 
@@ -112,6 +144,8 @@ export class SoloGameManager {
       humanId: userId,
       socket,
       initialized: false,
+      aiProfile,
+      stageId,
     };
     this.rooms.set(soloId, room);
     this.attachEngineCallbacks(room);
@@ -191,6 +225,7 @@ export class SoloGameManager {
           AI_PLAYER_ID,
           getCardMeta,
           Math.random,
+          room.aiProfile,
         );
         if (action.kind === 'end_turn') {
           await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
