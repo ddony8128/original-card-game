@@ -18,7 +18,7 @@
 ## 상태: [ ]대기 [~]진행 [x]완료(검토+커밋) [!]보류
 
 ## P0 — 데이터/DB 기반
-- [ ] **P0-1** `resources/pveStages.json`(3스테이지: id/이름/AI덱/프로필키) + 로더. (no DB)
+- [x] **P0-1** `resources/pveStages.json`(3스테이지, 16/4 검증)+`pveStages.ts` 로더+테스트. profileId=bruiser/disruptor/control. tsc/lint/test✓
 - [ ] **P0-2** 기본 덱 정의 + register 시 decks 테이블 자동 insert (기존 decks 테이블=service key CRUD, DDL 불필요).
 - [!] **P0-3** `pve_progress` 테이블 — **사용자가 migrations/001 실행 대기**. 그 후 service(getCleared/markCleared) 구현. (코드는 미리 작성 가능)
 
