@@ -34,7 +34,7 @@
 ## A. 서버 엔진 — 구조 개선 (선택적, 회귀테스트 보호 하에)
 - [x] **A-7** `type/gameEngine.ts`(GameEngineAdapter 클래스) → `core/engine/gameEngineAdapter.ts`로 이동. type 폴더는 순수 타입만 남음. tsc/lint/test✓
 - [x] **A-4** `effectResolver.ts` 1372→135줄(얇은 디스패처). 효과별 함수를 `resolvers/`(mana/turn/movement/cast/combat/cardFlow/trigger)로 추출, 함수당 최대 179줄. 동작보존, tsc/lint/test✓
-- [ ] **A-5** EffectType enum ↔ resolver 콜백 맵 디스패치로 전환 (switch 제거)
+- [x] **A-5** switch 제거 → `EFFECT_RESOLVERS` Record<type, fn> 맵 디스패치. (키를 진짜 enum화하는 건 B-1) tsc/lint/test✓
 - [ ] **A-1** (선택) 구독 아키텍처 실사용: `TRIGGERED_EFFECT`에서 effectRef 실제 실행
 - [ ] **A-2** (선택) 옵저버 등록 범위 확장(모든 트리거)
 - [ ] **A-3** (선택) 옵저버 생명주기(파괴 시 unregister, 종료 시 clear)
