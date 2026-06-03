@@ -101,7 +101,7 @@ export default function Lobby() {
         </div>
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">로비</h1>
-          <p className="text-muted-foreground">환영합니다, {me?.username}님!</p>
+          <p className="text-muted-foreground">환영합니다, {me.username}님!</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

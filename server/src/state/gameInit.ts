@@ -7,8 +7,8 @@ import {
   type CardInstance,
 } from '../type/gameState';
 import type { DeckList } from '../type/deck';
-import type { EngineContext, CardMeta } from '../core/context';
-import { cardsService, type CardRow } from '../services/cards';
+import type { EngineContext } from '../core/context';
+import { ensureCardCatalog } from '../core/resources/cardCatalog';
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
@@ -113,57 +113,14 @@ export function createInitialGameState(
 }
 
 export async function buildEngineContextFromDecks(
-  configs: PlayerDeckConfig[],
+  _configs: PlayerDeckConfig[],
 ): Promise<EngineContext> {
-  const neededCardIds = new Set<CardID>();
-  configs.forEach((cfg) => {
-    cfg.main.forEach((entry) => neededCardIds.add(entry.id));
-    cfg.cata.forEach((entry) => neededCardIds.add(entry.id));
-  });
-
-  // 필요한 카드만 조회 (getByIds 사용)
-  const neededCardIdsArray = Array.from(neededCardIds);
-  const cardRows: CardRow[] = await cardsService.getByIds(neededCardIdsArray);
-
-  const metaById = new Map<CardID, CardMeta>();
-  for (const row of cardRows) {
-    metaById.set(row.id as CardID, {
-      id: row.id as CardID,
-      name_dev: row.name_dev,
-      name_ko: row.name_ko,
-      description_ko: row.description_ko,
-      type: row.type,
-      mana: row.mana,
-      token: row.token,
-      effectJson: row.effect_json,
-    });
-  }
+  // 카드 카탈로그(불변 리소스)를 메모리에 1회 적재한다. 이후 플레이 중
+  // lookupCard 는 DB 조회 없이 메모리 카탈로그에서 동기적으로 찾는다.
+  const catalog = await ensureCardCatalog();
 
   const ctx: EngineContext = {
-    lookupCard: async (id: CardID) => {
-      // 먼저 캐시에서 확인
-      const cached = metaById.get(id);
-      if (cached) return cached;
-
-      // 캐시에 없으면 DB에서 조회 (비동기 fallback)
-      const row = await cardsService.getById(id);
-      if (!row) return null;
-
-      const meta: CardMeta = {
-        id: row.id as CardID,
-        name_dev: row.name_dev,
-        name_ko: row.name_ko,
-        description_ko: row.description_ko,
-        type: row.type,
-        mana: row.mana,
-        token: row.token,
-        effectJson: row.effect_json,
-      };
-
-      // 캐시에 추가 (다음 조회는 동기로 가능)
-      metaById.set(id, meta);
-      return meta;
-    },
+    lookupCard: async (id: CardID) => catalog.get(id) ?? null,
   };
 
   return ctx;
