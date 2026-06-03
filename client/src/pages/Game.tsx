@@ -247,9 +247,14 @@ export default function Game() {
           return {
             type: 'damage',
             value: typeof anim.amount === 'number' ? anim.amount : undefined,
+            side: anim.player === myId ? 'me' : 'opponent',
           };
         case 'heal':
-          return { type: 'heal', value: typeof anim.amount === 'number' ? anim.amount : undefined };
+          return {
+            type: 'heal',
+            value: typeof anim.amount === 'number' ? anim.amount : undefined,
+            side: anim.player === myId ? 'me' : 'opponent',
+          };
         case 'discard':
           return { type: 'discard' };
         case 'burn':
