@@ -27,6 +27,10 @@ import {
   type BuildEffectsOptions,
 } from '../effects/schema';
 import { fromViewerPos, shuffle, canInstallAt } from './boardUtils';
+import {
+  FIRST_PLAYER_INITIAL_DRAW,
+  SECOND_PLAYER_INITIAL_DRAW,
+} from '../rules/constants';
 import { buildStatePatchForAllView } from './view';
 import {
   handleMoveAction,
@@ -161,7 +165,10 @@ export class GameEngineCore {
       const playerState = this.state.players[pid];
       shuffle(playerState.deck, this.ctx.random);
       shuffle(this.state.catastropheDeck, this.ctx.random);
-      const drawCount = idx === firstIdx ? 2 : 3;
+      const drawCount =
+        idx === firstIdx
+          ? FIRST_PLAYER_INITIAL_DRAW
+          : SECOND_PLAYER_INITIAL_DRAW;
       for (let i = 0; i < drawCount; i += 1) {
         this.bringCardToHand(pid);
       }

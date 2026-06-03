@@ -159,7 +159,7 @@ export async function resolveHeal(
   if (!checkHealCondition(engine, e, player.hp)) return;
 
   const before = player.hp;
-  player.hp = Math.min(player.hp + e.value, 20);
+  player.hp = Math.min(player.hp + e.value, player.maxHp);
   const healed = player.hp - before;
   if (healed > 0) {
     diff.log.push(`플레이어 ${targetId}가 ${healed} 만큼 회복했습니다.`);

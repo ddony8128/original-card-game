@@ -42,7 +42,7 @@
 
 ## B. 서버 엔진 — 타입 / 품질
 - [ ] **B-1** 문자열 → enum/const 전환 (wsProtocol 메시지·액션·사유, TriggerType, AnimationKind)
-- [ ] **B-3** 매직넘버 → `rules/constants.ts` 수집
+- [x] **B-3** 초기 드로우 2/3 → FIRST/SECOND_PLAYER_INITIAL_DRAW 상수. heal 상한 하드코딩 20 → player.maxHp. (주요 규칙은 이미 constants에 집약돼 있었음) tsc/lint/test✓
 - [ ] **B-4** `as any` 캐스팅 정리 / 타입 안정화
 - [ ] **B-5** 설명 주석 → 함수명화, 죽은 TODO 정리
 
