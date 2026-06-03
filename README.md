@@ -173,7 +173,7 @@ Base URL: `/api`
 
 - 필요 조건
 
-  - Node.js 18+
+  - Node.js >=24.13.0 <25 (package.json `engines` 기준)
 
 - 설치
 

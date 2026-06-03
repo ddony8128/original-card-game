@@ -15,3 +15,7 @@ export const INITIAL_HAND_LIMIT = 6;
 // 마나 관련 규칙
 export const MOVE_MANA_COST = 1;
 export const MANA_INC_PER_TURN = 1;
+
+// 선후공 초기 드로우 (선공은 1장 덜 받는다)
+export const FIRST_PLAYER_INITIAL_DRAW = 2;
+export const SECOND_PLAYER_INITIAL_DRAW = 3;

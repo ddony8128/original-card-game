@@ -15,6 +15,27 @@ export function useCreateDeckMutation() {
   });
 }
 
+type DeckPayload = {
+  name: string;
+  main_cards: Array<{ id: string; count: number }>;
+  cata_cards: Array<{ id: string; count: number }>;
+};
+
+export function useSaveDeckMutation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DeckPayload & { deckId?: string | null }) => {
+      const { deckId, ...payload } = input;
+      return deckId
+        ? decksApi.update(deckId, payload)
+        : decksApi.create(payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['decks'] });
+    },
+  });
+}
+
 export function useUpdateDeckMutation(deckId: string) {
   const qc = useQueryClient();
   return useMutation({

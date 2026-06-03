@@ -1,9 +1,11 @@
+import { GamePhase } from '../type/gameState';
 import type { PlayerID, GameState } from '../type/gameState';
 import type {
   AnswerMulliganPayload,
   PlayerActionPayload,
   PlayerInputPayload,
   ReadyPayload,
+  JoinChatPayload,
   ServerToClientMessage,
   StatePatchPayload,
   AskMulliganPayload,
@@ -13,13 +15,17 @@ import type {
 } from '../type/wsProtocol';
 import { roomsService, type RoomRow } from '../services/rooms';
 import { decksService } from '../services/decks';
-import { GameEngineAdapter } from '../type/gameEngine';
+import { usersService } from '../services/users';
+import { GameEngineAdapter } from '../core/engine/gameEngineAdapter';
 import {
   buildEngineContextFromDecks,
   createInitialGameState,
   type PlayerDeckConfig,
 } from '../state/gameInit';
 import type { SocketManager, SocketClient } from './socketManager';
+
+// 채팅 메시지 최대 길이(휘발성, DB 저장 없음). 초과분은 잘라낸다.
+const MAX_CHAT_TEXT_LENGTH = 500;
 
 // 각 게임 방에 대한 메타정보 타입
 type RoomEngine = {
@@ -125,6 +131,63 @@ export class GameRoomManager {
   }
 
   /**
+   * 대기실 채팅용 방 입장 처리 (게임 시작/ready 와 완전히 분리).
+   * - ready 와 동일하게 DB 에서 방/참가자(호스트/게스트) 여부만 검증한다.
+   * - readyPlayers / markReady / 엔진은 절대 건드리지 않는다.
+   * - 검증되면 socket 에 userId/roomCode 를 기록하고 WS 방에 참여만 시킨다.
+   */
+  async handleJoinChat(
+    socket: SocketClient,
+    payload: JoinChatPayload,
+  ): Promise<void> {
+    const { roomCode, userId } = payload;
+
+    // ready 와 동일한 참가자 검증(roomsService.byCode + 호스트/게스트 매칭)
+    const roomRow: RoomRow | null = await roomsService.byCode(roomCode);
+    if (!roomRow) {
+      this.warnNoExistingRoom(roomCode, userId);
+      return;
+    }
+    const isParticipant =
+      roomRow.host_id === userId ||
+      (!!roomRow.guest_id && roomRow.guest_id === userId);
+    if (!isParticipant) {
+      this.warnNonParticipant(roomCode, userId);
+      return;
+    }
+
+    // 소켓에 유저/방 정보 기록 후 WS 방에만 참여 (엔진/ready 미접촉)
+    socket.userId = userId;
+    socket.roomCode = roomCode;
+    this.socketManager.joinRoom(roomCode, socket, userId);
+  }
+
+  /**
+   * 대기실 채팅 메시지 처리.
+   * - 빈 메시지는 무시, 길이는 MAX_CHAT_TEXT_LENGTH 로 제한한다.
+   * - 보낸 사람의 username 을 조회해 방 전체에 chat 이벤트를 브로드캐스트한다.
+   * - DB 저장 없이 휘발성으로만 전파한다.
+   */
+  async handleChat(
+    roomCode: string,
+    userId: PlayerID,
+    text: string,
+  ): Promise<void> {
+    const trimmed = typeof text === 'string' ? text.trim() : '';
+    if (!trimmed) return;
+    const safeText = trimmed.slice(0, MAX_CHAT_TEXT_LENGTH);
+
+    const user = await usersService.findById(userId);
+    const username = user?.username ?? userId;
+
+    const msg: ServerToClientMessage = {
+      event: 'chat',
+      data: { userId, username, text: safeText },
+    };
+    this.socketManager.broadcast(roomCode, msg);
+  }
+
+  /**
    * 일반 플레이어 액션 전달 핸들러
    * 이동, 턴 종료, 카드 사용, 마법진 사용
    * 유효성 검증 후 엔진으로 액션 위임
@@ -179,7 +242,12 @@ export class GameRoomManager {
     roomRowCache?: RoomRow,
   ): Promise<RoomEngine | null> {
     const existing = this.roomEngines.get(roomCode);
-    if (existing) return existing;
+    if (existing) {
+      // 이전 게임이 끝난 엔진(GAME_OVER)이 남아 있으면 폐기하고 새로 만든다.
+      // (leave / host-delete 등 game_over 콜백을 타지 않은 종료 경로 대비)
+      if (existing.engine.state.phase !== GamePhase.GAME_OVER) return existing;
+      this.roomEngines.delete(roomCode);
+    }
 
     let roomRow: RoomRow | undefined | null = roomRowCache;
 
@@ -337,6 +405,14 @@ export class GameRoomManager {
       };
       this.socketManager.broadcast(roomCode, msg);
       this.roomEngines.delete(roomCode);
+      // 자연 종료(HP 0) 시 DB 방 상태를 finished 로 마무리.
+      // ws 이벤트 경로를 막지 않도록 fire-and-forget 으로 처리한다.
+      roomsService.finishByCode(roomCode).catch((err) => {
+        console.warn('[GameRoomManager] finishByCode failed', {
+          roomCode,
+          err,
+        });
+      });
     });
 
     // === 잘못된 액션(예외) 알림 ===

@@ -51,6 +51,18 @@ vi.mock('../services/cards', () => {
   };
 });
 
+vi.mock('../services/users', () => {
+  return {
+    usersService: {
+      findById: vi.fn(async (id: string) => ({
+        id,
+        username: id,
+        password: 'x',
+      })),
+    },
+  };
+});
+
 import { GameRoomManager } from '../ws/gameRoomManager';
 
 class FakeSocketManager

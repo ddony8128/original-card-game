@@ -87,6 +87,30 @@ function AnimationEffect({ animation }: { animation: SimpleAnimation }) {
     }
   };
 
+  const renderValue = () => {
+    if (!('value' in animation) || animation.value === undefined) return null;
+    const amount = Math.abs(animation.value);
+    if (animation.type === 'damage') {
+      return (
+        <span className="absolute -top-6 -right-6 text-4xl font-extrabold text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.9)]">
+          -{amount}
+        </span>
+      );
+    }
+    if (animation.type === 'heal') {
+      return (
+        <span className="absolute -top-6 -right-6 text-4xl font-extrabold text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.9)]">
+          +{amount}
+        </span>
+      );
+    }
+    return (
+      <span className="text-primary absolute -top-4 -right-4 text-2xl font-bold">
+        {amount}
+      </span>
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -96,11 +120,7 @@ function AnimationEffect({ animation }: { animation: SimpleAnimation }) {
       )}
     >
       {getIcon()}
-      {'value' in animation && animation.value !== undefined && (
-        <span className="text-primary absolute -top-4 -right-4 text-2xl font-bold">
-          {animation.value > 0 ? `+${animation.value}` : animation.value}
-        </span>
-      )}
+      {renderValue()}
     </div>
   );
 }

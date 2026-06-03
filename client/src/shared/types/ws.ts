@@ -15,7 +15,8 @@ export type ServerToClientEvent =
   | 'state_patch'
   | 'request_input'
   | 'invalid_action'
-  | 'game_over';
+  | 'game_over'
+  | 'chat';
 
 export type AnimationPlayer = 'you' | 'opponent' | 'shared' | string;
 
@@ -84,6 +85,13 @@ export interface GameOverPayload {
   reason: 'hp_zero' | 'surrender' | 'timeout' | (string & {});
 }
 
+// 대기실 실시간 채팅(서버 → 클라). DB 저장 없이 휘발성으로만 전파된다.
+export interface ChatBroadcastPayload {
+  userId: string;
+  username: string;
+  text: string;
+}
+
 export interface ServerToClientPayloadMap {
   game_init: GameInitPayload;
   ask_mulligan: AskMulliganPayload;
@@ -91,6 +99,7 @@ export interface ServerToClientPayloadMap {
   request_input: RequestInputPayload;
   invalid_action: InvalidActionPayload;
   game_over: GameOverPayload;
+  chat: ChatBroadcastPayload;
 }
 
 export type WsServerToClientMessage = {
@@ -99,11 +108,28 @@ export type WsServerToClientMessage = {
 
 // ---- 클라이언트 → 서버 이벤트 ----
 
-export type ClientToServerEvent = 'ready' | 'answer_mulligan' | 'player_action' | 'player_input';
+export type ClientToServerEvent =
+  | 'ready'
+  | 'answer_mulligan'
+  | 'player_action'
+  | 'player_input'
+  | 'join_chat'
+  | 'chat';
 
 export interface ReadyPayload {
   roomCode: string;
   userId?: string;
+}
+
+// 채팅 전용 방 입장(게임 시작/ready 와 분리)
+export interface JoinChatPayload {
+  roomCode: string;
+  userId?: string;
+}
+
+// 클라 → 서버 채팅 전송
+export interface ChatPayload {
+  text: string;
 }
 
 export interface AnswerMulliganPayload {
@@ -157,6 +183,8 @@ export interface ClientToServerPayloadMap {
   answer_mulligan: AnswerMulliganPayload;
   player_action: PlayerActionPayload;
   player_input: PlayerInputPayload;
+  join_chat: JoinChatPayload;
+  chat: ChatPayload;
 }
 
 export type WsClientToServerMessage = {

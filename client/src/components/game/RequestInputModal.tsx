@@ -35,9 +35,20 @@ interface RequestInputModalProps {
   request: InputRequest | null;
   onResponse: (response: InputOption[]) => void;
   onCancel?: () => void;
+  /**
+   * false 이면 배경/ESC/X 로 닫을 수 없다.
+   * 서버가 응답을 기다리는 필수 입력(버리기/폐기 등)에서 모달을 닫아버리면
+   * 서버가 입력 대기 상태로 멈추므로(C-2), 그런 요청은 dismissible=false 로 둔다.
+   */
+  dismissible?: boolean;
 }
 
-export function RequestInputModal({ request, onResponse, onCancel }: RequestInputModalProps) {
+export function RequestInputModal({
+  request,
+  onResponse,
+  onCancel,
+  dismissible = true,
+}: RequestInputModalProps) {
   const [selectedOptions, setSelectedOptions] = useState<InputOption[]>([]);
 
   if (!request) return null;
@@ -70,8 +81,21 @@ export function RequestInputModal({ request, onResponse, onCancel }: RequestInpu
     selectedOptions.length <= (request.maxSelect ?? Number.POSITIVE_INFINITY);
 
   return (
-    <Dialog open={!!request} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+    <Dialog
+      open={!!request}
+      onOpenChange={(open) => {
+        if (!open && dismissible) handleClose();
+      }}
+    >
+      <DialogContent
+        className="max-w-2xl"
+        onEscapeKeyDown={(e) => {
+          if (!dismissible) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (!dismissible) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>
             {request.type === 'mulligan' && '🔄 멀리건'}
@@ -138,7 +162,7 @@ export function RequestInputModal({ request, onResponse, onCancel }: RequestInpu
 
           {/* 액션 버튼 */}
           <div className="flex justify-end gap-2">
-            {onCancel && (
+            {onCancel && dismissible && (
               <Button variant="outline" onClick={handleClose}>
                 취소
               </Button>

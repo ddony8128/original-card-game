@@ -17,4 +17,7 @@ export const authApi = {
   me() {
     return http<AuthResponse>('/api/auth/me');
   },
+  logout() {
+    return http<{ message: string }>('/api/auth/logout', { method: 'POST' });
+  },
 };

@@ -53,4 +53,21 @@ describe('Auth routes', () => {
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('username', username);
   });
+
+  // 시크릿탭 등 cross-site 쿠키가 차단되는 환경 대비:
+  // login 응답에 token 을 내려주고, 쿠키 없이 Bearer 헤더만으로도 /me 가 동작해야 한다.
+  it('login -> returns token; me -> 200 with Bearer header only (no cookie)', async () => {
+    const login = await request(app)
+      .post('/api/auth/login')
+      .send({ username, password });
+    expect(login.status).toBe(200);
+    expect(login.body).toHaveProperty('token');
+    const token = login.body.token as string;
+
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('username', username);
+  });
 });

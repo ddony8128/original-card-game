@@ -1,4 +1,4 @@
-import type { PlayerID, GameState } from './gameState';
+import type { PlayerID, GameState } from '../../type/gameState';
 import type {
   AskMulliganPayload,
   GameOverPayload,
@@ -7,13 +7,13 @@ import type {
   PlayerInputPayload,
   RequestInputPayload,
   StatePatchPayload,
-} from './wsProtocol';
+} from '../../type/wsProtocol';
 import {
   GameEngineCore,
   type EngineConfig,
   type EngineResult,
-} from '../core/engine/gameEngineCore';
-import type { EngineContext } from '../core/context';
+} from './gameEngineCore';
+import type { EngineContext } from '../context';
 
 /**
  * GameEngineCore 를 WebSocket 과 무관한 콜백 기반 인터페이스로 감싼 래퍼.

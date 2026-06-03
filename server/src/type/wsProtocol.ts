@@ -15,7 +15,8 @@ export type ServerToClientEvent =
   | 'state_patch'
   | 'request_input'
   | 'invalid_action'
-  | 'game_over';
+  | 'game_over'
+  | 'chat';
 
 // 애니메이션 / diff 패치 타입
 
@@ -94,6 +95,13 @@ export interface GameOverPayload {
   reason: 'hp_zero' | 'surrender' | 'timeout' | (string & {});
 }
 
+// 대기실 실시간 채팅(서버 → 클라). DB 저장 없이 휘발성으로만 전파한다.
+export interface ChatBroadcastPayload {
+  userId: string;
+  username: string;
+  text: string;
+}
+
 export interface ServerToClientPayloadMap {
   game_init: GameInitPayload;
   ask_mulligan: AskMulliganPayload;
@@ -101,6 +109,7 @@ export interface ServerToClientPayloadMap {
   request_input: RequestInputPayload;
   invalid_action: InvalidActionPayload;
   game_over: GameOverPayload;
+  chat: ChatBroadcastPayload;
 }
 
 export type ServerToClientMessage = {
@@ -113,11 +122,24 @@ export type ClientToServerEvent =
   | 'ready'
   | 'answer_mulligan'
   | 'player_action'
-  | 'player_input';
+  | 'player_input'
+  | 'join_chat'
+  | 'chat';
 
 export interface ReadyPayload {
   roomCode: string;
   userId: string;
+}
+
+// 채팅 전용 방 입장(게임 시작/ready 와 분리). ready 와 동일한 참가자 검증만 수행한다.
+export interface JoinChatPayload {
+  roomCode: string;
+  userId: string;
+}
+
+// 클라 → 서버 채팅 전송. 보낸 사람은 socket 의 roomCode/userId 로 식별한다.
+export interface ChatPayload {
+  text: string;
 }
 
 export interface AnswerMulliganPayload {
@@ -147,6 +169,11 @@ export interface MoveActionPayload extends PlayerActionPayloadBase {
   to: [number, number];
 }
 
+export interface UseRitualActionPayload extends PlayerActionPayloadBase {
+  action: 'use_ritual';
+  ritualId: string;
+}
+
 export interface EndTurnActionPayload extends PlayerActionPayloadBase {
   action: 'end_turn';
 }
@@ -158,6 +185,7 @@ export interface SurrenderActionPayload extends PlayerActionPayloadBase {
 export type PlayerActionPayload =
   | UseCardActionPayload
   | MoveActionPayload
+  | UseRitualActionPayload
   | EndTurnActionPayload
   | SurrenderActionPayload
   | (PlayerActionPayloadBase & Record<string, unknown>); // 확장용
@@ -171,6 +199,8 @@ export interface ClientToServerPayloadMap {
   answer_mulligan: AnswerMulliganPayload;
   player_action: PlayerActionPayload;
   player_input: PlayerInputPayload;
+  join_chat: JoinChatPayload;
+  chat: ChatPayload;
 }
 
 export type ClientToServerMessage = {

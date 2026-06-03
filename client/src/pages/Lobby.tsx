@@ -1,17 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Plus, LogIn, BookOpen, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { LogOut } from 'lucide-react';
 import { useDecksQuery, useDeleteDeckMutation } from '@/features/decks/queries';
-import {
-  useCreateRoomMutation,
-  useJoinRoomMutation,
-  useWaitingRoomsQuery,
-} from '@/features/match/queries';
-import { useMeQuery } from '@/features/auth/queries';
+import { useCreateRoomMutation, useJoinRoomMutation } from '@/features/match/queries';
+import { useMeQuery, useLogoutMutation } from '@/features/auth/queries';
+import { getErrorMessage } from '@/shared/lib/errors';
+import type { DeckDto } from '@/shared/api/types';
+import { CreateRoomCard } from '@/components/lobby/CreateRoomCard';
+import { JoinRoomCard } from '@/components/lobby/JoinRoomCard';
+import { MyDecksCard } from '@/components/lobby/MyDecksCard';
+import { WaitingRoomsList } from '@/components/lobby/WaitingRoomsList';
 
 export default function Lobby() {
   const navigate = useNavigate();
@@ -23,6 +23,12 @@ export default function Lobby() {
   const createRoom = useCreateRoomMutation();
   const joinRoom = useJoinRoomMutation();
   const deleteDeckMutation = useDeleteDeckMutation();
+  const logout = useLogoutMutation();
+
+  const handleLogout = async () => {
+    await logout.mutateAsync().catch(() => undefined);
+    navigate('/login', { replace: true });
+  };
 
   const totalDeckCount = useMemo(() => serverDecks?.length ?? 0, [serverDecks]);
 
@@ -41,15 +47,6 @@ export default function Lobby() {
       return false;
     }
     return true;
-  };
-
-  const getErrorMessage = (err: unknown): string | undefined => {
-    if (err instanceof Error) return err.message;
-    if (typeof err === 'object' && err && 'message' in err) {
-      const m = (err as { message?: unknown }).message;
-      return typeof m === 'string' ? m : undefined;
-    }
-    return undefined;
   };
 
   const handleCreateRoom = async () => {
@@ -77,143 +74,60 @@ export default function Lobby() {
     }
   };
 
+  const handleDeleteDeck = (deck: DeckDto) => {
+    if (!confirm(`${deck.name} 덱을 삭제하시겠습니까?`)) return;
+    deleteDeckMutation.mutate(deck.id, {
+      onSuccess: () =>
+        toast.success('덱이 삭제되었습니다.', {
+          description: deck.name,
+        }),
+      onError: (err: unknown) => toast.error(getErrorMessage(err) ?? '삭제 실패'),
+    });
+  };
+
   return (
-    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-6">
+    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4 sm:p-6">
       <div className="mx-auto max-w-4xl space-y-6">
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            disabled={logout.isPending}
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            {logout.isPending ? '로그아웃 중...' : '로그아웃'}
+          </Button>
+        </div>
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">로비</h1>
           <p className="text-muted-foreground">환영합니다, {me?.username}님!</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="h-5 w-5" />방 만들기
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                placeholder="방 이름 입력"
-                value={roomName}
-                onChange={(e) => setRoomName(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === 'Enter' &&
-                  !createRoom.isPending &&
-                  roomName.trim() &&
-                  handleCreateRoom()
-                }
-              />
-              <Button
-                onClick={handleCreateRoom}
-                className="w-full"
-                size="lg"
-                disabled={createRoom.isPending || !roomName.trim()}
-              >
-                <Users className="mr-2 h-4 w-4" />
-                {createRoom.isPending ? '생성 중...' : '방 생성'}
-              </Button>
-            </CardContent>
-          </Card>
+          <CreateRoomCard
+            roomName={roomName}
+            onRoomNameChange={setRoomName}
+            onCreate={handleCreateRoom}
+            isPending={createRoom.isPending}
+          />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <LogIn className="h-5 w-5" />방 참가
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Input
-                placeholder="방 코드 입력"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
-                className="uppercase"
-              />
-              <Button
-                onClick={handleJoinRoom}
-                className="w-full"
-                size="lg"
-                disabled={joinRoom.isPending}
-              >
-                {joinRoom.isPending ? '입장 중...' : '입장하기'}
-              </Button>
-            </CardContent>
-          </Card>
+          <JoinRoomCard
+            roomCode={roomCode}
+            onRoomCodeChange={setRoomCode}
+            onJoin={handleJoinRoom}
+            isPending={joinRoom.isPending}
+          />
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />내 덱 ({totalDeckCount}/4)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {(serverDecks?.length ?? 0) === 0 ? (
-              <div className="space-y-4 py-8 text-center">
-                <p className="text-muted-foreground">아직 덱이 없습니다</p>
-                <Button onClick={() => navigate('/deck-builder')}>첫 번째 덱 만들기</Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {serverDecks?.map((deck) => {
-                  const mainCount = deck.main_cards.reduce((s, e) => s + (e.count ?? 0), 0);
-                  const cataCount = deck.cata_cards.reduce((s, e) => s + (e.count ?? 0), 0);
-                  return (
-                    <div
-                      key={deck.id}
-                      className="bg-secondary/50 border-border flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div>
-                        <h3 className="font-semibold">{deck.name}</h3>
-                        <p className="text-muted-foreground text-xs">
-                          메인 {mainCount}장 · 재앙 {cataCount}장
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/deck-builder?sid=${deck.id}`)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          수정
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => {
-                            if (!confirm(`${deck.name} 덱을 삭제하시겠습니까?`)) return;
-                            deleteDeckMutation.mutate(deck.id, {
-                              onSuccess: () =>
-                                toast.success('덱이 삭제되었습니다.', {
-                                  description: deck.name,
-                                }),
-                              onError: (err: unknown) =>
-                                toast.error(getErrorMessage(err) ?? '삭제 실패'),
-                            });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {totalDeckCount < 4 && (
-                  <Button
-                    onClick={() => navigate('/deck-builder')}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    새 덱 만들기
-                  </Button>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <MyDecksCard
+          decks={serverDecks}
+          totalDeckCount={totalDeckCount}
+          isLoading={loadingDecks}
+          onEditDeck={(id) => navigate(`/deck-builder?sid=${id}`)}
+          onDeleteDeck={handleDeleteDeck}
+          onCreateDeck={() => navigate('/deck-builder')}
+        />
 
         <WaitingRoomsList />
 
@@ -225,78 +139,5 @@ export default function Lobby() {
         </div>
       </div>
     </div>
-  );
-}
-
-function WaitingRoomsList() {
-  const navigate = useNavigate();
-  const { data: waitingRooms, refetch, isLoading } = useWaitingRoomsQuery(true);
-  const joinRoom = useJoinRoomMutation();
-
-  const getErrorMessage = (err: unknown): string | undefined => {
-    if (err instanceof Error) return err.message;
-    if (typeof err === 'object' && err && 'message' in err) {
-      const m = (err as { message?: unknown }).message;
-      return typeof m === 'string' ? m : undefined;
-    }
-    return undefined;
-  };
-
-  const handleJoin = async (roomCode: string) => {
-    try {
-      const res = await joinRoom.mutateAsync(roomCode);
-      toast.success('방에 입장했습니다.', { description: `방 코드 : ${res.roomCode}` });
-      navigate(`/back-room/${res.roomCode}`);
-    } catch (e: unknown) {
-      toast.error(getErrorMessage(e) ?? '방 참가에 실패했습니다.');
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            대기 중인 방
-          </span>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            새로고침
-          </Button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="text-muted-foreground py-8 text-center">방 목록을 불러오는 중...</div>
-        ) : !waitingRooms || !Array.isArray(waitingRooms) || waitingRooms.length === 0 ? (
-          <div className="text-muted-foreground py-8 text-center">대기 중인 방이 없습니다.</div>
-        ) : (
-          <div className="space-y-2">
-            {waitingRooms.map((room) => (
-              <div
-                key={room.roomCode}
-                className="bg-secondary/50 border-border flex items-center justify-between rounded-lg border p-3"
-              >
-                <div className="flex-1">
-                  <div className="font-semibold">{room.roomName || `방 ${room.roomCode}`}</div>
-                  <div className="text-muted-foreground text-xs">
-                    호스트: {room.host?.username || '(대기 중)'} · 코드: {room.roomCode}
-                    {room.guest && ` · 게스트: ${room.guest.username}`}
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => handleJoin(room.roomCode)}
-                  disabled={joinRoom.isPending || !!room.guest}
-                >
-                  {room.guest ? '참가 불가' : joinRoom.isPending ? '입장 중...' : '참가'}
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

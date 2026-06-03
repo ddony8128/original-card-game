@@ -1,3 +1,5 @@
+import { getAuthToken } from './authToken';
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
 export class ApiError extends Error {
@@ -10,9 +12,24 @@ export class ApiError extends Error {
   }
 }
 
+const MAX_QUERY_RETRIES = 2;
+
+export function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+    return false;
+  }
+  return failureCount < MAX_QUERY_RETRIES;
+}
+
 export async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = getAuthToken();
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   const response = await fetch(API_BASE_URL + path, {
-    headers: { 'Content-Type': 'application/json', ...(options.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...(options.headers ?? {}),
+    },
     credentials: 'include',
     ...options,
   });

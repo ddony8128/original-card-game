@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ClientSideActionLog } from '@/shared/types/game';
@@ -8,6 +9,12 @@ interface GameLogProps {
 
 export function GameLog({ logs }: GameLogProps) {
   const items = logs ?? [];
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // 새 로그가 쌓이면 항상 최신(맨 아래)이 보이도록 스크롤한다.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [items.length]);
 
   return (
     <Card>
@@ -27,6 +34,7 @@ export function GameLog({ logs }: GameLogProps) {
                   <span className="font-semibold">턴 {log.turn}</span> - {log.text}
                 </div>
               ))}
+              <div ref={bottomRef} />
             </div>
           )}
         </ScrollArea>

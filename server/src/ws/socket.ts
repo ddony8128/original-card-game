@@ -5,6 +5,8 @@ import type {
   ClientToServerEvent,
   ClientToServerMessage,
   ReadyPayload,
+  JoinChatPayload,
+  ChatPayload,
   PlayerActionPayload,
   AnswerMulliganPayload,
   PlayerInputPayload,
@@ -75,7 +77,24 @@ export function attachWebSocket(server: http.Server): WsApi {
           return;
         }
 
-        // ready 이전에는 roomCode/userId 정보가 없으므로, 그 외 이벤트는 무시
+        // 2) join_chat: 대기실 채팅용 방 입장 (ready 와 분리, 게임 시작 미발동)
+        //    ready 처럼 roomCode/userId 기록 이전에도 허용한다.
+        if (event === 'join_chat') {
+          const { roomCode, userId } = data as JoinChatPayload;
+          if (!roomCode || !userId) return;
+          void roomManager
+            .handleJoinChat(socket, { roomCode, userId })
+            .catch((err) =>
+              console.error('[WS] handleJoinChat error', {
+                err,
+                roomCode,
+                userId,
+              }),
+            );
+          return;
+        }
+
+        // ready/join_chat 이전에는 roomCode/userId 정보가 없으므로, 그 외 이벤트는 무시
         if (!socket.roomCode || !socket.userId) return;
         const roomCode = socket.roomCode;
         const userId = socket.userId as string;
@@ -114,6 +133,19 @@ export function attachWebSocket(server: http.Server): WsApi {
               .handlePlayerInput(roomCode, userId, payload)
               .catch((err) =>
                 console.error('[WS] handlePlayerInput error', {
+                  err,
+                  roomCode,
+                  userId,
+                }),
+              );
+            break;
+          }
+          case 'chat': {
+            const payload = data as ChatPayload;
+            void roomManager
+              .handleChat(roomCode, userId, payload.text)
+              .catch((err) =>
+                console.error('[WS] handleChat error', {
                   err,
                   roomCode,
                   userId,

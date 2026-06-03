@@ -84,12 +84,24 @@ authRouter.post('/login', (req, res) => {
       message: 'user logged in',
       username: user.username,
       created_at: user.created_at,
+      token,
     });
   })().catch((e) =>
     res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       message: e.message,
     }),
   );
+});
+
+// 로그아웃: auth_token 쿠키를 제거한다. (클라이언트는 별도로 Bearer 토큰을 폐기한다.)
+authRouter.post('/logout', (_req, res) => {
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    path: '/',
+  });
+  return res.status(HttpStatus.OK).json({ message: 'logged out' });
 });
 
 // 현재 로그인한 사용자 정보 조회: 쿠키 또는 Authorization 헤더의 토큰을 기반으로 /me 응답.

@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { GameBoard, type BoardPosition } from '@/components/game/GameBoard';
+import { type BoardPosition } from '@/components/game/GameBoard';
 import { GameHeader } from '@/components/game/GameHeader';
-import { PlayerInfo } from '@/components/game/PlayerInfo';
-import { DeckInfo, CatastropheDeckInfo } from '@/components/game/DeckInfo';
-import { OpponentHand } from '@/components/game/OpponentHand';
-import { GameLog } from '@/components/game/GameLog';
+import { OpponentZone } from '@/components/game/OpponentZone';
+import { BoardZone } from '@/components/game/BoardZone';
+import { PlayerZone } from '@/components/game/PlayerZone';
+import { MyHand } from '@/components/game/MyHand';
+import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { AnimationLayer, type SimpleAnimation } from '@/components/game/AnimationLayer';
 import {
   RequestInputModal,
@@ -14,16 +15,15 @@ import {
 } from '@/components/game/RequestInputModal';
 import { DiscardPileModal } from '@/components/game/DiscardPileModal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Play } from 'lucide-react';
-import { toast } from 'sonner';
+import { ArrowLeft } from 'lucide-react';
 import { useMeQuery } from '@/features/auth/queries';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import { useGameSocket } from '@/ws/useGameSocket';
-import { useMulliganRequest } from '@/components/game/useMulliganRequest';
-import { cn } from '@/shared/lib/utils';
+import { useMulliganRequest } from '@/features/game/hooks/useMulliganRequest';
+import { useGameActions } from '@/features/game/hooks/useGameActions';
+import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
-import type { PlayerActionPayload, RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
+import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
 
 export default function Game() {
@@ -144,103 +144,6 @@ export default function Game() {
     // 2) 일반 상황에서는 클릭으로 "선택"만 하고, 실제 이동/마법진 사용은 아래 패널 버튼으로 처리
   };
 
-  const handlePlayCard = (index: number) => {
-    if (!fogged) return;
-    const handEntry = fogged.me.hand[index];
-    if (!handEntry) return;
-
-    if (!myId || !isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
-      return;
-    }
-
-    const meta = getCardMeta(handEntry.cardId);
-    const manaCost = meta?.mana ?? 0;
-
-    if (!hasEnoughMana(manaCost)) {
-      toast.error('마나가 부족하여 카드를 사용할 수 없습니다.');
-      return;
-    }
-
-    sendPlayerAction({ action: 'use_card', cardInstance: handEntry });
-    console.log('sendPlayerAction', { action: 'use_card', cardInstance: handEntry });
-
-    setSelectedCardIndex(null);
-    toast.info('카드 사용', {
-      description: `${meta?.name ?? handEntry.id}을(를) 사용했습니다.`,
-    });
-  };
-
-  const handleEndTurn = () => {
-    if (!myId || !isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
-      return;
-    }
-
-    sendPlayerAction({ action: 'end_turn' });
-    console.log('sendPlayerAction', { action: 'end_turn' });
-  };
-
-  const handleMoveToSelected = () => {
-    if (!fogged || !myId || !selectedBoardPosition) return;
-    if (!isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
-      return;
-    }
-    if (!hasEnoughMana(1)) {
-      toast.error('마나가 부족하여 이동할 수 없습니다.');
-      return;
-    }
-
-    const position = selectedBoardPosition;
-    // 상대 마법사가 있는 칸으로는 이동 금지
-    if (position.x === opponentPosition.x && position.y === opponentPosition.y) {
-      toast.error('상대 마법사가 있는 칸으로는 이동할 수 없습니다.');
-      return;
-    }
-
-    // 인접한 칸(상하좌우)만 허용
-    const dx = Math.abs(playerPosition.x - position.x);
-    const dy = Math.abs(playerPosition.y - position.y);
-    const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
-    if (!isAdjacent) {
-      toast.error('인접한 칸으로만 이동할 수 있습니다.');
-      return;
-    }
-
-    sendPlayerAction({ action: 'move', to: [position.y, position.x] });
-    toast.info('이동 시도', {
-      description: `셀 (${position.x}, ${position.y})으로 이동을 시도합니다.`,
-    });
-    console.log('sendPlayerAction', { action: 'move', to: [position.y, position.x] });
-  };
-
-  const handleUseRitualAtSelected = () => {
-    if (!fogged || !myId || !selectedBoardPosition) return;
-    if (!isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
-      return;
-    }
-
-    const { x, y } = selectedBoardPosition;
-    const r = y;
-    const c = x;
-    const ritual = fogged.board.rituals.find(
-      (rt) => rt.owner === myId && rt.pos.r === r && rt.pos.c === c,
-    );
-    if (!ritual) {
-      toast.error('선택한 칸에 내가 사용할 수 있는 마법진이 없습니다.');
-      return;
-    }
-
-    // 서버 프로토콜은 확장 가능하므로 ritualId 필드를 함께 전송
-    sendPlayerAction({ action: 'use_ritual', ritualId: ritual.id } as PlayerActionPayload);
-    toast.info('마법진 사용', {
-      description: `마법진 ${ritual.cardId}을(를) 사용했습니다.`,
-    });
-    console.log('sendPlayerAction', { action: 'use_ritual', ritualId: ritual.id });
-  };
-
   // 묘지 카드를 DeckCard 형태로 변환
   const convertGraveToDeckCards = useMemo(
     () => (grave: CardInstance[] | undefined) => {
@@ -301,6 +204,29 @@ export default function Game() {
   const isWin = myId && fogged?.winner === myId;
   const isLose = myId && fogged?.winner && fogged.winner !== myId;
 
+  const playerPosition: BoardPosition = myWizard
+    ? { x: myWizard.c, y: myWizard.r }
+    : { x: 2, y: 4 };
+  const opponentPosition: BoardPosition = opponentWizard
+    ? { x: opponentWizard.c, y: opponentWizard.r }
+    : { x: 2, y: 0 };
+
+  const { handlePlayCard, handleEndTurn, handleMoveToSelected, handleUseRitualAtSelected } =
+    useGameActions({
+      fogged,
+      myId,
+      selectedBoardPosition,
+      playerPosition,
+      opponentPosition,
+      isMyTurn,
+      hasEnoughMana,
+      sendPlayerAction,
+      getCardMeta,
+      setSelectedCardIndex,
+    });
+
+  useBeforeUnloadWarning(!!fogged && fogged.phase !== 'GAME_OVER');
+
   if (!fogged) {
     return (
       <div className="from-background via-background to-accent/10 flex min-h-screen items-center justify-center bg-linear-to-br">
@@ -311,13 +237,6 @@ export default function Game() {
       </div>
     );
   }
-
-  const playerPosition: BoardPosition = myWizard
-    ? { x: myWizard.c, y: myWizard.r }
-    : { x: 2, y: 4 };
-  const opponentPosition: BoardPosition = opponentWizard
-    ? { x: opponentWizard.c, y: opponentWizard.r }
-    : { x: 2, y: 0 };
 
   const animations: SimpleAnimation[] =
     lastDiff?.animations?.map((anim) => {
@@ -447,169 +366,42 @@ export default function Game() {
         <GameHeader turn={fogged.turn} isMyTurn={Boolean(myId && fogged.activePlayer === myId)} />
 
         {/* Opponent Info */}
-        <div className="grid grid-cols-3 gap-4">
-          <PlayerInfo
-            hp={fogged.opponent.hp}
-            maxHp={fogged.opponent.maxHp}
-            mana={fogged.opponent.mana}
-            maxMana={fogged.opponent.maxMana}
-            label="상대"
-          />
-          <div className="flex flex-col justify-center">
-            <div className="text-muted-foreground mb-2 text-center text-xs">
-              상대 손패 ({fogged.opponent.handCount}장)
-            </div>
-            <OpponentHand cardCount={fogged.opponent.handCount} />
-          </div>
-          <DeckInfo
-            deckCount={fogged.opponent.deckCount}
-            graveCount={fogged.opponent.graveCount}
-            grave={fogged.opponent.grave}
-            label="상대 덱"
-            onViewGrave={() => handleViewGrave('opponent')}
-          />
-        </div>
-
-        {/* Shared Catastrophe Deck */}
-        <CatastropheDeckInfo
-          deckCount={fogged.catastrophe.deckCount}
-          graveCount={fogged.catastrophe.graveCount}
-          grave={fogged.catastrophe.grave}
-          onViewGrave={() => handleViewGrave('catastrophe')}
+        <OpponentZone
+          opponent={fogged.opponent}
+          catastrophe={fogged.catastrophe}
+          onViewGrave={handleViewGrave}
         />
 
         {/* Game Board */}
-        <div className="flex flex-col items-center gap-2">
-          <GameBoard
-            playerPosition={playerPosition}
-            opponentPosition={opponentPosition}
-            selectedPosition={selectedBoardPosition}
-            highlightPositions={mapHighlightPositions}
-            rituals={fogged.board.rituals.map((r) => {
-              const meta = getCardMeta(r.cardId);
-              return {
-                x: r.pos.c,
-                y: r.pos.r,
-                name: meta?.name ?? r.cardId,
-                description: meta?.description,
-                isMine: myId ? r.owner === myId : false,
-              };
-            })}
-            onCellClick={handleBoardCellClick}
-          />
-
-          {selectedBoardPosition && (
-            <div className="bg-card text-card-foreground flex w-full max-w-md items-center justify-between rounded-lg border px-3 py-2 text-xs shadow-sm">
-              <div>
-                <div className="font-semibold">
-                  선택한 칸: ({selectedBoardPosition.x}, {selectedBoardPosition.y})
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={handleMoveToSelected}>
-                  이 칸으로 이동
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleUseRitualAtSelected}>
-                  마법진 사용
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        <BoardZone
+          playerPosition={playerPosition}
+          opponentPosition={opponentPosition}
+          selectedBoardPosition={selectedBoardPosition}
+          mapHighlightPositions={mapHighlightPositions}
+          rituals={fogged.board.rituals}
+          getCardMeta={getCardMeta}
+          myId={myId}
+          onCellClick={handleBoardCellClick}
+          onMoveToSelected={handleMoveToSelected}
+          onUseRitualAtSelected={handleUseRitualAtSelected}
+        />
 
         {/* Player Info + Logs + My Deck */}
-        <div className="grid grid-cols-3 gap-4">
-          <PlayerInfo
-            hp={fogged.me.hp}
-            maxHp={fogged.me.maxHp}
-            mana={fogged.me.mana}
-            maxMana={fogged.me.maxMana}
-            label="나"
-          />
-          <DeckInfo
-            deckCount={fogged.me.deckCount}
-            graveCount={fogged.me.graveCount}
-            grave={fogged.me.grave}
-            label="내 덱"
-            onViewGrave={() => handleViewGrave('me')}
-          />
-          <div className="col-span-3">
-            <GameLog logs={perspectiveLogs} />
-          </div>
-        </div>
+        <PlayerZone me={fogged.me} perspectiveLogs={perspectiveLogs} onViewGrave={handleViewGrave} />
 
         {/* My Hand */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm font-medium">내 손패 ({fogged.me.hand.length}장)</div>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleEndTurn}
-                disabled={!myId || !isMyTurn(myId)}
-              >
-                턴 종료
-              </Button>
-            </div>
-
-            {fogged.me.hand.length === 0 ? (
-              <div className="text-muted-foreground py-8 text-center text-xs">
-                손패가 비어 있습니다.
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-                {fogged.me.hand.map((handEntry, index) => {
-                  const meta = getCardMeta(handEntry.cardId);
-                  const displayName = meta?.name ?? handEntry.cardId;
-                  const mana = meta?.mana ?? 0;
-                  const description = meta?.description ?? '';
-
-                  return (
-                    <div key={handEntry.id} className="relative">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setSelectedCardIndex(selectedCardIndex === index ? null : index)
-                        }
-                        className={cn(
-                          'bg-card text-card-foreground w-full cursor-pointer rounded-lg border p-3 text-left shadow-sm transition-all hover:scale-105 hover:shadow-lg',
-                          selectedCardIndex === index && 'ring-primary scale-105 ring-2',
-                        )}
-                      >
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="text-xs font-semibold">{displayName}</span>
-                          <span className="bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
-                            {mana}
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground line-clamp-3 text-[11px]">
-                          {description}
-                        </p>
-                      </button>
-
-                      {selectedCardIndex === index && (
-                        <div className="pointer-events-none absolute right-0 -bottom-3 left-0 flex justify-center">
-                          <Button
-                            size="sm"
-                            className="pointer-events-auto h-7 px-2 text-[11px]"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePlayCard(index);
-                            }}
-                          >
-                            <Play className="mr-1 h-3 w-3" />
-                            사용
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <MyHand
+          hand={fogged.me.hand}
+          getCardMeta={getCardMeta}
+          selectedCardIndex={selectedCardIndex}
+          onSelectCard={(index) =>
+            setSelectedCardIndex(selectedCardIndex === index ? null : index)
+          }
+          onPlayCard={handlePlayCard}
+          onEndTurn={handleEndTurn}
+          isMyTurn={isMyTurn}
+          myId={myId}
+        />
       </div>
 
       <AnimationLayer
@@ -620,6 +412,7 @@ export default function Game() {
       />
       <RequestInputModal
         request={activeRequest}
+        dismissible={activeRequest?.type === 'mulligan'}
         onResponse={(response) => {
           if (!activeRequest) return;
           if (activeRequest.type === 'mulligan') {
@@ -647,45 +440,12 @@ export default function Game() {
       />
 
       {isGameOver && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="bg-card text-card-foreground border-primary/60 shadow-primary/40 mx-4 max-w-md rounded-2xl border p-8 text-center shadow-2xl">
-            <div className="mb-4 text-4xl font-extrabold tracking-tight">
-              {isWin && (
-                <span className="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]">
-                  승리!
-                </span>
-              )}
-              {isLose && (
-                <span className="text-rose-400 drop-shadow-[0_0_15px_rgba(244,63,94,0.8)]">
-                  패배…
-                </span>
-              )}
-              {!isWin && !isLose && (
-                <span className="text-amber-300 drop-shadow-[0_0_15px_rgba(252,211,77,0.8)]">
-                  무승부
-                </span>
-              )}
-            </div>
-            <p className="text-muted-foreground mb-6 text-sm">치열한 한 판이 끝났습니다.</p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                size="lg"
-                className="flex-1 font-semibold"
-                onClick={() => navigate('/review')}
-              >
-                리뷰하러 가기
-              </Button>
-              <Button
-                size="lg"
-                className="bg-primary text-primary-foreground flex-1 animate-pulse font-semibold"
-                onClick={() => navigate('/lobby')}
-              >
-                로비로 돌아가기
-              </Button>
-            </div>
-          </div>
-        </div>
+        <GameOverOverlay
+          isWin={Boolean(isWin)}
+          isLose={Boolean(isLose)}
+          onReview={() => navigate('/review')}
+          onLobby={() => navigate('/lobby')}
+        />
       )}
     </div>
   );

@@ -55,9 +55,7 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
   },
   applyStatePatch: (payload) => {
     const current = get().fogged;
-    console.log('[applyStatePatch] payload:', payload);
     if (!current) {
-      console.log('[applyStatePatch] No current fogged state. Skipping patch.');
       return;
     }
     // 카드 메타 정보 저장
@@ -81,11 +79,6 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
       version: payload.version,
       lastDiff: payload.diff_patch,
       logs: [...prevLogs, ...newLogs].slice(-100),
-    });
-    console.log('[applyStatePatch] State updated:', {
-      fogged: payload.fogged_state,
-      version: payload.version,
-      lastDiff: payload.diff_patch,
     });
   },
   setRequestInput: (payload) => set({ requestInput: payload }),

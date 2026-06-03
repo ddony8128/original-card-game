@@ -1100,4 +1100,86 @@ describe('GameEngineCore card simulation', () => {
     expect(engine.state.players[P1].hp).toBe(5);
     expect(engine.state.players[P2].hp).toBe(10);
   });
+
+  it('onTurnEnd 옵저버: 소유자 턴 종료 시 정확히 1회만 발동한다', async () => {
+    const state = createEmptyState();
+    state.players[P1].hand = [];
+    state.board.rituals.push({
+      id: 'rit_owner',
+      cardId: 'c01-010',
+      owner: P1,
+      pos: { r: 3, c: 2 },
+      usedThisTurn: false,
+    });
+
+    const engine = GameEngineCore.create(state, ctx, {
+      roomCode: 'test',
+      players: [P1, P2],
+    });
+
+    await engine.handlePlayerAction(P1, { action: 'end_turn' } as any);
+
+    // 직접 발사 + 옵저버 발사로 두 번 터지지 않고 정확히 1회(-1)만 적용
+    expect(engine.state.players[P2].hp).toBe(19);
+  });
+
+  it('onTurnEnd 옵저버: 상대 턴 종료 시에는 발동하지 않는다', async () => {
+    const state = createEmptyState();
+    state.activePlayer = P2;
+    state.board.rituals.push({
+      id: 'rit_owner',
+      cardId: 'c01-010',
+      owner: P1,
+      pos: { r: 3, c: 2 },
+      usedThisTurn: false,
+    });
+
+    const engine = GameEngineCore.create(state, ctx, {
+      roomCode: 'test',
+      players: [P1, P2],
+    });
+
+    // P2 가 턴을 종료해도, P1 소유 리추얼의 onTurnEnd 는 발동하지 않아야 한다.
+    await engine.handlePlayerAction(P2, { action: 'end_turn' } as any);
+
+    expect(engine.state.players[P2].hp).toBe(20);
+  });
+
+  it('onTurnEnd 옵저버: 리추얼이 제거되면 더 이상 발동하지 않는다', async () => {
+    const state = createEmptyState();
+    state.players[P1].hand = [];
+    state.board.rituals.push({
+      id: 'rit_owner',
+      cardId: 'c01-010',
+      owner: P1,
+      pos: { r: 3, c: 2 },
+      usedThisTurn: false,
+    });
+
+    const engine = GameEngineCore.create(state, ctx, {
+      roomCode: 'test',
+      players: [P1, P2],
+    });
+
+    // 먼저 한 번 발동시켜 옵저버가 등록되도록 한다 (-1).
+    await engine.handlePlayerAction(P1, { action: 'end_turn' } as any);
+    expect(engine.state.players[P2].hp).toBe(19);
+
+    // 리추얼 제거 (onDestroy 로 적에게 1 피해 → 18).
+    const diff: any = { animations: [], log: [] };
+    await (engine as any).destroyRitual({
+      owner: P1,
+      ritualId: 'rit_owner',
+      diff,
+      actor: P1,
+    });
+    await engine.stepUntilStable();
+    expect(engine.state.players[P2].hp).toBe(18);
+
+    // 제거 후 다시 P1 턴 종료 → 옵저버가 해제되어 onTurnEnd 가 발동하지 않음.
+    engine.state.activePlayer = P1;
+    engine.state.phase = GamePhase.WAITING_FOR_PLAYER_ACTION;
+    await engine.handlePlayerAction(P1, { action: 'end_turn' } as any);
+    expect(engine.state.players[P2].hp).toBe(18);
+  });
 });
