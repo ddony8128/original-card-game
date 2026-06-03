@@ -35,3 +35,6 @@
 - **Phase 2 전체 완료**: Epic A(4) + Epic B(5). 서버 109 test/1skip, 클라 38 test, tsc/lint/build 전부 green.
 - ⚠️ 실플레이 시각 QA(애니메이션 체감, 솔로 AI 대국 흐름)는 사용자 몫. 로직은 테스트로 보호됨.
 
+## B2+ — AI 휴리스틱 게임규칙 종합화 (사용자 피드백 반영)
+- [x] **B2+** naive '비싼 카드' → 데이터 주도 per-card 평가. (onCast 데미지 도달=enemy직격/near_enemy·choose_target는 거리≤range, 자기피해 제외; evalStepOnRitual=onDestroy 반전규칙으로 함정/파괴 판별; ongoingHarm). 우선순위 9단계: 치명타→내 공격 리추얼 사용→사거리내 데미지→체력낮으면 회복→해로운 상대리추얼 파괴(net이득)→사거리 진입 이동→유틸→전진→턴종료. 함정(onDestroy enemy=밟은이 피해) 회피, 파괴가치(onDestroy self/ongoing harm) 밟기. 테스트 +31(총140). 네트워크 차단으로 라이브 카드리스트 직접조회는 불가→스키마/엔진규칙 기반 일반화.
+
