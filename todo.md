@@ -32,7 +32,7 @@
 - [ ] **C-8** 미인증 lobby 접근 시 `/api/auth/me` 3회 요청
 
 ## A. 서버 엔진 — 구조 개선 (선택적, 회귀테스트 보호 하에)
-- [ ] **A-7** `type/gameEngine.ts`(실제 GameEngineAdapter 클래스) → `core/engine/`로 이동, type 폴더엔 순수 타입만
+- [x] **A-7** `type/gameEngine.ts`(GameEngineAdapter 클래스) → `core/engine/gameEngineAdapter.ts`로 이동. type 폴더는 순수 타입만 남음. tsc/lint/test✓
 - [ ] **A-4** `effectResolver.ts`(1372줄) case 로직을 개별 함수로 추출 (함수당 ≤300줄)
 - [ ] **A-5** EffectType enum ↔ resolver 콜백 맵 디스패치로 전환 (switch 제거)
 - [ ] **A-1** (선택) 구독 아키텍처 실사용: `TRIGGERED_EFFECT`에서 effectRef 실제 실행

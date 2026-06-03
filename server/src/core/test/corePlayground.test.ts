@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { GameState, PlayerID, CardID } from '../../type/gameState';
 import type { EngineContext, CardMeta } from '../context';
 import type { DeckList } from '../../type/deck';
-import { GameEngineAdapter } from '../../type/gameEngine';
+import { GameEngineAdapter } from '../engine/gameEngineAdapter';
 import {
   createInitialGameState,
   type PlayerDeckConfig,

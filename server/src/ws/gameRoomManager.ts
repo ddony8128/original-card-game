@@ -13,7 +13,7 @@ import type {
 } from '../type/wsProtocol';
 import { roomsService, type RoomRow } from '../services/rooms';
 import { decksService } from '../services/decks';
-import { GameEngineAdapter } from '../type/gameEngine';
+import { GameEngineAdapter } from '../core/engine/gameEngineAdapter';
 import {
   buildEngineContextFromDecks,
   createInitialGameState,
