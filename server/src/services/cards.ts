@@ -1,6 +1,10 @@
-import { supabase } from '../lib/supabase';
-import { Json, coerceJson } from '../type/json';
+import { Json } from '../type/json';
 import { CardID } from '../type/gameState';
+import {
+  getAllCardRows,
+  getCardRowById,
+  getCardRowsByIds,
+} from '../core/resources/cardResource';
 
 export type CardRow = {
   id: string;
@@ -15,37 +19,15 @@ export type CardRow = {
 
 export const cardsService = {
   async listAll(): Promise<CardRow[]> {
-    const { data, error } = await supabase.from('cards').select('*');
-    if (error) throw error;
-    const rows = (data ?? []) as Array<
-      Omit<CardRow, 'effect_json'> & { effect_json: unknown }
-    >;
-    return rows.map((r) => ({ ...r, effect_json: coerceJson(r.effect_json) }));
+    return getAllCardRows();
   },
 
   async getById(id: CardID): Promise<CardRow | null> {
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) return null;
-    const row = data as Omit<CardRow, 'effect_json'> & { effect_json: unknown };
-    return { ...row, effect_json: coerceJson(row.effect_json) };
+    return getCardRowById(id);
   },
 
   async getByIds(ids: CardID[]): Promise<CardRow[]> {
-    if (ids.length === 0) return [];
-    const { data, error } = await supabase
-      .from('cards')
-      .select('*')
-      .in('id', ids);
-    if (error) throw error;
-    const rows = (data ?? []) as Array<
-      Omit<CardRow, 'effect_json'> & { effect_json: unknown }
-    >;
-    return rows.map((r) => ({ ...r, effect_json: coerceJson(r.effect_json) }));
+    return getCardRowsByIds(ids);
   },
 
   async list(params: {
@@ -67,52 +49,58 @@ export const cardsService = {
     const from = paginate ? (page - 1) * limit : 0;
     const to = paginate ? from + limit - 1 : 0;
 
-    let query = supabase
-      .from('cards')
-      .select('*', { count: 'exact' })
-      .order('mana', { ascending: true, nullsFirst: true })
-      .order('name_ko', { ascending: true });
+    let rows = getAllCardRows();
 
     if (typeof params.mana === 'number' && Number.isFinite(params.mana)) {
       // mana=5가 들어오면 5 이상으로 필터 (5+)
       if (params.mana >= 5) {
-        query = query.gte('mana', 5);
+        rows = rows.filter((r) => r.mana !== null && r.mana >= 5);
       } else {
-        query = query.eq('mana', params.mana);
+        rows = rows.filter((r) => r.mana === params.mana);
       }
     }
 
     if (params.name && params.name.trim() !== '') {
-      const q = params.name.trim();
+      const q = params.name
+        .trim()
+        .replaceAll('.', '')
+        .replaceAll('%', '')
+        .toLowerCase();
       // name_dev 또는 name_ko 에 대해 부분 일치
-      query = query.or(
-        `name_dev.ilike.%${q.replaceAll('.', '').replaceAll('%', '')}%,name_ko.ilike.%${q
-          .replaceAll('.', '')
-          .replaceAll('%', '')}%`,
+      rows = rows.filter(
+        (r) =>
+          String(r.name_dev ?? '')
+            .toLowerCase()
+            .includes(q) ||
+          String(r.name_ko ?? '')
+            .toLowerCase()
+            .includes(q),
       );
     }
 
     if (typeof params.token === 'boolean') {
-      query = query.eq('token', params.token);
+      rows = rows.filter((r) => r.token === params.token);
     }
 
     if (params.type) {
-      query = query.eq('type', params.type);
+      rows = rows.filter((r) => r.type === params.type);
     }
 
-    const { data, error, count } = paginate
-      ? await query.range(from, to)
-      : await query;
-    if (error) throw error;
-    const rows = (data ?? []) as Array<
-      Omit<CardRow, 'effect_json'> & { effect_json: unknown }
-    >;
-    return {
-      items: rows.map((r) => ({
-        ...r,
-        effect_json: coerceJson(r.effect_json),
-      })),
-      total: count ?? rows.length,
-    };
+    // ORDER BY mana ASC NULLS FIRST, then name_ko ASC
+    rows = rows.slice().sort((a, b) => {
+      const am = a.mana;
+      const bm = b.mana;
+      if (am !== bm) {
+        if (am === null) return -1;
+        if (bm === null) return 1;
+        return am - bm;
+      }
+      return String(a.name_ko).localeCompare(String(b.name_ko));
+    });
+
+    const total = rows.length;
+    const items = paginate ? rows.slice(from, to + 1) : rows;
+
+    return { items, total };
   },
 };

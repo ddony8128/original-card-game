@@ -1,8 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { cardsService } from '../services/cards';
+import {
+  setCardRowsForTest,
+  resetCardResource,
+} from '../core/resources/cardResource';
+import { testCardRows } from './fixtures/cardRows';
 vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
 
 describe('cardsService', () => {
+  beforeEach(() => {
+    setCardRowsForTest(testCardRows);
+  });
+  afterEach(() => {
+    resetCardResource();
+  });
+
   it('list without pagination returns all', async () => {
     const { items, total } = await cardsService.list({});
     expect(items.length).toBe(total);

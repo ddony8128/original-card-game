@@ -1,13 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
 import { decksService } from '../services/decks';
-import { __getTables } from './__mocks__/supabase.js';
+import {
+  setCardRowsForTest,
+  resetCardResource,
+} from '../core/resources/cardResource';
+import { testCardRows } from './fixtures/cardRows';
 
 describe('decksService.validateAndHydrate', () => {
+  beforeEach(() => {
+    setCardRowsForTest(testCardRows);
+  });
+  afterEach(() => {
+    resetCardResource();
+  });
+
   it('should hydrate given valid lists', async () => {
-    const cards = __getTables().cards;
     // eslint-disable-next-line no-console
-    console.log('seed cards count:', cards.length);
+    console.log('seed cards count:', testCardRows.length);
     const main = [
       { id: 'c01-001', count: 2 },
       { id: 'c01-002', count: 2 },

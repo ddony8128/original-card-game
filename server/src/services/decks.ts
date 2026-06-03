@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { coerceDeckList, DeckList } from '../type/deck';
+import { getCardRowsByIds } from '../core/resources/cardResource';
 
 export type DeckRow = {
   id: string;
@@ -39,11 +40,7 @@ export const decksService = {
       new Set([...main.map((e) => e.id), ...cata.map((e) => e.id)]),
     );
 
-    const { data, error } = await supabase
-      .from('cards')
-      .select('id,name_dev,name_ko,description_ko,type,mana,token')
-      .in('id', ids);
-    if (error) throw error;
+    const cardRows = getCardRowsByIds(ids);
     const byId = new Map<
       string,
       {
@@ -56,7 +53,7 @@ export const decksService = {
         token: boolean;
       }
     >();
-    for (const row of data ?? []) byId.set((row as any).id, row as any);
+    for (const row of cardRows) byId.set(row.id, row as any);
 
     // 공통 제약: token=false
     const ensureRow = (id: string) => {

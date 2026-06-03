@@ -1,7 +1,12 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
 vi.mock('../lib/supabase', async () => await import('./__mocks__/supabase.js'));
 import request from 'supertest';
+import {
+  setCardRowsForTest,
+  resetCardResource,
+} from '../core/resources/cardResource';
+import { testCardRows } from './fixtures/cardRows';
 
 async function setupApp() {
   const mod = await import('../app.js');
@@ -27,9 +32,14 @@ describe('Decks routes', () => {
   let createdDeckIdUser2: string | undefined;
 
   beforeAll(async () => {
+    setCardRowsForTest(testCardRows);
     app = await setupApp();
     cookie = await loginCookie(app);
     cookie2 = await loginCookie(app);
+  });
+
+  afterAll(() => {
+    resetCardResource();
   });
 
   it('invalid shape -> 400', async () => {
