@@ -13,6 +13,7 @@ import type {
 } from '../type/wsProtocol';
 import { GameRoomManager } from './gameRoomManager';
 import type { SocketClient } from './socketManager';
+import { registerInvalidStrike } from './abuseGuard';
 
 /**
  * 서버 HTTP 인스턴스에 게임용 WebSocket 엔드포인트를 부착하는 헬퍼.
@@ -47,6 +48,18 @@ export function attachWebSocket(server: http.Server): WsApi {
 
   // 새 WS 연결이 수립될 때마다 호출
   wss.on('connection', (socket: SocketClient) => {
+    // 허용되지 않은 입력(파싱 실패/미인증 플러딩/알 수 없는 이벤트)이 임계치를
+    // 넘으면 단순 무시가 아니라 연결을 차단한다.
+    const registerStrike = () => {
+      if (registerInvalidStrike(socket)) {
+        console.warn('[WS] 허용되지 않은 메시지 누적, 연결 차단', {
+          userId: socket.userId,
+          roomCode: socket.roomCode,
+        });
+        socket.close();
+      }
+    };
+
     // 클라이언트 → 서버 메시지 처리
     socket.on('message', (buf) => {
       try {
@@ -63,7 +76,10 @@ export function attachWebSocket(server: http.Server): WsApi {
         // 1) ready: 방 입장 & 게임 준비 여부 알림
         if (event === 'ready') {
           const { roomCode, userId } = data as ReadyPayload;
-          if (!roomCode || !userId) return;
+          if (!roomCode || !userId) {
+            registerStrike();
+            return;
+          }
           // 참가자 여부 검증 및 방 참여/ready 처리는 GameRoomManager에서 수행
           void roomManager
             .handleReady(socket, { roomCode, userId })
@@ -81,7 +97,10 @@ export function attachWebSocket(server: http.Server): WsApi {
         //    ready 처럼 roomCode/userId 기록 이전에도 허용한다.
         if (event === 'join_chat') {
           const { roomCode, userId } = data as JoinChatPayload;
-          if (!roomCode || !userId) return;
+          if (!roomCode || !userId) {
+            registerStrike();
+            return;
+          }
           void roomManager
             .handleJoinChat(socket, { roomCode, userId })
             .catch((err) =>
@@ -94,8 +113,11 @@ export function attachWebSocket(server: http.Server): WsApi {
           return;
         }
 
-        // ready/join_chat 이전에는 roomCode/userId 정보가 없으므로, 그 외 이벤트는 무시
-        if (!socket.roomCode || !socket.userId) return;
+        // ready/join_chat 이전에는 roomCode/userId 정보가 없으므로, 그 외 이벤트는 차단 카운트 후 무시
+        if (!socket.roomCode || !socket.userId) {
+          registerStrike();
+          return;
+        }
         const roomCode = socket.roomCode;
         const userId = socket.userId as string;
 
@@ -154,10 +176,12 @@ export function attachWebSocket(server: http.Server): WsApi {
             break;
           }
           default:
+            registerStrike();
             break;
         }
       } catch {
-        // JSON 파싱 실패 등 잘못된 메시지는 조용히 무시
+        // JSON 파싱 실패 등 잘못된 메시지는 차단 카운트 후 무시
+        registerStrike();
       }
     });
 
