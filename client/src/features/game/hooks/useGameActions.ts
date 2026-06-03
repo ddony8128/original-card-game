@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import i18n from '@/i18n';
 import type { BoardPosition } from '@/components/game/GameBoard';
 import type { FoggedGameState, PlayerID } from '@/shared/types/game';
 import type { PlayerActionPayload } from '@/shared/types/ws';
@@ -42,7 +43,7 @@ export function useGameActions({
     if (!handEntry) return;
 
     if (!myId || !isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      toast.error(i18n.t('game.toastErrCannotAct'));
       return;
     }
 
@@ -50,21 +51,21 @@ export function useGameActions({
     const manaCost = meta?.mana ?? 0;
 
     if (!hasEnoughMana(manaCost)) {
-      toast.error('마나가 부족하여 카드를 사용할 수 없습니다.');
+      toast.error(i18n.t('game.toastErrNotEnoughManaCard'));
       return;
     }
 
     sendPlayerAction({ action: 'use_card', cardInstance: handEntry });
 
     setSelectedCardIndex(null);
-    toast.info('카드 사용', {
-      description: `${meta?.name ?? handEntry.id}을(를) 사용했습니다.`,
+    toast.info(i18n.t('game.toastCardUse'), {
+      description: i18n.t('game.toastCardUseDesc', { name: meta?.name ?? handEntry.id }),
     });
   };
 
   const handleEndTurn = () => {
     if (!myId || !isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      toast.error(i18n.t('game.toastErrCannotAct'));
       return;
     }
 
@@ -74,18 +75,18 @@ export function useGameActions({
   const handleMoveToSelected = () => {
     if (!fogged || !myId || !selectedBoardPosition) return;
     if (!isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      toast.error(i18n.t('game.toastErrCannotAct'));
       return;
     }
     if (!hasEnoughMana(1)) {
-      toast.error('마나가 부족하여 이동할 수 없습니다.');
+      toast.error(i18n.t('game.toastErrNotEnoughManaMove'));
       return;
     }
 
     const position = selectedBoardPosition;
     // 상대 마법사가 있는 칸으로는 이동 금지
     if (position.x === opponentPosition.x && position.y === opponentPosition.y) {
-      toast.error('상대 마법사가 있는 칸으로는 이동할 수 없습니다.');
+      toast.error(i18n.t('game.toastErrMoveOnOpponent'));
       return;
     }
 
@@ -94,20 +95,20 @@ export function useGameActions({
     const dy = Math.abs(playerPosition.y - position.y);
     const isAdjacent = (dx === 1 && dy === 0) || (dx === 0 && dy === 1);
     if (!isAdjacent) {
-      toast.error('인접한 칸으로만 이동할 수 있습니다.');
+      toast.error(i18n.t('game.toastErrMoveNotAdjacent'));
       return;
     }
 
     sendPlayerAction({ action: 'move', to: [position.y, position.x] });
-    toast.info('이동 시도', {
-      description: `셀 (${position.x}, ${position.y})으로 이동을 시도합니다.`,
+    toast.info(i18n.t('game.toastMoveTry'), {
+      description: i18n.t('game.toastMoveTryDesc', { x: position.x, y: position.y }),
     });
   };
 
   const handleUseRitualAtSelected = () => {
     if (!fogged || !myId || !selectedBoardPosition) return;
     if (!isMyTurn(myId)) {
-      toast.error('현재 내 턴이 아니거나 행동할 수 없는 상태입니다.');
+      toast.error(i18n.t('game.toastErrCannotAct'));
       return;
     }
 
@@ -118,14 +119,14 @@ export function useGameActions({
       (rt) => rt.owner === myId && rt.pos.r === r && rt.pos.c === c,
     );
     if (!ritual) {
-      toast.error('선택한 칸에 내가 사용할 수 있는 마법진이 없습니다.');
+      toast.error(i18n.t('game.toastErrNoRitual'));
       return;
     }
 
     // 서버 프로토콜은 확장 가능하므로 ritualId 필드를 함께 전송
     sendPlayerAction({ action: 'use_ritual', ritualId: ritual.id } as PlayerActionPayload);
-    toast.info('마법진 사용', {
-      description: `마법진 ${ritual.cardId}을(를) 사용했습니다.`,
+    toast.info(i18n.t('game.toastRitualUse'), {
+      description: i18n.t('game.toastRitualUseDesc', { cardId: ritual.cardId }),
     });
   };
 

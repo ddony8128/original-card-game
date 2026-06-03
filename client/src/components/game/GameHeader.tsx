@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { FoggedGameState } from '@/shared/types/game';
 import { cn } from '@/shared/lib/utils';
 import { useTurnTimer } from '@/features/game/hooks/useTurnTimer';
@@ -14,6 +15,7 @@ const tierColor: Record<string, string> = {
 };
 
 export function GameHeader({ turn, isMyTurn }: GameHeaderProps) {
+  const { t } = useTranslation();
   const { remaining, tier } = useTurnTimer(`${turn}-${isMyTurn}`);
 
   return (
@@ -26,12 +28,12 @@ export function GameHeader({ turn, isMyTurn }: GameHeaderProps) {
             : 'bg-secondary text-secondary-foreground',
         )}
       >
-        {isMyTurn ? '내 턴' : '상대 턴'}
+        {isMyTurn ? t('game.myTurn') : t('game.opponentTurn')}
       </span>
-      <span className="text-muted-foreground text-sm whitespace-nowrap">턴 {turn}</span>
+      <span className="text-muted-foreground text-sm whitespace-nowrap">{t('game.turnLabel', { turn })}</span>
       <span
         className={cn('font-mono text-sm font-bold whitespace-nowrap tabular-nums', tierColor[tier])}
-        aria-label="턴 타이머"
+        aria-label={t('game.turnTimer')}
       >
         ⏱ {remaining}s
       </span>

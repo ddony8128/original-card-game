@@ -1,31 +1,33 @@
 export interface TutorialStep {
-  title: string;
-  body: string;
+  /** i18n key for the step title (resolved at render). */
+  titleKey: string;
+  /** i18n key for the step body (resolved at render). */
+  bodyKey: string;
 }
 
 export const tutorialSteps: TutorialStep[] = [
   {
-    title: '튜토리얼에 오신 것을 환영합니다',
-    body: '이 게임의 목표는 상대 마법사의 HP를 0으로 만드는 것입니다. AI와 함께 기본 규칙을 익혀봅시다. 용어가 궁금하면 화면 상단의 ? 아이콘을 눌러 용어 설명을 확인하세요. (Tap the ? icon at the top to see term definitions.)',
+    titleKey: 'tutorial.step1Title',
+    bodyKey: 'tutorial.step1Body',
   },
   {
-    title: '게임판과 마법사',
-    body: '게임판 아래쪽에는 내 마법사가, 위쪽에는 상대 마법사가 있습니다. 카드와 이동으로 상대 마법사를 공격하세요.',
+    titleKey: 'tutorial.step2Title',
+    bodyKey: 'tutorial.step2Body',
   },
   {
-    title: '마나와 카드 사용',
-    body: '카드를 사용하려면 마나가 필요합니다. 지금 사용할 수 있는 카드는 손패에서 강조되어 표시됩니다.',
+    titleKey: 'tutorial.step3Title',
+    bodyKey: 'tutorial.step3Body',
   },
   {
-    title: '턴 구조',
-    body: '각 턴에 카드 사용·이동 등을 한 뒤, "턴 종료" 버튼을 눌러 차례를 넘깁니다. 그러면 상대(AI)의 턴이 진행됩니다.',
+    titleKey: 'tutorial.step4Title',
+    bodyKey: 'tutorial.step4Body',
   },
   {
-    title: '재앙 덱',
-    body: '재앙 덱은 양쪽 플레이어가 공유하며, 조건이 맞으면 자동으로 발동되어 판을 뒤흔듭니다. 항상 주의하세요.',
+    titleKey: 'tutorial.step5Title',
+    bodyKey: 'tutorial.step5Body',
   },
   {
-    title: '준비 완료',
-    body: '이제 AI와 대결해보세요! 배운 내용을 활용해 상대 마법사를 쓰러뜨리면 승리입니다.',
+    titleKey: 'tutorial.step6Title',
+    bodyKey: 'tutorial.step6Body',
   },
 ];

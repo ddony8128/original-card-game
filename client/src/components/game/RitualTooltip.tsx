@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export interface RitualTooltipViewModel {
@@ -17,6 +18,7 @@ interface RitualTooltipProps {
 }
 
 export function RitualTooltip({ ritual, position }: RitualTooltipProps) {
+  const { t } = useTranslation();
   return (
     <div
       className="pointer-events-none fixed z-50"
@@ -29,21 +31,19 @@ export function RitualTooltip({ ritual, position }: RitualTooltipProps) {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm">
             🔮 {ritual.name}
-            {ritual.usedThisTurn && <span className="text-muted-foreground text-xs">(사용됨)</span>}
+            {ritual.usedThisTurn && <span className="text-muted-foreground text-xs">{t('game.ritualUsed')}</span>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="text-muted-foreground text-xs">
-            <div>
-              위치: ({ritual.position.c}, {ritual.position.r})
-            </div>
-            <div>소유자: {ritual.ownerLabel}</div>
+            <div>{t('game.ritualPosition', { c: ritual.position.c, r: ritual.position.r })}</div>
+            <div>{t('game.ritualOwner', { owner: ritual.ownerLabel })}</div>
             <div className="text-foreground mt-2">{ritual.description}</div>
           </div>
 
           {ritual.mana !== undefined && (
             <div className="text-xs">
-              <span className="text-muted-foreground">마나:</span>{' '}
+              <span className="text-muted-foreground">{t('game.ritualMana')}</span>{' '}
               <span className="text-primary font-bold">{ritual.mana}</span>
             </div>
           )}

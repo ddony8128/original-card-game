@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
+import i18n from '@/i18n';
 import { createGameSocket, type GameSocket, type GameSocketMode } from '@/ws/gameSocket';
 import type { SoloMode } from '@/shared/types/ws';
 import { useGameFogStore } from '@/shared/store/gameStore';
@@ -83,15 +84,18 @@ export function useGameSocket({
 
     const offInvalidAction = socket.onEvent('invalid_action', (msg) => {
       const reason = (msg.data as { reason: string }).reason;
-      toast.error('잘못된 행동입니다.', {
+      toast.error(i18n.t('game.toastErrInvalidAction'), {
         description: reason,
       });
     });
 
     const offGameOver = socket.onEvent('game_over', (msg) => {
       const data = msg.data as GameOverPayload;
-      toast.info('게임 종료', {
-        description: `승자: ${data.winner ?? '없음'} / 이유: ${data.reason}`,
+      toast.info(i18n.t('game.toastGameOver'), {
+        description: i18n.t('game.toastGameOverDesc', {
+          winner: data.winner ?? i18n.t('game.winnerNone'),
+          reason: data.reason,
+        }),
       });
     });
 

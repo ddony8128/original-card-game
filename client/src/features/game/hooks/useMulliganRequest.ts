@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react';
+import i18n from '@/i18n';
 import type { AskMulliganPayload, AnswerMulliganPayload } from '@/shared/types/ws';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
@@ -25,7 +26,7 @@ export function useMulliganRequest({
     if (!mulligan) return null;
     return {
       type: 'mulligan',
-      prompt: '멀리건할 카드를 선택하세요.',
+      prompt: i18n.t('game.promptMulligan'),
       options: mulligan.initialHand.map((inst, idx) => {
         const cardId = inst.cardId;
         const meta = cardMetaById[cardId];

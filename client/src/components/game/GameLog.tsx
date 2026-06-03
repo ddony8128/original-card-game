@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/shared/lib/utils';
@@ -9,6 +10,7 @@ interface GameLogProps {
 }
 
 export function GameLog({ logs }: GameLogProps) {
+  const { t } = useTranslation();
   const items = logs ?? [];
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -20,13 +22,13 @@ export function GameLog({ logs }: GameLogProps) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-sm">게임 로그</CardTitle>
+        <CardTitle className="text-sm">{t('game.gameLog')}</CardTitle>
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-32">
           {items.length === 0 ? (
             <div className="text-muted-foreground py-4 text-center text-xs">
-              게임 로그가 없습니다
+              {t('game.emptyGameLog')}
             </div>
           ) : (
             <div className="space-y-1">
@@ -42,7 +44,7 @@ export function GameLog({ logs }: GameLogProps) {
                         : 'text-muted-foreground',
                     )}
                   >
-                    <span className="font-semibold">턴 {log.turn}</span> - {log.text}
+                    <span className="font-semibold">{t('game.logTurn', { turn: log.turn })}</span> - {log.text}
                   </div>
                 );
               })}

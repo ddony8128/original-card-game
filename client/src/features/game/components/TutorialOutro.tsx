@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useLangNavigate } from '@/i18n/nav';
 import { Hammer, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { useGameFogStore } from '@/shared/store/gameStore';
  * 게임 종료 전에는 아무것도 렌더하지 않는다.
  */
 export function TutorialOutro() {
+  const { t } = useTranslation();
   const navigate = useLangNavigate();
   const fogged = useGameFogStore((s) => s.fogged);
 
@@ -24,12 +26,12 @@ export function TutorialOutro() {
             <Sparkles className="h-10 w-10 drop-shadow-[0_0_12px_rgba(252,211,77,0.8)]" />
           </div>
           <CardTitle className="text-2xl text-amber-300 drop-shadow-[0_0_12px_rgba(252,211,77,0.6)]">
-            튜토리얼 완료!
+            {t('tutorial.outroTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-muted-foreground text-sm leading-relaxed">
-            이제 나만의 덱을 만들어 보세요.
+            {t('tutorial.outroBody')}
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button
@@ -38,7 +40,7 @@ export function TutorialOutro() {
               onClick={() => navigate('/deck-builder')}
             >
               <Hammer className="mr-2 h-4 w-4" />
-              덱 만들러 가기
+              {t('tutorial.outroBuildDeck')}
             </Button>
             <Button
               variant="outline"
@@ -46,7 +48,7 @@ export function TutorialOutro() {
               className="flex-1 font-semibold"
               onClick={() => navigate('/lobby')}
             >
-              로비로
+              {t('tutorial.outroLobby')}
             </Button>
           </div>
         </CardContent>

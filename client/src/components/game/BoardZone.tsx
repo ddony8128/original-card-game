@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { GameBoard, type BoardPosition } from '@/components/game/GameBoard';
 import { Button } from '@/components/ui/button';
 import type { FoggedGameState } from '@/shared/types/game';
@@ -28,6 +29,7 @@ export function BoardZone({
   onMoveToSelected,
   onUseRitualAtSelected,
 }: BoardZoneProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center gap-2">
       <GameBoard
@@ -52,15 +54,15 @@ export function BoardZone({
         <div className="bg-card text-card-foreground flex w-full max-w-md items-center justify-between rounded-lg border px-3 py-2 text-xs shadow-sm">
           <div>
             <div className="font-semibold">
-              선택한 칸: ({selectedBoardPosition.x}, {selectedBoardPosition.y})
+              {t('game.selectedCell', { x: selectedBoardPosition.x, y: selectedBoardPosition.y })}
             </div>
           </div>
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={onMoveToSelected}>
-              이 칸으로 이동
+              {t('game.moveToCell')}
             </Button>
             <Button size="sm" variant="outline" onClick={onUseRitualAtSelected}>
-              마법진 사용
+              {t('game.useRitual')}
             </Button>
           </div>
         </div>

@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GraduationCap, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { tutorialSteps } from './tutorialSteps';
 
 export function TutorialOverlay() {
+  const { t } = useTranslation();
   const [closed, setClosed] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -42,7 +44,7 @@ export function TutorialOverlay() {
         onClick={handleReopen}
       >
         <GraduationCap className="mr-2 h-4 w-4" />
-        튜토리얼 다시 보기
+        {t('tutorial.replay')}
       </Button>
     );
   }
@@ -53,31 +55,31 @@ export function TutorialOverlay() {
         <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
           <div className="space-y-1">
             <p className="text-muted-foreground text-xs">
-              튜토리얼 {stepIndex + 1} / {tutorialSteps.length}
+              {t('tutorial.progress', { current: stepIndex + 1, total: tutorialSteps.length })}
             </p>
-            <CardTitle className="text-lg">{step.title}</CardTitle>
+            <CardTitle className="text-lg">{t(step.titleKey)}</CardTitle>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            aria-label="튜토리얼 닫기"
+            aria-label={t('tutorial.close')}
             onClick={handleSkip}
           >
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-muted-foreground text-sm leading-relaxed">{step.body}</p>
+          <p className="text-muted-foreground text-sm leading-relaxed">{t(step.bodyKey)}</p>
           <div className="flex items-center justify-between gap-2">
             <Button variant="ghost" size="sm" onClick={handleSkip}>
-              건너뛰기
+              {t('tutorial.skip')}
             </Button>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handlePrev} disabled={isFirst}>
-                이전
+                {t('tutorial.prev')}
               </Button>
               <Button size="sm" onClick={handleNext}>
-                {isLast ? '시작' : '다음'}
+                {isLast ? t('tutorial.start') : t('tutorial.next')}
               </Button>
             </div>
           </div>

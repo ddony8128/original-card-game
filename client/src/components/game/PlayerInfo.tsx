@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Heart, Droplet } from 'lucide-react';
 
@@ -10,6 +11,7 @@ interface PlayerInfoProps {
 }
 
 export function PlayerInfo({ hp, maxHp, mana, maxMana, label }: PlayerInfoProps) {
+  const { t } = useTranslation();
   const displayMaxHp = maxHp ?? hp;
 
   return (
@@ -35,7 +37,7 @@ export function PlayerInfo({ hp, maxHp, mana, maxMana, label }: PlayerInfoProps)
                 {mana}/{maxMana}
               </div>
             </div>
-            <div className="text-muted-foreground text-xs">마나</div>
+            <div className="text-muted-foreground text-xs">{t('game.mana')}</div>
           </CardContent>
         </Card>
       </div>

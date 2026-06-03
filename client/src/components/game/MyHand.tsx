@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Play } from 'lucide-react';
@@ -29,25 +30,26 @@ export function MyHand({
   myId,
   canAfford,
 }: MyHandProps) {
+  const { t } = useTranslation();
   const myTurn = !!myId && isMyTurn(myId);
   return (
     <Card>
       <CardContent className="pt-6">
         <div className="mb-3 flex items-center justify-between">
-          <div className="text-sm font-medium">내 손패 ({hand.length}장)</div>
+          <div className="text-sm font-medium">{t('game.myHandCount', { count: hand.length })}</div>
           <Button
             size="sm"
             variant="secondary"
             onClick={onEndTurn}
             disabled={!myId || !isMyTurn(myId)}
           >
-            턴 종료
+            {t('game.endTurn')}
           </Button>
         </div>
 
         {hand.length === 0 ? (
           <div className="text-muted-foreground py-8 text-center text-xs">
-            손패가 비어 있습니다.
+            {t('game.emptyHand')}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
@@ -93,7 +95,7 @@ export function MyHand({
                         }}
                       >
                         <Play className="mr-1 h-3 w-3" />
-                        사용
+                        {t('game.use')}
                       </Button>
                     </div>
                   )}

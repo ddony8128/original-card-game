@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { PlayerInfo } from '@/components/game/PlayerInfo';
 import { DeckInfo, CatastropheDeckInfo } from '@/components/game/DeckInfo';
 import { OpponentHand } from '@/components/game/OpponentHand';
@@ -10,6 +11,7 @@ interface OpponentZoneProps {
 }
 
 export function OpponentZone({ opponent, catastrophe, onViewGrave }: OpponentZoneProps) {
+  const { t } = useTranslation();
   return (
     <>
       {/* Opponent Info */}
@@ -19,11 +21,11 @@ export function OpponentZone({ opponent, catastrophe, onViewGrave }: OpponentZon
           maxHp={opponent.maxHp}
           mana={opponent.mana}
           maxMana={opponent.maxMana}
-          label="상대"
+          label={t('game.opponent')}
         />
         <div className="flex min-w-0 flex-col justify-center">
           <div className="text-muted-foreground mb-2 text-center text-[11px] sm:text-xs">
-            상대 손패 ({opponent.handCount}장)
+            {t('game.opponentHandCount', { count: opponent.handCount })}
           </div>
           <OpponentHand cardCount={opponent.handCount} />
         </div>
@@ -31,7 +33,7 @@ export function OpponentZone({ opponent, catastrophe, onViewGrave }: OpponentZon
           deckCount={opponent.deckCount}
           graveCount={opponent.graveCount}
           grave={opponent.grave}
-          label="상대 덱"
+          label={t('game.opponentDeck')}
           onViewGrave={() => onViewGrave('opponent')}
         />
       </div>

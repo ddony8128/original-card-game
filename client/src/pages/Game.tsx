@@ -93,10 +93,10 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
   useEffect(() => {
     if (!isSolo || decksLoading) return;
     if (!decks || decks.length === 0) {
-      toast.error('덱을 먼저 만들어주세요');
+      toast.error(t('game.needDeck'));
       navigate('/deck-builder');
     }
-  }, [isSolo, decks, decksLoading, navigate]);
+  }, [isSolo, decks, decksLoading, navigate, t]);
 
   useEffect(() => {
     if (!me) {
@@ -128,14 +128,14 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
     return logs.map((log) => {
       let text = log.text;
       if (myId) {
-        text = text.replaceAll(`플레이어 ${myId}`, '내');
+        text = text.replaceAll(`플레이어 ${myId}`, t('game.logSelf'));
       }
       if (opponentId) {
-        text = text.replaceAll(`플레이어 ${opponentId}`, '상대');
+        text = text.replaceAll(`플레이어 ${opponentId}`, t('game.logOpponent'));
       }
       return { ...log, text };
     });
-  }, [logs, myId, fogged]);
+  }, [logs, myId, fogged, t]);
 
   // ---- request_input 해석 ----
 
@@ -284,8 +284,8 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
     return (
       <div className="from-background via-background to-accent/10 flex min-h-screen items-center justify-center bg-linear-to-br">
         <div className="text-center">
-          <p className="text-muted-foreground mb-2 text-sm">게임 상태를 불러오는 중입니다.</p>
-          <p className="text-muted-foreground text-xs">상대가 게임에 입장했는지 확인해주세요.</p>
+          <p className="text-muted-foreground mb-2 text-sm">{t('game.loadingState')}</p>
+          <p className="text-muted-foreground text-xs">{t('game.loadingStateHint')}</p>
         </div>
       </div>
     );
@@ -372,22 +372,22 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
               maxSelect = count;
               prompt =
                 type === 'discard'
-                  ? `버릴 카드를 ${count}장 선택하세요.`
-                  : `소멸(burn)할 카드를 ${count}장 선택하세요.`;
+                  ? t('game.promptDiscardCount', { count })
+                  : t('game.promptBurnCount', { count });
             } else {
               // 선택지가 부족하면 "모두 선택"해야 진행 가능
               minSelect = totalOptions;
               maxSelect = totalOptions;
               prompt =
                 type === 'discard'
-                  ? `버릴 수 있는 카드는 ${totalOptions}장뿐입니다. 모든 카드를 선택하면 진행됩니다.`
-                  : `소멸(burn)할 수 있는 카드는 ${totalOptions}장뿐입니다. 모든 카드를 선택하면 진행됩니다.`;
+                  ? t('game.promptDiscardAll', { count: totalOptions })
+                  : t('game.promptBurnAll', { count: totalOptions });
             }
           } else {
             // 일반 option 입력: 기본적으로 1개 선택
             minSelect = 1;
             maxSelect = 1;
-            prompt = `입력이 필요합니다: ${kindId}`;
+            prompt = t('game.promptInputNeeded', { kind: kindId });
           }
 
           return {
@@ -404,10 +404,10 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
 
   const graveModalTitle =
     graveModalType === 'me'
-      ? '내 버린 카드'
+      ? t('game.graveMine')
       : graveModalType === 'opponent'
-        ? '상대 버린 카드'
-        : '재앙 덱 버린 카드';
+        ? t('game.graveOpponent')
+        : t('game.graveCatastrophe');
 
   return (
     <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4">
@@ -416,7 +416,7 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={() => navigate('/lobby')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            로비
+            {t('game.lobby')}
           </Button>
           <Button
             variant="ghost"

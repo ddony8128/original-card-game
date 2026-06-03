@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ export function RequestInputModal({
   dismissible = true,
 }: RequestInputModalProps) {
   const [selectedOptions, setSelectedOptions] = useState<InputOption[]>([]);
+  const { t } = useTranslation();
 
   if (!request) return null;
 
@@ -98,12 +100,12 @@ export function RequestInputModal({
       >
         <DialogHeader>
           <DialogTitle>
-            {request.type === 'mulligan' && '🔄 멀리건'}
-            {request.type === 'move' && '🚶 이동'}
-            {request.type === 'target' && '🎯 대상 선택'}
-            {request.type === 'discard' && '🗑️ 카드 버리기'}
-            {request.type === 'burn' && '🔥 카드 폐기'}
-            {request.type === 'ritual_placement' && '🔮 Ritual 설치'}
+            {request.type === 'mulligan' && t('game.reqMulligan')}
+            {request.type === 'move' && t('game.reqMove')}
+            {request.type === 'target' && t('game.reqTarget')}
+            {request.type === 'discard' && t('game.reqDiscard')}
+            {request.type === 'burn' && t('game.reqBurn')}
+            {request.type === 'ritual_placement' && t('game.reqRitualPlacement')}
           </DialogTitle>
           <DialogDescription>{request.prompt}</DialogDescription>
         </DialogHeader>
@@ -133,7 +135,7 @@ export function RequestInputModal({
                         {'mana' in option &&
                           typeof (option as { mana?: unknown }).mana === 'number' && (
                             <div className="text-xs">
-                              마나: {(option as { mana?: number }).mana}
+                              {t('game.optMana', { mana: (option as { mana?: number }).mana })}
                             </div>
                           )}
                         {'description' in option &&
@@ -149,8 +151,10 @@ export function RequestInputModal({
                       'x' in option &&
                       'y' in option && (
                         <div className="text-sm">
-                          위치: {(option as { x: number; y: number }).x},{' '}
-                          {(option as { x: number; y: number }).y}
+                          {t('game.optPosition', {
+                            x: (option as { x: number; y: number }).x,
+                            y: (option as { x: number; y: number }).y,
+                          })}
                         </div>
                       )}
                     {typeof option === 'string' && <div className="text-sm">{option}</div>}
@@ -164,11 +168,11 @@ export function RequestInputModal({
           <div className="flex justify-end gap-2">
             {onCancel && dismissible && (
               <Button variant="outline" onClick={handleClose}>
-                취소
+                {t('game.cancel')}
               </Button>
             )}
             <Button onClick={handleConfirm} disabled={!canConfirm}>
-              확인
+              {t('game.confirm')}
             </Button>
           </div>
         </div>
