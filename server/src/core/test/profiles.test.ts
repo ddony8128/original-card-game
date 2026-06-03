@@ -112,17 +112,17 @@ describe('getProfile', () => {
   });
 
   it('encodes the documented playstyle params', () => {
-    expect(getProfile('bruiser').holdUntilKill).toEqual([
-      'c01-002',
-      'c01-004',
-      'c01-024',
-      'c01-012',
-    ]);
+    // bruiser: aggressive melee rush — no preferredDistance, only the finisher held.
+    expect(getProfile('bruiser').holdUntilKill).toEqual(['c01-024']);
+    expect(getProfile('bruiser').preferredDistance).toBeUndefined();
+    // disruptor: spam engine cards, keep distance 2 (less aimless kiting).
     expect(getProfile('disruptor').spamPriority).toEqual([
       'c01-007',
       'c01-021',
     ]);
-    expect(getProfile('control').aggressionManaThreshold).toBe(5);
+    expect(getProfile('disruptor').preferredDistance).toBe(2);
+    // control: lowered aggression threshold to 4 (slightly less passive early).
+    expect(getProfile('control').aggressionManaThreshold).toBe(4);
     expect(getProfile('control').prioritizeRituals).toBe(true);
     expect(getProfile('control').cycleCards).toEqual([
       'c01-027',
@@ -177,39 +177,26 @@ describe('default profile == current behavior', () => {
   });
 });
 
-describe('bruiser profile (holdUntilKill)', () => {
-  // c01-002 마나담긴찌르기: near_enemy range1 dmg2 (held unless kill-angle).
+describe('bruiser profile (aggressive melee rush)', () => {
+  // c01-002 마나담긴찌르기: near_enemy range1 dmg2 — freely used (no longer held).
+  // c01-024 병 주고 약 주기: the finisher, held until kill-angle.
   const bruiserGetMeta = makeGetMetaRich({
     'c01-002': {
       mana: 0,
       effectJson: onCast(dmg(2, 'near_enemy', { range: 1 })),
     },
+    'c01-024': {
+      mana: 0,
+      effectJson: onCast(dmg(2, 'near_enemy', { range: 1 })),
+    },
   });
 
-  it('does NOT play c01-002 when opp.hp is high (not a kill-angle)', () => {
-    // adjacent (dist 1) so the card WOULD be in range — but it's held.
+  it('FREELY plays its melee card c01-002 in range even when not a kill-angle', () => {
+    // adjacent (dist 1), opp healthy: bruiser no longer holds melee -> attacks.
     const state = makeState({
       p1: { mana: 5, hand: [card('h1', 'c01-002')] },
       p2: { hp: 20 },
       wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } },
-    });
-    const action = chooseAIAction(
-      state,
-      P1,
-      bruiserGetMeta,
-      zeroRand,
-      getProfile('bruiser'),
-    );
-    expect(
-      action.kind === 'use_card' && action.cardInstance.cardId === 'c01-002',
-    ).toBe(false);
-  });
-
-  it('DOES play c01-002 when it is a kill-angle (opp.hp <= reachable dmg)', () => {
-    const state = makeState({
-      p1: { mana: 5, hand: [card('h1', 'c01-002')] },
-      p2: { hp: 2 },
-      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } }, // dist 1, in range
     });
     const action = chooseAIAction(
       state,
@@ -223,25 +210,62 @@ describe('bruiser profile (holdUntilKill)', () => {
     );
   });
 
-  it('keeps preferred distance instead of walking into melee when idle', () => {
-    // No usable cards; adjacent to opp -> bruiser keeps distance (retreats).
+  it('HOLDS the finisher c01-024 until it is a kill-angle', () => {
+    // opp healthy, finisher in range but held (not a kill-angle).
     const state = makeState({
-      p1: { mana: 5, hand: [] },
+      p1: { mana: 5, hand: [card('h1', 'c01-024')] },
       p2: { hp: 20 },
-      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } }, // dist 1 < 2
+      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } },
     });
     const action = chooseAIAction(
       state,
       P1,
-      makeGetMetaRich({}),
+      bruiserGetMeta,
+      zeroRand,
+      getProfile('bruiser'),
+    );
+    expect(
+      action.kind === 'use_card' && action.cardInstance.cardId === 'c01-024',
+    ).toBe(false);
+  });
+
+  it('DOES play the finisher c01-024 when it is a kill-angle', () => {
+    const state = makeState({
+      p1: { mana: 5, hand: [card('h1', 'c01-024')] },
+      p2: { hp: 2 },
+      wizards: { [P1]: { r: 2, c: 2 }, [P2]: { r: 1, c: 2 } }, // dist 1, in range
+    });
+    const action = chooseAIAction(
+      state,
+      P1,
+      bruiserGetMeta,
+      zeroRand,
+      getProfile('bruiser'),
+    );
+    expect(action.kind === 'use_card' && action.cardInstance.cardId).toBe(
+      'c01-024',
+    );
+  });
+
+  it('CLOSES distance into melee range when holding an out-of-range melee card', () => {
+    // dist 3 > range 1: bruiser has no preferredDistance -> it advances to engage.
+    const state = makeState({
+      p1: { mana: 5, hand: [card('h1', 'c01-002')] },
+      p2: { hp: 20 },
+      wizards: { [P1]: { r: 4, c: 2 }, [P2]: { r: 1, c: 2 } }, // dist 3
+    });
+    const action = chooseAIAction(
+      state,
+      P1,
+      bruiserGetMeta,
       zeroRand,
       getProfile('bruiser'),
     );
     expect(action.kind).toBe('move');
-    // moving away increases distance from opp at (1,2).
     if (action.kind === 'move') {
+      // moves strictly closer to opp at (1,2).
       const d = Math.abs(action.to.r - 1) + Math.abs(action.to.c - 2);
-      expect(d).toBeGreaterThan(1);
+      expect(d).toBeLessThan(3);
     }
   });
 });
@@ -311,6 +335,63 @@ describe('disruptor profile (spamPriority)', () => {
       'bolt',
     );
   });
+
+  it('HEALS at critical HP instead of spamming a disruption card', () => {
+    // hp 3 / maxHp 20 -> emergency-heal rung fires BEFORE spamPriority.
+    const healGetMeta = makeGetMetaRich({
+      'c01-007': {
+        mana: 1,
+        effectJson: onCast({ type: 'draw', value: 1, target: 'self' }),
+      },
+      heal: { mana: 2, effectJson: onCast({ type: 'heal', value: 5, target: 'self' }) },
+    });
+    const state = makeState({
+      p1: {
+        mana: 5,
+        hp: 3,
+        maxHp: 20,
+        hand: [card('h1', 'c01-007'), card('h2', 'heal')],
+      },
+      p2: { hp: 20 },
+    });
+    const action = chooseAIAction(
+      state,
+      P1,
+      healGetMeta,
+      zeroRand,
+      getProfile('disruptor'),
+    );
+    expect(action.kind === 'use_card' && action.cardInstance.cardId).toBe(
+      'heal',
+    );
+  });
+
+  it('still commits a kill-angle even when at critical HP (lethal beats heal)', () => {
+    // hp 3 critical, but bolt is lethal on enemy hp 3 -> KILL, do not heal.
+    const killGetMeta = makeGetMetaRich({
+      bolt: { mana: 2, effectJson: onCast(dmg(5, 'enemy')) },
+      heal: { mana: 2, effectJson: onCast({ type: 'heal', value: 5, target: 'self' }) },
+    });
+    const state = makeState({
+      p1: {
+        mana: 5,
+        hp: 3,
+        maxHp: 20,
+        hand: [card('h1', 'bolt'), card('h2', 'heal')],
+      },
+      p2: { hp: 3 },
+    });
+    const action = chooseAIAction(
+      state,
+      P1,
+      killGetMeta,
+      zeroRand,
+      getProfile('disruptor'),
+    );
+    expect(action.kind === 'use_card' && action.cardInstance.cardId).toBe(
+      'bolt',
+    );
+  });
 });
 
 describe('control profile (rituals + aggression threshold)', () => {
@@ -360,8 +441,8 @@ describe('control profile (rituals + aggression threshold)', () => {
     );
   });
 
-  it('holds offense until maxMana reaches threshold (5): keeps distance / cycles', () => {
-    // maxMana 3 < 5 -> do NOT commit the in-range damage card. Cycle instead.
+  it('holds offense until maxMana reaches threshold (4): keeps distance / cycles', () => {
+    // maxMana 3 < 4 -> do NOT commit the in-range damage card. Cycle instead.
     const state = makeState({
       p1: {
         mana: 3,

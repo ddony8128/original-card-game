@@ -34,33 +34,35 @@ export interface AIProfile {
 const DEFAULT_PROFILE: AIProfile = { id: 'default' };
 
 /**
- * stage-1 무투법사: 적정 거리 유지, 킬각 볼 때 버스트.
- * 마나담긴찌르기/각력강화/병주고약주기/카드날리기는 킬각에만 사용.
+ * stage-1 무투법사(공격적 근접 러쉬): 거리유지 없이 자유롭게 근접 카드를 쓰고
+ * 거리를 좁힌다(접근은 base 사다리의 close-into-range/advance 가 담당).
+ * 마나담긴찌르기/각력강화/인중은 자유롭게 사용하고, 피니셔 병 주고 약 주기(c01-024)만
+ * 킬각에서 commit 한다(holdUntilKill). spam/ritual-priority/mana threshold 없음.
  */
 const BRUISER_PROFILE: AIProfile = {
   id: 'bruiser',
-  preferredDistance: 2,
-  holdUntilKill: ['c01-002', 'c01-004', 'c01-024', 'c01-012'],
+  holdUntilKill: ['c01-024'],
 };
 
 /**
  * stage-2 게임 개같이 하네: 킬각 없으면 치킨게임/게임개같이하네 스팸.
- * 당장 못 쓰면 3칸 이상 거리 유지.
+ * 당장 못 쓰면 2칸 거리 유지(과한 카이팅 방지). holdUntilKill 없음.
+ * (생존/킬각이 spam 보다 먼저 처리된다 — heuristic 의 E/1 rung.)
  */
 const DISRUPTOR_PROFILE: AIProfile = {
   id: 'disruptor',
-  preferredDistance: 3,
+  preferredDistance: 2,
   spamPriority: ['c01-007', 'c01-021'],
 };
 
 /**
- * stage-3 노루 약해요: 5마나 될 때까지 거리유지 / 지맥·지력흡수 설치.
+ * stage-3 노루 약해요: 4마나 될 때까지 거리유지 / 지맥·지력흡수 설치.
  * 이후 좋은게임/전력질주/운기조식/독서로 사이클, 지진/운석 반복.
  */
 const CONTROL_PROFILE: AIProfile = {
   id: 'control',
   preferredDistance: 3,
-  aggressionManaThreshold: 5,
+  aggressionManaThreshold: 4,
   prioritizeRituals: true,
   cycleCards: ['c01-027', 'c01-029', 'c01-003', 'c01-008'],
 };

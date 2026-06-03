@@ -35,8 +35,10 @@ function pickRandom<T>(items: T[], rand: () => number): T {
  * 우선순위 사다리(첫 번째로 적용 가능한 행동을 반환):
  *  0. 킬각(kill-angle): 이번 턴 도달 가능한 총 데미지 >= opp.hp 이면 버스트 카드부터 commit.
  *     (단일 카드 lethal 은 이 킬각의 부분집합이다.)
- *  P. (프로필) spamPriority: 킬각이 아니면 교란/엔진 카드를 최우선 사용.
  *  1. 치명타(lethal): 사거리 내 onCast 데미지로 상대를 끝낼 수 있으면 그 카드.
+ *  E. 비상 회복(emergency heal, 모든 프로필): hp <= ceil(maxHp*0.35) 이면 손에 있는
+ *     affordable self-heal 카드를 즉시 사용(최대 회복). 생존이 프로필 special-action 보다 우선.
+ *  P. (프로필) spamPriority: 킬각이 아니면 교란/엔진 카드를 최우선 사용.
  *  2. 상대를 때리는 보유 ritual 사용(use_ritual).
  *  R. (프로필) prioritizeRituals: ritual 설치/사용을 데미지보다 먼저 셋업.
  *  3. 사거리 내 데미지 카드(hitDamage 최대). (aggressionManaThreshold 미만이면 보류)
@@ -125,15 +127,6 @@ export function chooseAIAction(
     ai !== undefined &&
     ai.maxMana < profile.aggressionManaThreshold;
 
-  // ── P. (profile) spamPriority: 킬각이 아니면 교란/엔진 카드 최우선 ────────
-  if (!killAngle && profile.spamPriority && profile.spamPriority.length > 0) {
-    const prioSet = new Set(profile.spamPriority);
-    const best = playableCardActions.filter((a) =>
-      prioSet.has(a.cardInstance.cardId),
-    );
-    if (best.length > 0) return pickRandom(best, rand);
-  }
-
   // ── 1. Lethal ──────────────────────────────────────────────────────────
   if (opp && oppWizard) {
     let bestDmg = -Infinity;
@@ -151,6 +144,38 @@ export function chooseAIAction(
       }
     }
     if (lethal.length > 0) return pickRandom(lethal, rand);
+  }
+
+  // ── E. Emergency heal (ALL profiles incl. default) ─────────────────────
+  // 킬각/치명타가 아닌데 체력이 위태로우면(hp <= ceil(maxHp * 0.35)),
+  // 손에 있는 affordable self-heal 카드를 즉시 사용해 게임을 던지지 않는다.
+  // 이 rung 은 프로필 special-action(spamPriority 등)보다 반드시 우선한다.
+  if (ai && ai.hp <= Math.ceil(ai.maxHp * 0.35)) {
+    let bestHeal = 0;
+    let bestMana = -Infinity;
+    let best: UseCardAction[] = [];
+    for (const a of cardActions) {
+      const heal = onCastSelfHeal(getMeta(a.cardInstance.cardId));
+      if (heal <= 0) continue;
+      const m = mana(a.cardInstance.cardId);
+      if (heal > bestHeal || (heal === bestHeal && m > bestMana)) {
+        bestHeal = heal;
+        bestMana = m;
+        best = [a];
+      } else if (heal === bestHeal && m === bestMana) {
+        best.push(a);
+      }
+    }
+    if (best.length > 0) return pickRandom(best, rand);
+  }
+
+  // ── P. (profile) spamPriority: 킬각이 아니면 교란/엔진 카드 최우선 ────────
+  if (!killAngle && profile.spamPriority && profile.spamPriority.length > 0) {
+    const prioSet = new Set(profile.spamPriority);
+    const best = playableCardActions.filter((a) =>
+      prioSet.has(a.cardInstance.cardId),
+    );
+    if (best.length > 0) return pickRandom(best, rand);
   }
 
   // ── 2. Use own ready ritual that damages the enemy ─────────────────────
