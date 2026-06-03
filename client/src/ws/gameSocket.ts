@@ -7,6 +7,7 @@ import type {
   AnswerMulliganPayload,
   PlayerActionPayload,
   PlayerInputPayload,
+  StartSoloPayload,
 } from '@/shared/types/ws';
 
 /**
@@ -14,8 +15,9 @@ import type {
  * - 'game': 연결 시 자동으로 `ready` 를 보내 게임 시작 흐름에 참여한다(기존 동작).
  * - 'chat': 연결 시 `ready` 대신 `join_chat` 을 보내 게임 시작을 발동시키지 않고
  *           대기실 채팅용으로만 방에 참여한다.
+ * - 'solo': 연결 시 `start_solo` 를 보내 AI 와의 싱글플레이 게임을 시작한다.
  */
-export type GameSocketMode = 'game' | 'chat';
+export type GameSocketMode = 'game' | 'chat' | 'solo';
 
 type MessageHandler = (msg: WsServerToClientMessage) => void;
 type EventHandler<E extends ServerToClientEvent> = (
@@ -28,8 +30,10 @@ export interface GameSocketOptions {
   roomCode: string;
   userId?: string;
   token?: string;
-  /** 'game'(기본): 연결 시 ready 전송 / 'chat': 연결 시 join_chat 전송 */
+  /** 'game'(기본): 연결 시 ready 전송 / 'chat': 연결 시 join_chat 전송 / 'solo': 연결 시 start_solo 전송 */
   mode?: GameSocketMode;
+  /** 'solo' 모드에서 사용할 덱 id */
+  deckId?: string;
 }
 
 export interface GameSocket {
@@ -42,6 +46,7 @@ export interface GameSocket {
   ) => void;
   sendReady: (payload?: Partial<ReadyPayload>) => void;
   sendJoinChat: (payload?: Partial<ReadyPayload>) => void;
+  sendStartSolo: (payload?: Partial<StartSoloPayload>) => void;
   sendChat: (text: string) => void;
   sendAnswerMulligan: (payload: AnswerMulliganPayload) => void;
   sendPlayerAction: (payload: PlayerActionPayload) => void;
@@ -126,14 +131,26 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
       updateStatus('open');
       reconnectAttempts = 0;
       // 서버에 이 소켓이 어떤 방/유저에 속하는지 알려주는 초기 메시지.
-      // game 모드는 ready(게임 시작 흐름), chat 모드는 join_chat(게임 미발동)을 보낸다.
-      const initPayload: WsClientToServerMessage = {
-        event: mode === 'chat' ? 'join_chat' : 'ready',
-        data: {
-          roomCode: options.roomCode,
-          userId: options.userId,
-        },
-      };
+      // game 모드는 ready(게임 시작 흐름), chat 모드는 join_chat(게임 미발동),
+      // solo 모드는 start_solo(AI 싱글플레이 시작)을 보낸다.
+      let initPayload: WsClientToServerMessage;
+      if (mode === 'solo') {
+        initPayload = {
+          event: 'start_solo',
+          data: {
+            userId: options.userId ?? '',
+            deckId: options.deckId ?? '',
+          },
+        };
+      } else {
+        initPayload = {
+          event: mode === 'chat' ? 'join_chat' : 'ready',
+          data: {
+            roomCode: options.roomCode,
+            userId: options.userId,
+          },
+        };
+      }
       socket?.send(JSON.stringify(initPayload));
     };
 
@@ -211,6 +228,14 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     send({ event: 'join_chat', data: { ...base, ...payload } });
   };
 
+  const sendStartSolo = (payload?: Partial<StartSoloPayload>) => {
+    const base: StartSoloPayload = {
+      userId: options.userId ?? '',
+      deckId: options.deckId ?? '',
+    };
+    send({ event: 'start_solo', data: { ...base, ...payload } });
+  };
+
   const sendChat = (text: string) => {
     send({ event: 'chat', data: { text } });
   };
@@ -257,6 +282,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     sendEvent,
     sendReady,
     sendJoinChat,
+    sendStartSolo,
     sendChat,
     sendAnswerMulligan,
     sendPlayerAction,

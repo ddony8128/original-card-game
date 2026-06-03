@@ -16,7 +16,9 @@ import {
 import { DiscardPileModal } from '@/components/game/DiscardPileModal';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 import { useMeQuery } from '@/features/auth/queries';
+import { useDecksQuery } from '@/features/decks/queries';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import { useGameSocket } from '@/ws/useGameSocket';
 import { useMulliganRequest } from '@/features/game/hooks/useMulliganRequest';
@@ -26,10 +28,16 @@ import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
 
-export default function Game() {
+interface GameProps {
+  solo?: boolean;
+}
+
+export default function Game({ solo = false }: GameProps) {
   const navigate = useNavigate();
   const { roomId: roomCode } = useParams<{ roomId: string }>();
   const { data: me } = useMeQuery();
+  const { data: decks, isLoading: decksLoading } = useDecksQuery();
+  const soloDeckId = solo ? decks?.[0]?.id : undefined;
   const fogged = useGameFogStore((s) => s.fogged);
   const lastDiff = useGameFogStore((s) => s.lastDiff);
   const logs = useGameFogStore((s) => s.logs);
@@ -52,9 +60,22 @@ export default function Game() {
   }, [clearGameState]);
 
   const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } = useGameSocket({
-    roomCode: roomCode ?? '',
+    roomCode: solo ? 'solo' : (roomCode ?? ''),
     userId: me?.id,
+    mode: solo ? 'solo' : 'game',
+    deckId: soloDeckId,
+    // 솔로 모드는 덱 id 가 준비된 뒤에만 연결해 start_solo 에 올바른 덱을 전달한다.
+    enabled: solo ? Boolean(soloDeckId) : true,
   });
+
+  // 솔로 모드에서 사용할 덱이 없으면 덱 빌더로 안내한다.
+  useEffect(() => {
+    if (!solo || decksLoading) return;
+    if (!decks || decks.length === 0) {
+      toast.error('덱을 먼저 만들어주세요');
+      navigate('/deck-builder');
+    }
+  }, [solo, decks, decksLoading, navigate]);
 
   useEffect(() => {
     if (!me) {
@@ -62,8 +83,11 @@ export default function Game() {
       return;
     }
 
+    // 솔로 모드는 소켓 open 시 start_solo 를 자동 전송하므로 ready 를 보내지 않는다.
+    if (solo) return;
+
     sendReady();
-  }, [me, navigate, sendReady]);
+  }, [me, navigate, sendReady, solo]);
 
   const myId = me?.id;
 

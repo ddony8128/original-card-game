@@ -27,8 +27,8 @@
 - [x] **B1** `core/ai/legalActions.ts` 순수 헬퍼(move/use_card/use_ritual/end_turn, 실핸들러 검증 미러링).
 - [x] **B2** `core/ai/heuristic.ts` chooseAIAction(greedy: 비싼 카드→접근 이동→턴종료, 종료보장). B1+B2 테스트 15개. tsc/lint/test✓
 - [x] **B3** 솔로/AI 룸: `ws/soloGameManager.ts`(in-memory, AI=휴먼덱 클론, AI 자동멀리건, 콜백은 사람 이벤트만 전달). AI 턴 드라이버=스텝cap(30)+매스텝 try/catch+종료 안전망(hang/throw 불가), 좌표변환(toViewerPos), 입력 기본응답. socket.ts solo 라우팅 + start_solo 이벤트. 통합테스트 4개. 서버109/1skip green.
-- [ ] **B4** 튜토리얼 오버레이(client): 게임 이벤트 연동 coach-mark 단계, 스킵/재시작.
-- [ ] **B5** 진입점: Lobby "튜토리얼" 버튼 → 솔로 AI + 오버레이.
+- [x] **B4** 튜토리얼 오버레이: 하단 도킹 coach 패널(6단계 수동진행, 이전/다음/건너뛰기, 닫은 뒤 재열기). 게임이벤트 비의존(견고). 테스트 3개.
+- [x] **B5** 진입: gameSocket `mode:solo`+deckId→start_solo, useGameSocket enabled 게이팅, Game `solo` prop(첫 덱 사용, DB룸 불필요), `/tutorial`(RequireAuth) 라우트, Lobby 튜토리얼 버튼. 2인 경로 불변. 클라38 green.
 
 ## 진행 로그
 - (시작) phase-2 브랜치 생성, 계획 확정.
