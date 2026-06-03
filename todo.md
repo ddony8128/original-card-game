@@ -50,7 +50,7 @@
 - [x] **D-1** `Lobby.tsx` 302→124줄. `components/lobby/`로 CreateRoomCard/JoinRoomCard/MyDecksCard/WaitingRoomsList 추출, 중복 getErrorMessage→`shared/lib/errors.ts`. 동작보존, 6 Lobby 테스트+전체 31 green. tsc/lint✓
 - [ ] **D-2** `Game.tsx`(692줄) → 상대존/게임판/내존/오버레이 컴포넌트 분리
 - [ ] **D-3** `Game.tsx` 핸들러 커스텀 훅화 (handlePlayCard/EndTurn/MoveToSelected/UseRitualAtSelected)
-- [ ] **D-4** `DeckBuilder.tsx`(341줄) 분리
+- [x] **D-4** `DeckBuilder.tsx` 341→150줄. 상태/로직 전체를 `features/decks/hooks/useDeckBuilder.ts`(244줄)로 추출, 페이지는 기존 CardFilters/DeckPanel/GameCard 조합. C-1 isPending 보존, 3 테스트+전체 31 green. tsc/lint✓
 - [x] **D-5** `useMulliganRequest.ts` → `features/game/hooks/`로 이동(컴포넌트 폴더에 있던 훅 정리). tsc/lint/test✓
 - [ ] **D-6** 폴더 컨벤션 마무리 (pages 얇게 / features / shared / ws)
 
