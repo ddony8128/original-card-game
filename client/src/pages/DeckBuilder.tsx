@@ -10,8 +10,7 @@ import type { DeckCard, Card as LocalCard } from '@/shared/types/deck';
 import { ArrowLeft, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCardsQuery } from '@/features/cards/queries';
-import { useDecksQuery } from '@/features/decks/queries';
-import { decksApi } from '@/features/decks/api';
+import { useDecksQuery, useSaveDeckMutation } from '@/features/decks/queries';
 import type { CardDto } from '@/shared/api/types';
 
 const MAX_MAIN_SIZE = 16;
@@ -46,6 +45,7 @@ const DeckBuilder = () => {
   } as const;
   const { data: cardsResp, isLoading: loadingCards } = useCardsQuery(cardsParams);
   const { data: serverDecks } = useDecksQuery();
+  const saveDeck = useSaveDeckMutation();
 
   // 카드 id -> dto 맵 (저장 시 분류용)
   const cardDtoById = useMemo(
@@ -173,6 +173,7 @@ const DeckBuilder = () => {
   };
 
   const handleSave = async () => {
+    if (saveDeck.isPending) return;
     if (!deckName.trim()) {
       toast.error('덱 이름을 입력하세요.');
       return;
@@ -203,21 +204,18 @@ const DeckBuilder = () => {
       const main_cards = entries.filter((e) => !isCatastrophe(e.id));
       const cata_cards = entries.filter((e) => isCatastrophe(e.id));
 
-      if (serverEditingDeckId) {
-        await decksApi.update(serverEditingDeckId, {
-          name: deckName,
-          main_cards,
-          cata_cards,
-        });
-        toast.success('서버 덱이 수정되었습니다!', { description: deckName });
-      } else {
-        await decksApi.create({
-          name: deckName,
-          main_cards,
-          cata_cards,
-        });
-        toast.success('서버 덱이 저장되었습니다!', { description: deckName });
-      }
+      await saveDeck.mutateAsync({
+        deckId: serverEditingDeckId,
+        name: deckName,
+        main_cards,
+        cata_cards,
+      });
+      toast.success(
+        serverEditingDeckId
+          ? '서버 덱이 수정되었습니다!'
+          : '서버 덱이 저장되었습니다!',
+        { description: deckName },
+      );
 
       // 로컬 동기화 제거: 서버를 단일 소스로 사용
     } catch (e: unknown) {
@@ -254,9 +252,13 @@ const DeckBuilder = () => {
             onChange={(e) => setDeckName(e.target.value)}
             className="max-w-xs"
           />
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} disabled={saveDeck.isPending}>
             <Save className="mr-2 h-4 w-4" />
-            {serverEditingDeckId ? '수정 완료' : '덱 저장'}
+            {saveDeck.isPending
+              ? '저장 중...'
+              : serverEditingDeckId
+                ? '수정 완료'
+                : '덱 저장'}
           </Button>
         </div>
 

@@ -3,7 +3,27 @@ import { Route } from 'react-router-dom';
 import { renderWithProviders } from './render';
 import { screen, fireEvent } from '@testing-library/react';
 import { server } from './testServer';
-import { http, HttpResponse } from 'msw';
+import { http, HttpResponse, delay } from 'msw';
+
+async function buildValidDeck() {
+  const nameInput = await screen.findByPlaceholderText('덱 이름');
+  fireEvent.change(nameInput, { target: { value: '테스트덱' } });
+  const mainNames = ['파이어볼', '블레이즈', '질풍', '서리', '스파크', '라이트닝', '치유', '방패'];
+  for (const n of mainNames) {
+    const els = await screen.findAllByText(new RegExp(n));
+    const el = els.find((e) => e.tagName === 'H3') ?? els[0];
+    fireEvent.click(el);
+    fireEvent.click(el);
+  }
+  const cataTab = await screen.findByRole('button', { name: '재앙 카드' });
+  fireEvent.click(cataTab);
+  const cataNames = ['파멸', '대지진', '해일', '운석'];
+  for (const n of cataNames) {
+    const els = await screen.findAllByText(new RegExp(n));
+    const el = els.find((e) => e.tagName === 'H3') ?? els[0];
+    fireEvent.click(el);
+  }
+}
 
 it('카드 추가 및 제한 일부 동작 확인', async () => {
   renderWithProviders(<DeckBuilder />, {
@@ -138,4 +158,59 @@ it('저장 요청 payload 형태 검증(main/cata {id,count})', async () => {
   expect(Array.isArray(r.main_cards)).toBe(true);
   expect(r.main_cards[0]).toHaveProperty('id');
   expect(r.main_cards[0]).toHaveProperty('count');
+});
+
+it('저장 중에는 버튼이 비활성화되어 덱이 중복 생성되지 않는다 (C-1)', async () => {
+  let postCount = 0;
+  const okBody = {
+    id: 'dx',
+    name: 'N',
+    main_cards: [],
+    cata_cards: [],
+    created_at: '',
+    updated_at: '',
+  };
+  server.use(
+    http.post('/api/decks', async () => {
+      postCount += 1;
+      await delay(80);
+      return HttpResponse.json(okBody);
+    }),
+    http.post(/https?:\/\/.*\/api\/decks$/, async () => {
+      postCount += 1;
+      await delay(80);
+      return HttpResponse.json(okBody);
+    }),
+  );
+
+  renderWithProviders(<DeckBuilder />, {
+    route: '/deck-builder',
+    routes: [
+      <Route key="db" path="/deck-builder" element={<DeckBuilder />} />,
+      <Route key="lobby" path="/lobby" element={<div>LOBBY</div>} />,
+    ],
+    seed: (qc) => {
+      qc.setQueryData(['auth', 'me'], {
+        id: 'u1',
+        username: 'tester',
+        message: 'ok',
+        created_at: '',
+      });
+    },
+  });
+
+  await buildValidDeck();
+
+  const saveBtn = await screen.findByRole('button', { name: /덱 저장|수정 완료/ });
+  fireEvent.click(saveBtn);
+
+  // 저장 중에는 버튼이 비활성화되고, 추가 클릭은 무시되어야 한다.
+  const pendingBtn = await screen.findByRole('button', { name: /저장 중/ });
+  expect(pendingBtn).toBeDisabled();
+  fireEvent.click(pendingBtn);
+  fireEvent.click(pendingBtn);
+
+  // 저장 완료 시 /lobby 로 이동한다 (토스트는 포털로 남아 테스트 간 누수되므로 사용하지 않음)
+  await screen.findByText('LOBBY');
+  expect(postCount).toBe(1);
 });

@@ -22,7 +22,7 @@
 - [ ] **F-3** 레포 전반 정리(불필요 파일: `test_full_stack.sh` 등 점검)
 
 ## C. 버그 패치 (사용자 영향 큼)
-- [ ] **C-1** 덱 2번 생성 (버튼 클릭 후 비활성화 안 함 → isLoading)
+- [x] **C-1** 덱 2번 생성: DeckBuilder 저장 버튼이 비활성화 안 됨이 원인. raw decksApi 호출 → `useSaveDeckMutation`(분기형 create/update)로 전환, `isPending`으로 버튼 disabled + 가드. 재현 테스트(지연응답 중 재클릭→POST 1회). lint/tsc/test✓
 - [ ] **C-2** 버리기 상황에서 바탕(빈 칸) 클릭 시 게임 멈춤
 - [x] **C-3** 연속 게임 시작 안 됨: 실제 원인은 game_over 콜백을 안 타는 종료(leave/host-delete) 시 in-memory 엔진이 GAME_OVER로 잔존. `ensureRoom`에서 GAME_OVER 엔진 폐기 후 재생성. 재현 테스트 2개. tsc/lint/test✓
 - [ ] **C-4** 웹소켓 연결 재시도 로직
