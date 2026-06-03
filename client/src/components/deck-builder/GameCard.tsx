@@ -23,8 +23,8 @@ export const GameCard = ({ card, onClick, count }: GameCardProps) => {
     <div
       onClick={onClick}
       className={cn(
-        'bg-card relative cursor-pointer overflow-hidden rounded-lg transition-all duration-300',
-        'hover:scale-105 hover:shadow-[0_8px_24px_hsl(260_80%_40%/0.3)]',
+        'bg-card relative mx-auto w-full max-w-[220px] cursor-pointer overflow-hidden rounded-lg transition-all duration-300',
+        'hover:z-20 hover:scale-105 hover:shadow-[0_8px_24px_hsl(260_80%_40%/0.3)]',
         'border-border border shadow-[0_4px_12px_hsl(240_80%_10%/0.4)]',
         'group',
       )}

@@ -60,7 +60,7 @@
 - [x] **E-3** 로그인 실패를 토스트→인라인 빨간 메시지(role=alert, 입력 시 클리어). `doAfterAuth`→`goToLobbyAfterAuth` 개명. 서버 `POST /api/auth/logout`(쿠키 클리어)+`useLogoutMutation`(토큰폐기+캐시clear)+Lobby 로그아웃 버튼. Login 테스트 추가. 서버78/클라32 green.
 - [x] **E-4** 게임 로그: 새 로그 도착 시 bottomRef로 자동 하단 스크롤(최신이 묻히지 않음). tsc/lint/test✓ (시각 확인 권장)
 - [ ] **E-5** 게임 이펙트 (피해 숫자/마법·덫 표시)
-- [ ] **E-6** 덱빌더 카드 크기 고정 + 호버 z-index + 축약형 덱 카드
+- [x] **E-6** GameCard: 호버 확대가 가려지지 않게 `hover:z-20`, 너비 출렁임 방지 `max-w-[220px]`+중앙정렬. tsc/lint/test✓. ⚠️하스스톤식 가로 축약형 덱 카드는 별도 UI 재설계로 후속(시각QA 필요).
 - [x] **E-7** 검색 캐싱: useCardsQuery에 staleTime(5분)+keepPreviousData. 같은 검색어 재방문 시 재요청 없음, 타이핑 중 깜빡임 제거. tsc/lint/test✓
 - [x] **E-8** 이탈 경고: `useBeforeUnloadWarning` 훅 — 덱 작성중/게임 진행중 새로고침·탭닫기·주소창이동 시 브라우저 확인창. ⚠️SPA 인앱 뒤로가기 차단은 react-router data-router+useBlocker 마이그레이션 필요(보류). tsc/lint/test✓
 - [ ] **E-9** 대기실 채팅 + 덱 선택 낙관적 업데이트
