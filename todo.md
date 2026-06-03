@@ -48,7 +48,7 @@
 
 ## D. 클라이언트 — 구조 (정우근)
 - [x] **D-1** `Lobby.tsx` 302→124줄. `components/lobby/`로 CreateRoomCard/JoinRoomCard/MyDecksCard/WaitingRoomsList 추출, 중복 getErrorMessage→`shared/lib/errors.ts`. 동작보존, 6 Lobby 테스트+전체 31 green. tsc/lint✓
-- [ ] **D-2** `Game.tsx`(692줄) → 상대존/게임판/내존/오버레이 컴포넌트 분리
+- [x] **D-2** `Game.tsx` JSX를 `components/game/`의 OpponentZone/BoardZone/PlayerZone/MyHand/GameOverOverlay로 verbatim 분리(D-3 포함 692→449줄). isWin/isLose는 Boolean() 래핑(동작동일). tsc/lint/test31✓ (게임플레이 수동QA 권장)
 - [x] **D-3** Game 4개 핸들러를 `features/game/hooks/useGameActions.ts`로 verbatim 추출(Game 692→610줄). rules-of-hooks 위해 position 계산을 early return 앞으로 이동, 훅 무조건 호출. tsc/lint/test31✓ (게임플레이 수동QA 권장)
 - [x] **D-4** `DeckBuilder.tsx` 341→150줄. 상태/로직 전체를 `features/decks/hooks/useDeckBuilder.ts`(244줄)로 추출, 페이지는 기존 CardFilters/DeckPanel/GameCard 조합. C-1 isPending 보존, 3 테스트+전체 31 green. tsc/lint✓
 - [x] **D-5** `useMulliganRequest.ts` → `features/game/hooks/`로 이동(컴포넌트 폴더에 있던 훅 정리). tsc/lint/test✓
