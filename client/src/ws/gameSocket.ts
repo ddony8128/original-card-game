@@ -125,8 +125,18 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
       return;
     }
 
-    const apiBase = import.meta.env.VITE_API_BASE_URL ?? window.location.origin;
-    const wsBase = apiBase.replace(/^http/i, 'ws');
+    // WebSocket 은 반드시 백엔드(Render)로 "직접" 연결해야 한다.
+    // 프로덕션에서 HTTP API 는 Vercel rewrite(/api/* → onrender.com)로 프록시되지만,
+    // Vercel rewrite 는 WebSocket 업그레이드를 프록시하지 않는다. 따라서 WS 를
+    // window.location.origin(=*.vercel.app)으로 연결하면 PvE/대전 게임이 시작되지 않는다.
+    // 우선순위: VITE_WS_URL > VITE_API_BASE_URL > (프로덕션 기본 백엔드) > 현재 origin.
+    const wsTarget =
+      import.meta.env.VITE_WS_URL ||
+      import.meta.env.VITE_API_BASE_URL ||
+      (import.meta.env.PROD
+        ? 'https://original-card-game.onrender.com'
+        : window.location.origin);
+    const wsBase = wsTarget.replace(/^http/i, 'ws');
     const url = `${wsBase}/api/match/socket`;
 
     updateStatus('connecting');
