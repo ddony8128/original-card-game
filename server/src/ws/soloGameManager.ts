@@ -36,6 +36,17 @@ export const AI_PLAYER_ID = '__AI__';
 /** AI 턴 드라이버가 한 턴 안에서 수행할 수 있는 최대 스텝(무한 루프 방지). */
 const MAX_AI_STEPS = 30;
 
+/** AI 턴 진행 속도(사람이 AI 행동을 따라갈 수 있게 액션 사이에 두는 지연). */
+export type SoloSpeed = 'slow' | 'normal' | 'fast';
+const AI_ACTION_DELAY_MS: Record<SoloSpeed, number> = {
+  slow: 1300,
+  normal: 800,
+  fast: 300,
+};
+const DEFAULT_AI_SPEED: SoloSpeed = 'normal';
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 // 솔로 방 하나의 메타정보.
 type SoloRoom = {
   soloId: string;
@@ -48,6 +59,8 @@ type SoloRoom = {
   aiProfile: AIProfile;
   /** pve 모드일 때 대상 스테이지 id(클리어 기록 등 후속 단계용). tutorial 이면 undefined. */
   stageId?: string;
+  /** AI 턴 진행 속도(사람이 바꿀 수 있음). 기본 normal. */
+  aiSpeed: SoloSpeed;
 };
 
 /**
@@ -159,6 +172,7 @@ export class SoloGameManager {
       initialized: false,
       aiProfile,
       stageId,
+      aiSpeed: payload.aiSpeed ?? DEFAULT_AI_SPEED,
     };
     this.rooms.set(soloId, room);
     this.attachEngineCallbacks(room);
@@ -213,6 +227,8 @@ export class SoloGameManager {
     const room = this.rooms.get(soloId);
     if (!room) return;
     const { engine } = room;
+    // AI 행동을 사람이 따라갈 수 있게 액션 사이에 지연을 둔다(속도 옵션별).
+    const delay = AI_ACTION_DELAY_MS[room.aiSpeed] ?? AI_ACTION_DELAY_MS[DEFAULT_AI_SPEED];
 
     let steps = 0;
     while (
@@ -227,6 +243,7 @@ export class SoloGameManager {
           await engine.handlePlayerInput(AI_PLAYER_ID, {
             answer: defaultAnswer(core.pendingInput),
           });
+          await sleep(delay);
           continue;
         }
         // 사람이 입력해야 하는 상황(예: AI 카드가 사람 선택을 요구)이면
@@ -241,6 +258,8 @@ export class SoloGameManager {
           room.aiProfile,
         );
         if (action.kind === 'end_turn') {
+          // 마지막 행동을 잠깐 보여준 뒤 턴을 넘긴다.
+          await sleep(delay);
           await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
           break;
         }
@@ -248,6 +267,7 @@ export class SoloGameManager {
           AI_PLAYER_ID,
           toActionPayload(engine, action),
         );
+        await sleep(delay);
       } catch (err) {
         console.warn('[solo] AI step failed, ending AI turn', err);
         try {

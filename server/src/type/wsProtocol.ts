@@ -143,6 +143,8 @@ export interface StartSoloPayload {
   mode?: SoloMode;
   /** mode==='pve' 일 때 대상 스테이지 id. */
   stageId?: string;
+  /** AI 턴 진행 속도(미지정 시 normal). 사람이 AI 행동을 따라갈 수 있게 한다. */
+  aiSpeed?: 'slow' | 'normal' | 'fast';
 }
 
 // 채팅 전용 방 입장(게임 시작/ready 와 분리). ready 와 동일한 참가자 검증만 수행한다.
