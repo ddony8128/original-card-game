@@ -20,9 +20,13 @@ export interface PublicRitual {
 export interface PublicHandCard {
   id: CardID;
   name: string;
+  /** 영어 이름(언어 전환용). 서버 cardMetas 가 ko/en 둘 다 전달한다. */
+  nameEn?: string;
   mana: number;
   type: 'instant' | 'ritual' | 'catastrophe' | 'summon' | 'item';
   description: string;
+  /** 영어 설명(언어 전환용). */
+  descriptionEn?: string;
 }
 
 export type ClientSideActionLog = {
