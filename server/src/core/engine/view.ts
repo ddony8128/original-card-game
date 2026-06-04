@@ -13,6 +13,44 @@ export interface ViewerStatePatch {
   statePatch: StatePatchPayload;
 }
 
+// 로그 문자열 안의 토큰을 뷰어 기준으로 해석한다.
+//   {{p:<id>}} → '나' / '상대'  (뷰어 자신이면 '나', 아니면 '상대')
+//   {{c:<id>}} → 카드의 한글 이름 (조회 실패 시 원본 id)
+// ctx.lookupCard 호출 결과는 한 번의 빌드 안에서 Map 으로 캐시한다.
+async function resolveLogTokens(
+  logs: string[],
+  viewer: PlayerID,
+  ctx: EngineContext,
+): Promise<string[]> {
+  const PLAYER_TOKEN = /\{\{p:([^}]+)\}\}/g;
+  const CARD_TOKEN = /\{\{c:([^}]+)\}\}/g;
+
+  // 이번 빌드에서 등장한 모든 카드 id 의 이름을 미리 캐시한다.
+  const cardNameCache = new Map<string, string>();
+  const cardIds = new Set<string>();
+  for (const line of logs) {
+    let m: RegExpExecArray | null;
+    CARD_TOKEN.lastIndex = 0;
+    while ((m = CARD_TOKEN.exec(line)) !== null) {
+      cardIds.add(m[1]);
+    }
+  }
+  await Promise.all(
+    Array.from(cardIds).map(async (cardId) => {
+      const meta = await ctx.lookupCard(cardId);
+      cardNameCache.set(cardId, meta?.name_ko || cardId);
+    }),
+  );
+
+  return logs.map((line) =>
+    line
+      .replace(PLAYER_TOKEN, (_full, id: string) =>
+        id === viewer ? '나' : '상대',
+      )
+      .replace(CARD_TOKEN, (_full, id: string) => cardNameCache.get(id) ?? id),
+  );
+}
+
 // FoggedGameState 변환
 export async function toFoggedState(
   state: GameState,
@@ -173,6 +211,7 @@ export async function buildStatePatchForAllView(params: {
   await Promise.all(
     players.map(async (pid) => {
       const fog = await toFoggedState(state, pid, bottomSidePlayerId, ctx);
+      const resolvedLog = await resolveLogTokens(baseDiff.log, pid, ctx);
       const viewerDiff: DiffPatch = {
         animations: baseDiff.animations.map((anim) => {
           const transformed = { ...anim };
@@ -198,7 +237,7 @@ export async function buildStatePatchForAllView(params: {
           }
           return transformed;
         }),
-        log: [...baseDiff.log],
+        log: resolvedLog,
       };
 
       const statePatch: StatePatchPayload = {

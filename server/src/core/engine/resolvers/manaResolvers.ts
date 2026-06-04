@@ -12,7 +12,7 @@ export async function resolveManaPay(
   if (!player) return;
   player.mana = Math.max(player.mana - manaPay.amount, 0);
   diff.log.push(
-    `플레이어 ${manaPay.owner}가 마나 ${manaPay.amount}을(를) 지불했습니다.`,
+    `{{p:${manaPay.owner}}}가 마나 ${manaPay.amount}을(를) 지불했습니다.`,
   );
 }
 
@@ -34,7 +34,7 @@ export async function resolveManaGain(
   const gained = player.mana - before;
   if (gained > 0) {
     diff.log.push(
-      `플레이어 ${targetId} 마나 +${gained} (${player.mana}/${player.maxMana})`,
+      `{{p:${targetId}}} 마나 +${gained} (${player.mana}/${player.maxMana})`,
     );
   }
 }

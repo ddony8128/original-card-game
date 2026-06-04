@@ -15,9 +15,7 @@ export async function resolveCastExecute(
   diff: DiffPatch,
 ) {
   const cast = effect;
-  diff.log.push(
-    `플레이어 ${cast.owner}가 인스턴트 카드를 사용 (id=${cast.cardId})`,
-  );
+  diff.log.push(`{{p:${cast.owner}}}가 {{c:${cast.cardId}}}을(를) 사용`);
   // 카드 사용을 사람이 따라갈 수 있게, 사용된 카드 정보를 애니메이션으로 알린다.
   diff.animations.push({
     kind: 'card_play',
@@ -57,7 +55,7 @@ export async function resolveInstall(
       player: inst.owner,
     });
     diff.log.push(
-      `플레이어 ${inst.owner}가 (${inst.pos.r},${inst.pos.c}) 위치에 리추얼을 설치`,
+      `{{p:${inst.owner}}}가 (${inst.pos.r},${inst.pos.c}) 위치에 {{c:${cardId}}}을(를) 설치`,
     );
 
     // resolveStack 상에서 해당 카드의 최종 목적지를 board 로 설정
@@ -108,7 +106,7 @@ export async function resolveInstall(
       pos,
       usedThisTurn: false,
     });
-    diff.log.push(`카드 효과로 ritual ${cardId}가 설치되었습니다.`);
+    diff.log.push(`카드 효과로 {{c:${cardId}}}이(가) 설치되었습니다.`);
     diff.animations.push({
       kind: 'ritual_place',
       player: inst.owner,

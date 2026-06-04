@@ -20,7 +20,7 @@ export async function resolveTriggeredEffect(
 ) {
   const trig = effect;
   diff.log.push(
-    `TriggeredEffect 실행: card=${trig.cardId}, trigger=${trig.trigger}`,
+    `TriggeredEffect 실행: card={{c:${trig.cardId}}}, trigger=${trig.trigger}`,
   );
 
   const ref = trig.effectRef as TriggerConfig | undefined;

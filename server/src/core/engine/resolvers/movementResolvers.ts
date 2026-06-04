@@ -44,7 +44,7 @@ export async function resolveMove(
       to: [move.to.r, move.to.c],
     });
     diff.log.push(
-      `플레이어 ${effect.owner}가 (${from[0]},${from[1]}) → (${move.to.r},${move.to.c}) 이동`,
+      `{{p:${effect.owner}}}의 마법사가 (${from[0]},${from[1]}) → (${move.to.r},${move.to.c}) 이동`,
     );
 
     // 이동한 칸에 상대 리추얼이 있으면 파괴 트리거 처리
@@ -134,7 +134,7 @@ export async function resolveMove(
     const from: [number, number] = [wizard.r, wizard.c];
     wizard.r = toR;
     wizard.c = toC;
-    diff.log.push(`카드 효과로 플레이어 ${effect.owner}가 이동했습니다.`);
+    diff.log.push(`카드 효과로 {{p:${effect.owner}}}의 마법사가 이동했습니다.`);
     diff.animations.push({
       kind: 'move',
       player: effect.owner,

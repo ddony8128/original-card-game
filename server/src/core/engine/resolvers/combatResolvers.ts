@@ -39,7 +39,7 @@ export async function resolveDamage(
 
     target.hp -= amount as number;
     diff.log.push(
-      `플레이어 ${targetId}가 (${e.pos.r},${e.pos.c}) 위치에서 ${amount} 피해를 입었습니다.`,
+      `{{p:${targetId}}}의 마법사가 (${e.pos.r},${e.pos.c}) 위치에서 ${amount} 피해를 입었습니다.`,
     );
     diff.animations.push({
       kind: 'damage',
@@ -130,7 +130,7 @@ export async function resolveDamage(
   }
 
   target.hp -= amount as number;
-  diff.log.push(`플레이어 ${targetId}가 ${amount} 피해를 입었습니다.`);
+  diff.log.push(`{{p:${targetId}}}의 마법사가 ${amount} 피해를 입었습니다.`);
   diff.animations.push({
     kind: 'damage',
     player: targetId,
@@ -162,7 +162,7 @@ export async function resolveHeal(
   player.hp = Math.min(player.hp + e.value, player.maxHp);
   const healed = player.hp - before;
   if (healed > 0) {
-    diff.log.push(`플레이어 ${targetId}가 ${healed} 만큼 회복했습니다.`);
+    diff.log.push(`{{p:${targetId}}}의 마법사가 ${healed} 만큼 회복했습니다.`);
     diff.animations.push({
       kind: 'heal',
       player: targetId,
