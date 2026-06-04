@@ -121,6 +121,7 @@ export type ServerToClientMessage = {
 export type ClientToServerEvent =
   | 'ready'
   | 'start_solo'
+  | 'set_solo_speed'
   | 'answer_mulligan'
   | 'player_action'
   | 'player_input'
@@ -145,6 +146,12 @@ export interface StartSoloPayload {
   stageId?: string;
   /** AI 턴 진행 속도(미지정 시 normal). 사람이 AI 행동을 따라갈 수 있게 한다. */
   aiSpeed?: 'slow' | 'normal' | 'fast';
+}
+
+// 진행 중인 솔로 게임의 AI 턴 속도를 실시간으로 변경. 사람이 따라갈 속도를 직접 조절한다.
+export interface SetSoloSpeedPayload {
+  userId: string;
+  aiSpeed: 'slow' | 'normal' | 'fast';
 }
 
 // 채팅 전용 방 입장(게임 시작/ready 와 분리). ready 와 동일한 참가자 검증만 수행한다.
@@ -213,6 +220,7 @@ export interface PlayerInputPayload {
 export interface ClientToServerPayloadMap {
   ready: ReadyPayload;
   start_solo: StartSoloPayload;
+  set_solo_speed: SetSoloSpeedPayload;
   answer_mulligan: AnswerMulliganPayload;
   player_action: PlayerActionPayload;
   player_input: PlayerInputPayload;

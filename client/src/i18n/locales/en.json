@@ -228,7 +228,11 @@
     "toastErrInvalidAction": "Invalid action.",
     "toastGameOver": "Game Over",
     "toastGameOverDesc": "Winner: {{winner}} / Reason: {{reason}}",
-    "winnerNone": "None"
+    "winnerNone": "None",
+    "speed": "Speed",
+    "speedSlow": "Slow",
+    "speedNormal": "Normal",
+    "speedFast": "Fast"
   },
   "tutorial": {
     "replay": "Replay Tutorial",

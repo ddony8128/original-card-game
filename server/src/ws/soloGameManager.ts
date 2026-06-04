@@ -185,6 +185,20 @@ export class SoloGameManager {
     await this.maybeRunAITurn(soloId);
   }
 
+  /**
+   * 진행 중인 솔로 게임의 AI 턴 속도를 실시간으로 변경한다.
+   * - socket 의 roomCode(=soloId) 로 방을 찾고, 유효한 속도일 때만 갱신한다.
+   * - 방이 없거나 잘못된 값이면 안전하게 무시(no-op)한다.
+   */
+  setSpeed(socket: SocketClient, aiSpeed: SoloSpeed): void {
+    if (aiSpeed !== 'slow' && aiSpeed !== 'normal' && aiSpeed !== 'fast') return;
+    const soloId = socket.roomCode;
+    if (!soloId) return;
+    const room = this.rooms.get(soloId);
+    if (!room) return;
+    room.aiSpeed = aiSpeed;
+  }
+
   // ---- 사람 액션 핸들러 (socket.ts 에서 solo 소켓에 대해 호출) ----
 
   async handlePlayerAction(
@@ -228,7 +242,11 @@ export class SoloGameManager {
     if (!room) return;
     const { engine } = room;
     // AI 행동을 사람이 따라갈 수 있게 액션 사이에 지연을 둔다(속도 옵션별).
-    const delay = AI_ACTION_DELAY_MS[room.aiSpeed] ?? AI_ACTION_DELAY_MS[DEFAULT_AI_SPEED];
+    // 단, 테스트 환경에서는 지연을 0 으로 둬 멀티턴 통합 테스트가 timeout 되지 않게 한다.
+    const inTest = !!process.env.VITEST || process.env.NODE_ENV === 'test';
+    const delay = inTest
+      ? 0
+      : (AI_ACTION_DELAY_MS[room.aiSpeed] ?? AI_ACTION_DELAY_MS[DEFAULT_AI_SPEED]);
 
     let steps = 0;
     while (
@@ -243,7 +261,7 @@ export class SoloGameManager {
           await engine.handlePlayerInput(AI_PLAYER_ID, {
             answer: defaultAnswer(core.pendingInput),
           });
-          await sleep(delay);
+          if (delay > 0) await sleep(delay);
           continue;
         }
         // 사람이 입력해야 하는 상황(예: AI 카드가 사람 선택을 요구)이면
@@ -259,7 +277,7 @@ export class SoloGameManager {
         );
         if (action.kind === 'end_turn') {
           // 마지막 행동을 잠깐 보여준 뒤 턴을 넘긴다.
-          await sleep(delay);
+          if (delay > 0) await sleep(delay);
           await engine.handlePlayerAction(AI_PLAYER_ID, { action: 'end_turn' });
           break;
         }
@@ -267,7 +285,7 @@ export class SoloGameManager {
           AI_PLAYER_ID,
           toActionPayload(engine, action),
         );
-        await sleep(delay);
+        if (delay > 0) await sleep(delay);
       } catch (err) {
         console.warn('[solo] AI step failed, ending AI turn', err);
         try {

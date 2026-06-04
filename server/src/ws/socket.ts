@@ -11,6 +11,7 @@ import type {
   PlayerActionPayload,
   AnswerMulliganPayload,
   PlayerInputPayload,
+  SetSoloSpeedPayload,
 } from '../type/wsProtocol';
 import { GameRoomManager } from './gameRoomManager';
 import { SoloGameManager } from './soloGameManager';
@@ -118,13 +119,14 @@ export function attachWebSocket(server: http.Server): WsApi {
 
         // 3) start_solo: 싱글플레이(vs AI) 시작. ready 처럼 인증(roomCode 기록) 이전에도 허용한다.
         if (event === 'start_solo') {
-          const { userId, deckId, mode, stageId } = data as StartSoloPayload;
+          const { userId, deckId, mode, stageId, aiSpeed } =
+            data as StartSoloPayload;
           if (!userId || !deckId) {
             registerStrike();
             return;
           }
           void soloManager
-            .handleStartSolo(socket, { userId, deckId, mode, stageId })
+            .handleStartSolo(socket, { userId, deckId, mode, stageId, aiSpeed })
             .catch((err) =>
               console.error('[WS] handleStartSolo error', {
                 err,
@@ -185,6 +187,14 @@ export function attachWebSocket(server: http.Server): WsApi {
                 userId,
               }),
             );
+            break;
+          }
+          case 'set_solo_speed': {
+            // 진행 중인 솔로 게임의 AI 속도를 실시간 변경(검증/대상 탐색은 매니저가 담당).
+            const payload = data as SetSoloSpeedPayload;
+            if (socket.solo) {
+              soloManager.setSpeed(socket, payload.aiSpeed);
+            }
             break;
           }
           case 'chat': {

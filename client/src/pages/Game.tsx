@@ -10,6 +10,7 @@ import { PlayerZone } from '@/components/game/PlayerZone';
 import { MyHand } from '@/components/game/MyHand';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { AnimationLayer, type SimpleAnimation } from '@/components/game/AnimationLayer';
+import { CardPlaySpotlight } from '@/components/game/CardPlaySpotlight';
 import {
   RequestInputModal,
   type InputRequest,
@@ -30,8 +31,17 @@ import { useGameActions } from '@/features/game/hooks/useGameActions';
 import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 import { pveProgressQueryKey } from '@/features/pve/queries';
-import type { RequestInputKind, RequestInputPayload } from '@/shared/types/ws';
+import type { RequestInputKind, RequestInputPayload, SoloSpeed } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
+
+const SOLO_SPEED_KEY = 'soloSpeed';
+const SOLO_SPEEDS: SoloSpeed[] = ['slow', 'normal', 'fast'];
+
+function readStoredSoloSpeed(): SoloSpeed {
+  if (typeof window === 'undefined') return 'normal';
+  const stored = window.localStorage.getItem(SOLO_SPEED_KEY);
+  return SOLO_SPEEDS.includes(stored as SoloSpeed) ? (stored as SoloSpeed) : 'normal';
+}
 
 interface GameProps {
   solo?: boolean;
@@ -79,23 +89,37 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
   const [graveModalType, setGraveModalType] = useState<'me' | 'opponent' | 'catastrophe' | null>(
     null,
   );
+  // 솔로 AI 턴 속도. localStorage 에 영속화하며, 게임 시작 시 start_solo 로 전달된다.
+  const [soloSpeed, setSoloSpeed] = useState<SoloSpeed>(() => readStoredSoloSpeed());
 
   // 페이지 진입 시 전역 게임 상태 초기화
   useEffect(() => {
     clearGameState();
   }, [clearGameState]);
 
-  const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } = useGameSocket({
-    roomCode: isSolo ? 'solo' : (roomCode ?? ''),
-    userId: me?.id,
-    mode: isSolo ? 'solo' : 'game',
-    deckId: soloDeckId,
-    // pveStageId 가 있으면 pve, 없으면(튜토리얼) 기존대로 tutorial.
-    soloMode: pveStageId ? 'pve' : undefined,
-    stageId: pveStageId,
-    // 솔로 모드는 덱 id 가 준비된 뒤에만 연결해 start_solo 에 올바른 덱을 전달한다.
-    enabled: isSolo ? Boolean(soloDeckId) : true,
-  });
+  const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction, sendSetSpeed } =
+    useGameSocket({
+      roomCode: isSolo ? 'solo' : (roomCode ?? ''),
+      userId: me?.id,
+      mode: isSolo ? 'solo' : 'game',
+      deckId: soloDeckId,
+      // pveStageId 가 있으면 pve, 없으면(튜토리얼) 기존대로 tutorial.
+      soloMode: pveStageId ? 'pve' : undefined,
+      stageId: pveStageId,
+      // 솔로 모드에서만 AI 턴 속도를 게임 시작 시 함께 전달한다.
+      aiSpeed: isSolo ? soloSpeed : undefined,
+      // 솔로 모드는 덱 id 가 준비된 뒤에만 연결해 start_solo 에 올바른 덱을 전달한다.
+      enabled: isSolo ? Boolean(soloDeckId) : true,
+    });
+
+  // 속도 변경: state + localStorage 갱신 후 진행 중인 게임에 실시간 반영한다.
+  const handleChangeSoloSpeed = (next: SoloSpeed) => {
+    setSoloSpeed(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(SOLO_SPEED_KEY, next);
+    }
+    sendSetSpeed(next);
+  };
 
   // 솔로 모드에서 사용할 덱이 없으면 덱 빌더로 안내한다.
   useEffect(() => {
@@ -432,15 +456,47 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('game.lobby')}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={t('common.glossary')}
-            title={t('common.glossary')}
-            onClick={() => setGlossaryOpen(true)}
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* 솔로 모드 전용: AI 턴 속도 조절(느림/보통/빠름). 실시간 반영. */}
+            {isSolo && (
+              <div
+                className="flex items-center gap-1"
+                role="group"
+                aria-label={t('game.speed')}
+              >
+                <span className="text-muted-foreground mr-1 text-xs">
+                  {t('game.speed')}
+                </span>
+                {SOLO_SPEEDS.map((sp) => (
+                  <Button
+                    key={sp}
+                    type="button"
+                    size="sm"
+                    variant={soloSpeed === sp ? 'default' : 'outline'}
+                    aria-pressed={soloSpeed === sp}
+                    onClick={() => handleChangeSoloSpeed(sp)}
+                  >
+                    {t(
+                      sp === 'slow'
+                        ? 'game.speedSlow'
+                        : sp === 'fast'
+                          ? 'game.speedFast'
+                          : 'game.speedNormal',
+                    )}
+                  </Button>
+                ))}
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('common.glossary')}
+              title={t('common.glossary')}
+              onClick={() => setGlossaryOpen(true)}
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Turn Header */}
@@ -492,6 +548,8 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
           clearLastDiff();
         }}
       />
+      {/* 상대(AI)가 사용한 카드를 잠깐 화면 중앙에 보여준다(PvP 에서도 무해). */}
+      <CardPlaySpotlight />
       <RequestInputModal
         request={activeRequest}
         dismissible={activeRequest?.type === 'mulligan'}

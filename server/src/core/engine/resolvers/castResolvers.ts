@@ -18,6 +18,12 @@ export async function resolveCastExecute(
   diff.log.push(
     `플레이어 ${cast.owner}가 인스턴트 카드를 사용 (id=${cast.cardId})`,
   );
+  // 카드 사용을 사람이 따라갈 수 있게, 사용된 카드 정보를 애니메이션으로 알린다.
+  diff.animations.push({
+    kind: 'card_play',
+    cardId: cast.cardId,
+    owner: cast.owner,
+  });
   // effect_json의 onCast 트리거 실행 (효과들을 EffectStack에 올린다)
   await engine.enqueueCardTriggerEffects(cast.cardId, 'onCast', cast.owner, diff, {
     sourceInstanceId: cast.sourceInstanceId,

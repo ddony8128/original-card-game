@@ -30,6 +30,7 @@ export type AnimationKind =
   | 'ritual_place'
   | 'ritual_destroy'
   | 'shuffle'
+  | 'card_play'
   | (string & {});
 
 export interface AnimationSpec {
@@ -111,6 +112,7 @@ export type WsServerToClientMessage = {
 export type ClientToServerEvent =
   | 'ready'
   | 'start_solo'
+  | 'set_solo_speed'
   | 'answer_mulligan'
   | 'player_action'
   | 'player_input'
@@ -125,6 +127,9 @@ export interface ReadyPayload {
 /** 솔로 게임 모드. tutorial = AI 가 사람 덱 클론 + default 프로필, pve = 스테이지 덱/프로필. */
 export type SoloMode = 'tutorial' | 'pve';
 
+/** AI 턴 진행 속도(사람이 AI 행동을 따라갈 수 있게 조절). */
+export type SoloSpeed = 'slow' | 'normal' | 'fast';
+
 // 싱글플레이(솔로 vs AI) 시작 요청
 export interface StartSoloPayload {
   userId: string;
@@ -133,6 +138,14 @@ export interface StartSoloPayload {
   mode?: SoloMode;
   /** mode==='pve' 일 때 대상 스테이지 id. */
   stageId?: string;
+  /** AI 턴 진행 속도(미지정 시 normal). */
+  aiSpeed?: SoloSpeed;
+}
+
+// 진행 중인 솔로 게임의 AI 턴 속도를 실시간으로 변경
+export interface SetSoloSpeedPayload {
+  userId: string;
+  aiSpeed: SoloSpeed;
 }
 
 // 채팅 전용 방 입장(게임 시작/ready 와 분리)
@@ -195,6 +208,7 @@ export interface PlayerInputPayload {
 export interface ClientToServerPayloadMap {
   ready: ReadyPayload;
   start_solo: StartSoloPayload;
+  set_solo_speed: SetSoloSpeedPayload;
   answer_mulligan: AnswerMulliganPayload;
   player_action: PlayerActionPayload;
   player_input: PlayerInputPayload;

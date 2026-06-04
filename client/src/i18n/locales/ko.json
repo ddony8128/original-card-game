@@ -228,7 +228,11 @@
     "toastErrInvalidAction": "잘못된 행동입니다.",
     "toastGameOver": "게임 종료",
     "toastGameOverDesc": "승자: {{winner}} / 이유: {{reason}}",
-    "winnerNone": "없음"
+    "winnerNone": "없음",
+    "speed": "속도",
+    "speedSlow": "느림",
+    "speedNormal": "보통",
+    "speedFast": "빠름"
   },
   "tutorial": {
     "replay": "튜토리얼 다시 보기",

@@ -9,6 +9,7 @@ import type {
   PlayerInputPayload,
   StartSoloPayload,
   SoloMode,
+  SoloSpeed,
 } from '@/shared/types/ws';
 
 /**
@@ -39,6 +40,8 @@ export interface GameSocketOptions {
   soloMode?: SoloMode;
   /** soloMode==='pve' 일 때 대상 스테이지 id */
   stageId?: string;
+  /** 'solo' 모드에서 사용할 AI 턴 속도(미지정 시 normal). 게임 시작 시 전달된다. */
+  aiSpeed?: SoloSpeed;
 }
 
 export interface GameSocket {
@@ -52,6 +55,7 @@ export interface GameSocket {
   sendReady: (payload?: Partial<ReadyPayload>) => void;
   sendJoinChat: (payload?: Partial<ReadyPayload>) => void;
   sendStartSolo: (payload?: Partial<StartSoloPayload>) => void;
+  sendSetSpeed: (aiSpeed: SoloSpeed) => void;
   sendChat: (text: string) => void;
   sendAnswerMulligan: (payload: AnswerMulliganPayload) => void;
   sendPlayerAction: (payload: PlayerActionPayload) => void;
@@ -157,6 +161,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
         // pve 모드일 때만 mode/stageId 를 실어 보낸다. 튜토리얼은 기존대로 둘 다 생략.
         if (options.soloMode) soloData.mode = options.soloMode;
         if (options.stageId) soloData.stageId = options.stageId;
+        if (options.aiSpeed) soloData.aiSpeed = options.aiSpeed;
         initPayload = {
           event: 'start_solo',
           data: soloData,
@@ -254,7 +259,15 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     };
     if (options.soloMode) base.mode = options.soloMode;
     if (options.stageId) base.stageId = options.stageId;
+    if (options.aiSpeed) base.aiSpeed = options.aiSpeed;
     send({ event: 'start_solo', data: { ...base, ...payload } });
+  };
+
+  const sendSetSpeed = (aiSpeed: SoloSpeed) => {
+    send({
+      event: 'set_solo_speed',
+      data: { userId: options.userId ?? '', aiSpeed },
+    });
   };
 
   const sendChat = (text: string) => {
@@ -304,6 +317,7 @@ export function createGameSocket(options: GameSocketOptions): GameSocket {
     sendReady,
     sendJoinChat,
     sendStartSolo,
+    sendSetSpeed,
     sendChat,
     sendAnswerMulligan,
     sendPlayerAction,

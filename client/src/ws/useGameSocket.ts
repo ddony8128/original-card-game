@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import i18n from '@/i18n';
 import { createGameSocket, type GameSocket, type GameSocketMode } from '@/ws/gameSocket';
-import type { SoloMode } from '@/shared/types/ws';
+import type { SoloMode, SoloSpeed } from '@/shared/types/ws';
 import { useGameFogStore } from '@/shared/store/gameStore';
 import type {
   GameInitPayload,
@@ -23,6 +23,8 @@ interface UseGameSocketParams {
   soloMode?: SoloMode;
   /** soloMode==='pve' 일 때 대상 스테이지 id */
   stageId?: string;
+  /** 'solo' 모드에서 사용할 AI 턴 속도(미지정 시 normal). 게임 시작 시 전달된다. */
+  aiSpeed?: SoloSpeed;
   /** false 면 소켓 연결을 보류한다(기본 true). 솔로 모드에서 덱 로딩 대기에 사용. */
   enabled?: boolean;
 }
@@ -41,6 +43,7 @@ export function useGameSocket({
   deckId,
   soloMode,
   stageId,
+  aiSpeed,
   enabled = true,
 }: UseGameSocketParams) {
   const setFromGameInit = useGameFogStore((s) => s.setFromGameInit);
@@ -58,7 +61,11 @@ export function useGameSocket({
         deckId,
         soloMode,
         stageId,
+        aiSpeed,
       }),
+    // aiSpeed 는 의도적으로 deps 에서 제외한다: 게임 시작 시 1회만 사용되고,
+    // 이후 변경은 소켓 재생성(재연결) 없이 sendSetSpeed 로 실시간 반영된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [roomCode, userId, mode, deckId, soloMode, stageId],
   );
 
@@ -113,6 +120,7 @@ export function useGameSocket({
   return {
     sendReady: socket.sendReady,
     sendStartSolo: socket.sendStartSolo,
+    sendSetSpeed: socket.sendSetSpeed,
     sendAnswerMulligan: socket.sendAnswerMulligan,
     sendPlayerAction: socket.sendPlayerAction,
     sendPlayerInput: socket.sendPlayerInput,
