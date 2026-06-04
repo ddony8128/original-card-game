@@ -112,6 +112,9 @@
     "cleared": "Cleared!",
     "retry": "Challenge Again",
     "challenge": "Challenge",
+    "selectDeck": "Select Deck",
+    "select": "Select",
+    "selected": "Selected",
     "progressHint": "Clear all stages to earn the golden badge ({{cleared}}/{{total}})"
   },
   "notFound": {

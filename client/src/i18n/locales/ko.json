@@ -112,6 +112,9 @@
     "cleared": "클리어!",
     "retry": "다시 도전",
     "challenge": "도전",
+    "selectDeck": "덱 선택",
+    "select": "선택",
+    "selected": "선택됨",
     "progressHint": "모든 스테이지를 클리어하면 황금 뱃지를 획득합니다 ({{cleared}}/{{total}})"
   },
   "notFound": {

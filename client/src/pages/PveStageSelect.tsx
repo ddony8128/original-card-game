@@ -1,16 +1,24 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLangNavigate } from '@/i18n/nav';
 import { ArrowLeft, Trophy, Swords, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePveStagesQuery, usePveProgressQuery } from '@/features/pve/queries';
+import { useDecksQuery } from '@/features/decks/queries';
 
 export default function PveStageSelect() {
   const navigate = useLangNavigate();
   const { t } = useTranslation();
   const { data: stagesData, isLoading: stagesLoading } = usePveStagesQuery();
   const { data: progress, isLoading: progressLoading } = usePveProgressQuery();
+  const { data: decks, isLoading: decksLoading } = useDecksQuery();
+
+  const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
+  // 기본 선택은 첫 번째 덱. 사용자가 아직 고르지 않았으면 첫 덱으로 폴백한다.
+  const effectiveDeckId = selectedDeckId ?? decks?.[0]?.id ?? null;
+  const noDecks = !decksLoading && (!decks || decks.length === 0);
 
   const isLoading = stagesLoading || progressLoading;
   const stages = stagesData?.stages ?? [];
@@ -36,6 +44,63 @@ export default function PveStageSelect() {
           </h1>
           <p className="text-muted-foreground">{t('pve.subtitle')}</p>
         </div>
+
+        {/* 덱 선택 — PvP 대기실(BackRoom)과 동일한 덱 리스트 형태 */}
+        {!noDecks && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t('pve.selectDeck')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {decksLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                  <Skeleton className="h-14 w-full rounded-lg" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {decks?.map((d) => {
+                    const mainCount = d.main_cards.reduce(
+                      (s, e) => s + (e.count ?? 0),
+                      0,
+                    );
+                    const cataCount = d.cata_cards.reduce(
+                      (s, e) => s + (e.count ?? 0),
+                      0,
+                    );
+                    const selected = effectiveDeckId === d.id;
+                    return (
+                      <div
+                        key={d.id}
+                        className={
+                          'bg-secondary/50 border-border flex items-center justify-between rounded-lg border p-3' +
+                          (selected ? ' ring-primary/60 ring-2' : '')
+                        }
+                      >
+                        <div>
+                          <div className="font-semibold">{d.name}</div>
+                          <div className="text-muted-foreground text-xs">
+                            {t('lobby.deckCardCount', {
+                              main: mainCount,
+                              cata: cataCount,
+                            })}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={selected}
+                          onClick={() => setSelectedDeckId(d.id)}
+                        >
+                          {selected ? t('pve.selected') : t('pve.select')}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* 전체 클리어 축하 배너 */}
         {allCleared && (
@@ -87,7 +152,10 @@ export default function PveStageSelect() {
                     <Button
                       className="mt-auto w-full"
                       variant={cleared ? 'outline' : 'default'}
-                      onClick={() => navigate(`/pve/play/${stage.id}`)}
+                      disabled={noDecks || !effectiveDeckId}
+                      onClick={() =>
+                        navigate(`/pve/play/${stage.id}?deck=${effectiveDeckId}`)
+                      }
                     >
                       {cleared ? t('pve.retry') : t('pve.challenge')}
                     </Button>

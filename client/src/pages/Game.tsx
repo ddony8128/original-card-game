@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useLangNavigate } from '@/i18n/nav';
 import { useQueryClient } from '@tanstack/react-query';
 import { type BoardPosition } from '@/components/game/GameBoard';
@@ -44,16 +44,24 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { roomId: roomCode } = useParams<{ roomId: string }>();
+  const [searchParams] = useSearchParams();
   const { data: me } = useMeQuery();
   const { data: decks, isLoading: decksLoading } = useDecksQuery();
-  // PvE 도 튜토리얼과 동일하게 solo 연결 경로를 사용한다(사람 덱 = 첫 번째 덱).
+  // PvE 도 튜토리얼과 동일하게 solo 연결 경로를 사용한다.
   const isSolo = solo || Boolean(pveStageId);
   // 튜토리얼 모드(solo && !pveStageId)는 회원가입 시 제공되는 기본 덱 "기본 덱"으로 진행한다.
   const isTutorial = solo && !pveStageId;
+  // PvE 는 스테이지 선택 화면에서 고른 덱을 ?deck= 쿼리로 전달받는다.
+  // 누락/무효한 경우 첫 번째 덱으로 폴백한다(하위 호환).
+  const requestedDeckId = searchParams.get('deck');
+  const pveDeckId =
+    requestedDeckId && decks?.some((d) => d.id === requestedDeckId)
+      ? requestedDeckId
+      : decks?.[0]?.id;
   const soloDeckId = isSolo
     ? isTutorial
       ? (decks?.find((d) => d.name === '기본 덱')?.id ?? decks?.[0]?.id)
-      : decks?.[0]?.id
+      : pveDeckId
     : undefined;
   const fogged = useGameFogStore((s) => s.fogged);
   const lastDiff = useGameFogStore((s) => s.lastDiff);
