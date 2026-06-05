@@ -21,6 +21,9 @@ async function main(){
     const skip=p.getByRole('button',{name:'건너뛰기'});
     if(await skip.count()) await skip.first().click().catch(()=>{});
     await p.waitForTimeout(2000);
+    // select first hand card to reveal type badge + full description + use button
+    const firstCard=p.locator('.grid button').filter({hasText:/마나|피해|회복|설치|뽑|거리/}).first();
+    try{ await firstCard.click({timeout:1500}); await p.waitForTimeout(600);}catch{}
     // viewport-only screenshot = what actually fits on one screen
     await p.screenshot({path:`${OUT}/ingame-${vp.tag}.png`,fullPage:false});
     await p.screenshot({path:`${OUT}/ingame-${vp.tag}-full.png`,fullPage:true});

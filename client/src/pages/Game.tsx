@@ -13,6 +13,7 @@ import { MyHand } from '@/components/game/MyHand';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { AnimationLayer, type SimpleAnimation } from '@/components/game/AnimationLayer';
 import { CardPlaySpotlight } from '@/components/game/CardPlaySpotlight';
+import { EventBanner } from '@/components/game/EventBanner';
 import {
   RequestInputModal,
   type InputRequest,
@@ -452,6 +453,25 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
   const myTurnActive = Boolean(myId && fogged.activePlayer === myId);
   const oppTurnActive = Boolean(fogged.activePlayer && fogged.activePlayer !== myId);
 
+  // ---- 행동 가이드 배너 ----
+  // 현재 상태로 "지금 무엇을 해야 하는지" 한 줄 안내 문구와 강조 여부를 계산한다.
+  // 순수 안내 전용이며 어떤 행동 로직도 변경하지 않는다.
+  const guide = (() => {
+    if (isGameOver) return null;
+    // 멀리건/입력 요구는 모달이 함께 떠도 배너로 다음 행동을 명확히 안내한다.
+    if (mulliganRequest) return { text: t('game.guideMulligan'), emphatic: true };
+    if (mapRequest) return { text: t('game.guideSelectCell'), emphatic: true };
+    if (optionRequest) return { text: t('game.guideSelectOption'), emphatic: true };
+    if (myTurnActive) {
+      if (selectedCardIndex !== null)
+        return { text: t('game.guideCardSelected'), emphatic: true };
+      if (selectedBoardPosition !== null)
+        return { text: t('game.guideCellSelected'), emphatic: true };
+      return { text: t('game.guideMyTurn'), emphatic: true };
+    }
+    return { text: t('game.guideOpponentTurn'), emphatic: false };
+  })();
+
   return (
     <div className="from-background via-background to-accent/10 flex min-h-[100dvh] flex-col bg-linear-to-br p-2 sm:p-3 lg:h-[100dvh] lg:overflow-hidden">
       {/* Top Bar: 로비 | 턴 헤더 | 속도·도움말 — 한 줄로 압축 */}
@@ -514,6 +534,21 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
             onViewGrave={() => handleViewGrave('opponent')}
           />
           <OpponentHand cardCount={fogged.opponent.handCount} />
+
+          {/* 행동 가이드: 보드 바로 위의 얇은 한 줄 배너(레이아웃 점프 없음) */}
+          {guide && (
+            <div
+              role="status"
+              aria-live="polite"
+              className={`shrink-0 truncate rounded-md border px-3 py-1 text-center text-xs sm:text-sm ${
+                guide.emphatic
+                  ? 'border-primary/40 bg-primary/10 text-primary font-medium'
+                  : 'border-border bg-muted/40 text-muted-foreground'
+              }`}
+            >
+              {guide.text}
+            </div>
+          )}
 
           {/* 보드: 가운데 정렬하고 남는 공간을 차지 */}
           <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
@@ -580,6 +615,9 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
       />
       {/* 상대(AI)가 사용한 카드를 잠깐 화면 중앙에 보여준다(PvP 에서도 무해). */}
       <CardPlaySpotlight />
+      {/* 방금 일어난 일(재앙 발동/피해/회복 등)을 화면 상단에 잠깐 띄우는 텍스트 배너.
+          이미 번역된 perspectiveLogs 텍스트를 재활용하며, 게임 종료 시엔 띄우지 않는다. */}
+      <EventBanner logs={perspectiveLogs} paused={isGameOver} />
       <RequestInputModal
         request={activeRequest}
         dismissible={activeRequest?.type === 'mulligan'}
