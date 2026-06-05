@@ -1158,14 +1158,14 @@
           "effects": [
             {
               "type": "discard",
-              "value": 1,
+              "value": 3,
               "method": "deck_top",
               "target": "self",
               "condition": "if_self_hand_empty"
             },
             {
               "type": "discard",
-              "value": 3,
+              "value": 1,
               "method": "hand_random",
               "target": "self",
               "condition": "if_self_hand_empty_not"
