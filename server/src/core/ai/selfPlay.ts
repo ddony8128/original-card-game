@@ -56,6 +56,11 @@ export interface SelfPlaySummary {
 export interface SelfPlayPlayer {
   deck: { main: DeckList; cata: DeckList };
   profileId?: string;
+  /**
+   * 시작 HP 오버라이드(보스 하드 스테이지 등). 지정 시 해당 플레이어의
+   * hp/maxHp 를 이 값으로 시작시킨다. soloGameManager 의 aiHp 적용과 동일.
+   */
+  aiHp?: number;
 }
 
 /** mulberry32: seed 하나로 만든 결정적 PRNG → 재현 가능한 결과를 보장한다. */
@@ -214,6 +219,14 @@ export async function playOneGame(
   ];
 
   const initialState = createInitialGameState(configs);
+  // 보스 하드 스테이지처럼 시작 HP 가 지정되면 해당 플레이어만 그 HP 로 시작시킨다.
+  // (soloGameManager 와 동일하게 hp/maxHp 둘 다 덮어쓴다.)
+  if (a.aiHp !== undefined) {
+    initialState.players[A].hp = initialState.players[A].maxHp = a.aiHp;
+  }
+  if (b.aiHp !== undefined) {
+    initialState.players[B].hp = initialState.players[B].maxHp = b.aiHp;
+  }
   const catalog = await ensureCardCatalog();
   const engine = GameEngineAdapter.create({
     roomCode: `selfplay_${seed}`,
@@ -319,6 +332,12 @@ export async function playOneGameTraced(
     { playerId: B, main: b.deck.main, cata: b.deck.cata },
   ];
   const initialState = createInitialGameState(configs);
+  if (a.aiHp !== undefined) {
+    initialState.players[A].hp = initialState.players[A].maxHp = a.aiHp;
+  }
+  if (b.aiHp !== undefined) {
+    initialState.players[B].hp = initialState.players[B].maxHp = b.aiHp;
+  }
   const catalog = await ensureCardCatalog();
   const engine = GameEngineAdapter.create({
     roomCode: `selfplay_${seed}`,
