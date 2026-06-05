@@ -3,7 +3,17 @@
 > 시뮬레이션 기반 분석. **D항목의 조정은 2026-06-05 적용 완료** — cards.json + `migrations/004_balance_tuning.sql` + DB(PostgREST service key 로 직접 UPDATE, `scripts/applyBalanceToDb.mjs`). DB cards 테이블엔 영어 컬럼이 없어 effect_json + description_ko 만 동기화(영어는 cards.json/클라).
 > 분석 도구: `server/src/core/ai/selfPlay.ts`(`playOneGameTraced`/`runSelfPlay`), 헤드리스 vitest. 라이브 서버(3000) 미사용.
 
-## 적용 후 재시뮬 (2026-06-05, aiHp 반영 + 새 밸런스)
+## 어그로 버프 원복 (2026-06-05, 후속 결정)
+
+재시뮬에서 어그로 카드 버프가 stage1 을 과교정(71%)한 것이 확인돼, **어그로 버프를 원복**(005 마이그레이션 + DB 동기화). "약체" 판정이 인과 아닌 상관(약한 덱 소속)이라 불확실했던 점을 반영.
+- c01-002 마나담긴찌르기 3→**2**(원복), c01-011 고통동기화 자해 3→**5**(원복), c01-017 전광석화 2/3/4→**1/2/3**(원복)
+- c01-012 카드날리기: 원복 대신 **무작위 1장 버리기**(hand_choose→hand_random, 1장+6딜)로 변경
+- **stage-1 덱도 원복**(약화 취소) → stage-1.main = stage-4.main 동일 복귀
+- **유지**: 운석 10→8, 지력흡수 3→2, 엔드게임 4/4/4 정합(별개로 합당)
+
+아래 재시뮬 표는 *원복 전(버프 상태)* 측정값이며, 원복 후엔 stage1 이 다시 적정 난이도(≈ 적용 전 24~33%대)로 돌아간다.
+
+## 적용 후 재시뮬 (2026-06-05, aiHp 반영 + 새 밸런스 — 원복 전 측정)
 
 selfPlay 하네스에 스테이지 `aiHp` 를 반영(`SelfPlayPlayer.aiHp`)하고, 새 cards.json 으로 재측정. 재사용 스펙: `src/core/test/balanceSim.manual.test.ts` (env 게이트). 실행: `BAL_SIM=1 npx vitest run src/core/test/balanceSim.manual.test.ts`. 각 100판.
 

@@ -50,10 +50,9 @@ describe('pveStages 리소스 (P0-1)', () => {
     }
   });
 
-  it('하드 stage-2/3 은 일반 stage-2/3 의 덱을 그대로 재사용한다(난이도는 aiHp 로만 가른다)', () => {
-    // stage-1 은 1단계 난이도 완화를 위해 덱을 약화했으므로 stage-4(하드)와 다르다.
-    // stage-2/3 계열은 여전히 동일 덱을 공유한다.
+  it('하드 스테이지(4~6)는 일반 스테이지(1~3)의 덱을 그대로 재사용한다(난이도는 aiHp 로만 가른다)', () => {
     for (const [hardId, baseId] of [
+      ['stage-4', 'stage-1'],
       ['stage-5', 'stage-2'],
       ['stage-6', 'stage-3'],
     ] as Array<[string, string]>) {

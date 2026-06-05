@@ -30,8 +30,8 @@
     "name_dev": "pierce_with_mana",
     "name_ko": "마나가 담긴 찌르기",
     "name_en": "Mana-Charged Jab",
-    "description_ko": "거리 1 내에 피해를 3 줍니다.",
-    "description_en": "Deal 3 damage within range 1.",
+    "description_ko": "거리 1 내에 피해를 2 줍니다.",
+    "description_en": "Deal 2 damage within range 1.",
     "type": "instant",
     "mana": 0,
     "token": false,
@@ -43,7 +43,7 @@
             {
               "type": "damage",
               "range": 1,
-              "value": 3,
+              "value": 2,
               "target": "near_enemy"
             }
           ],
@@ -296,8 +296,8 @@
     "name_dev": "pain_sync",
     "name_ko": "고통 동기화",
     "name_en": "Pain Sync",
-    "description_ko": "상대 마법사에게 5 피해를 주고, 자신도 3 피해를 입습니다.",
-    "description_en": "Deal 5 damage to the enemy wizard, and take 3 damage yourself.",
+    "description_ko": "상대 마법사에게 5 피해를 주고, 자신도 5 피해를 입습니다.",
+    "description_en": "Deal 5 damage to the enemy wizard, and take 5 damage yourself.",
     "type": "instant",
     "mana": 2,
     "token": false,
@@ -313,7 +313,7 @@
             },
             {
               "type": "damage",
-              "value": 3,
+              "value": 5,
               "target": "self"
             }
           ],
@@ -327,8 +327,8 @@
     "name_dev": "card_blast",
     "name_ko": "카드 날리기",
     "name_en": "Card Blast",
-    "description_ko": "카드 1장을 선택해 버리고, 거리 2 내에 6 피해를 줍니다.",
-    "description_en": "Discard 1 card of your choice, then deal 6 damage within range 2.",
+    "description_ko": "카드 1장을 무작위로 버리고, 거리 2 내에 6 피해를 줍니다.",
+    "description_en": "Discard 1 random card, then deal 6 damage within range 2.",
     "type": "instant",
     "mana": 2,
     "token": false,
@@ -340,7 +340,7 @@
             {
               "type": "discard",
               "value": 1,
-              "method": "hand_choose",
+              "method": "hand_random",
               "target": "self"
             },
             {
@@ -477,8 +477,8 @@
     "name_dev": "lightning_rush",
     "name_ko": "전광석화",
     "name_en": "Lightning Rush",
-    "description_ko": "이동과 공격을 세 번 반복합니다. (1칸 이동 후 거리 1 이내 피해 2, 1칸 이동 후 거리 2 이내 피해 3, 1칸 이동 후 거리 3 이내 피해 4)",
-    "description_en": "Repeat move-and-attack three times. (Move 1 space, then deal 2 damage within range 1; move 1 space, then deal 3 damage within range 2; move 1 space, then deal 4 damage within range 3.)",
+    "description_ko": "이동과 공격을 세 번 반복합니다. (1칸 이동 후 거리 1 이내 피해 1, 1칸 이동 후 거리 2 이내 피해 2, 1칸 이동 후 거리 3 이내 피해 3)",
+    "description_en": "Repeat move-and-attack three times. (Move 1 space, then deal 1 damage within range 1; move 1 space, then deal 2 damage within range 2; move 1 space, then deal 3 damage within range 3.)",
     "type": "instant",
     "mana": 3,
     "token": false,
@@ -496,7 +496,7 @@
             {
               "type": "damage",
               "range": 1,
-              "value": 2,
+              "value": 1,
               "target": "near_enemy"
             },
             {
@@ -508,7 +508,7 @@
             {
               "type": "damage",
               "range": 2,
-              "value": 3,
+              "value": 2,
               "target": "near_enemy"
             },
             {
@@ -520,7 +520,7 @@
             {
               "type": "damage",
               "range": 3,
-              "value": 4,
+              "value": 3,
               "target": "near_enemy"
             }
           ],
