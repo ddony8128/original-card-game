@@ -33,8 +33,8 @@ export const testCardRows: CardRow[] = [
     name_dev: 'pierce_with_mana',
     name_ko: '마나가 담긴 찌르기',
     name_en: '마나가 담긴 찌르기',
-    description_ko: '거리 1 내에 피해를 2 줍니다.',
-    description_en: '거리 1 내에 피해를 2 줍니다.',
+    description_ko: '거리 1 내에 피해를 3 줍니다.',
+    description_en: '거리 1 내에 피해를 3 줍니다.',
     type: 'instant',
     mana: 0,
     token: false,
@@ -43,7 +43,7 @@ export const testCardRows: CardRow[] = [
       triggers: [
         {
           effects: [
-            { type: 'damage', range: 1, value: 2, target: 'near_enemy' },
+            { type: 'damage', range: 1, value: 3, target: 'near_enemy' },
           ],
           trigger: 'onCast',
         },
