@@ -1,3 +1,4 @@
+import { Sparkles } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
 export type BoardPosition = {
@@ -54,7 +55,7 @@ export function GameBoard({
   };
 
   return (
-    <div className="bg-card inline-grid grid-cols-5 gap-2 rounded-lg border p-4">
+    <div className="bg-card inline-grid grid-cols-5 gap-1.5 rounded-lg border p-2 sm:gap-2 sm:p-3">
       {Array.from({ length: 25 }, (_, i) => {
         const y = Math.floor(i / 5);
         const x = i % 5;
@@ -76,7 +77,7 @@ export function GameBoard({
             }
             onClick={() => onCellClick({ x, y })}
             className={cn(
-              'relative h-16 w-16 rounded-lg border-2 transition-all duration-200',
+              'relative h-12 w-12 rounded-lg border-2 transition-all duration-200 sm:h-14 sm:w-14 lg:h-16 lg:w-16',
               'hover:border-primary/50 hover:scale-105',
               isPlayer &&
                 'border-blue-400 bg-linear-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/50',
@@ -103,15 +104,32 @@ export function GameBoard({
               !isPlayer && !isOpponent && !isSelected && !isAdjacent && 'border-border',
             )}
           >
-            {isPlayer && <div className="text-2xl font-bold text-white">👤</div>}
-            {isOpponent && <div className="text-2xl font-bold text-white">🤖</div>}
+            {isPlayer && <div className="text-xl font-bold text-white sm:text-2xl">👤</div>}
+            {isOpponent && <div className="text-xl font-bold text-white sm:text-2xl">🤖</div>}
             {ritualInfo && (
-              <div
-                className={cn(
-                  'absolute right-1 bottom-1 h-3 w-3 rounded-full border border-white/70 shadow',
-                  ritualInfo.isMine ? 'bg-purple-400' : 'bg-red-400',
+              <>
+                {/* 마법사가 없는 칸이면 마법진 아이콘 + 축약 이름을 직접 보여줘
+                    (점만 찍던 기존 방식과 달리) 모바일에서도 무엇이 깔렸는지 알 수 있게 한다. */}
+                {!isPlayer && !isOpponent && (
+                  <span
+                    className={cn(
+                      'pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-0.5 px-0.5',
+                      ritualInfo.isMine ? 'text-purple-500' : 'text-red-500',
+                    )}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                    <span className="w-full truncate text-center text-[8px] leading-tight font-semibold">
+                      {ritualInfo.name}
+                    </span>
+                  </span>
                 )}
-              />
+                <span
+                  className={cn(
+                    'absolute right-1 bottom-1 h-2.5 w-2.5 rounded-full border border-white/70 shadow',
+                    ritualInfo.isMine ? 'bg-purple-400' : 'bg-red-400',
+                  )}
+                />
+              </>
             )}
           </button>
         );

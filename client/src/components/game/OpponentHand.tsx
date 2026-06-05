@@ -6,13 +6,13 @@ interface OpponentHandProps {
 
 export function OpponentHand({ cardCount }: OpponentHandProps) {
   return (
-    <div className="flex justify-center gap-2">
+    <div className="flex flex-wrap justify-center gap-1">
       {Array.from({ length: cardCount }).map((_, i) => (
         <Card
           key={i}
-          className="from-muted to-muted/50 flex h-24 w-16 items-center justify-center border-2 bg-linear-to-br"
+          className="from-muted to-muted/50 flex h-9 w-7 items-center justify-center border bg-linear-to-br"
         >
-          <div className="text-2xl">🃏</div>
+          <div className="text-sm">🃏</div>
         </Card>
       ))}
     </div>

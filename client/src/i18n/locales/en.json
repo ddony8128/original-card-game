@@ -33,7 +33,7 @@
     "tutorial": "Tutorial (AI practice)",
     "pve": "PvE (AI challenge)",
     "goldenBadge": "Golden badge earned!",
-    "pveBadgeProgress": "Clear 3 PvE stages to earn the golden badge ({{count}}/3)",
+    "pveBadgeProgress": "Clear all PvE stages to earn the golden badge ({{count}}/{{total}})",
     "goToReview": "Leave a Review",
     "loadingDecks": "Loading deck info. Please wait a moment.",
     "needDeck": "You need to create a deck first.",

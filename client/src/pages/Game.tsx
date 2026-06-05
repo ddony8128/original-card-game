@@ -4,9 +4,11 @@ import { useLangNavigate } from '@/i18n/nav';
 import { useQueryClient } from '@tanstack/react-query';
 import { type BoardPosition } from '@/components/game/GameBoard';
 import { GameHeader } from '@/components/game/GameHeader';
-import { OpponentZone } from '@/components/game/OpponentZone';
 import { BoardZone } from '@/components/game/BoardZone';
-import { PlayerZone } from '@/components/game/PlayerZone';
+import { StatBar } from '@/components/game/StatBar';
+import { OpponentHand } from '@/components/game/OpponentHand';
+import { CatastropheDeckInfo } from '@/components/game/DeckInfo';
+import { GameLog } from '@/components/game/GameLog';
 import { MyHand } from '@/components/game/MyHand';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { AnimationLayer, type SimpleAnimation } from '@/components/game/AnimationLayer';
@@ -447,99 +449,127 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
         ? t('game.graveOpponent')
         : t('game.graveCatastrophe');
 
+  const myTurnActive = Boolean(myId && fogged.activePlayer === myId);
+  const oppTurnActive = Boolean(fogged.activePlayer && fogged.activePlayer !== myId);
+
   return (
-    <div className="from-background via-background to-accent/10 min-h-screen bg-linear-to-br p-4">
-      <div className="mx-auto max-w-7xl space-y-4">
-        {/* Top Bar: navigation */}
-        <div className="flex items-center justify-between">
-          <Button variant="outline" onClick={() => navigate('/lobby')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            {t('game.lobby')}
+    <div className="from-background via-background to-accent/10 flex min-h-[100dvh] flex-col bg-linear-to-br p-2 sm:p-3 lg:h-[100dvh] lg:overflow-hidden">
+      {/* Top Bar: 로비 | 턴 헤더 | 속도·도움말 — 한 줄로 압축 */}
+      <div className="flex shrink-0 items-center justify-between gap-2">
+        <Button variant="outline" size="sm" onClick={() => navigate('/lobby')}>
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          <span className="hidden sm:inline">{t('game.lobby')}</span>
+        </Button>
+        <GameHeader turn={fogged.turn} isMyTurn={myTurnActive} />
+        <div className="flex items-center gap-1">
+          {/* 솔로 모드 전용: AI 턴 속도 조절(느림/보통/빠름). 실시간 반영. */}
+          {isSolo && (
+            <div className="hidden items-center gap-1 sm:flex" role="group" aria-label={t('game.speed')}>
+              {SOLO_SPEEDS.map((sp) => (
+                <Button
+                  key={sp}
+                  type="button"
+                  size="sm"
+                  variant={soloSpeed === sp ? 'default' : 'outline'}
+                  aria-pressed={soloSpeed === sp}
+                  onClick={() => handleChangeSoloSpeed(sp)}
+                >
+                  {t(
+                    sp === 'slow'
+                      ? 'game.speedSlow'
+                      : sp === 'fast'
+                        ? 'game.speedFast'
+                        : 'game.speedNormal',
+                  )}
+                </Button>
+              ))}
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t('common.glossary')}
+            title={t('common.glossary')}
+            onClick={() => setGlossaryOpen(true)}
+          >
+            <HelpCircle className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
-            {/* 솔로 모드 전용: AI 턴 속도 조절(느림/보통/빠름). 실시간 반영. */}
-            {isSolo && (
-              <div
-                className="flex items-center gap-1"
-                role="group"
-                aria-label={t('game.speed')}
-              >
-                <span className="text-muted-foreground mr-1 text-xs">
-                  {t('game.speed')}
-                </span>
-                {SOLO_SPEEDS.map((sp) => (
-                  <Button
-                    key={sp}
-                    type="button"
-                    size="sm"
-                    variant={soloSpeed === sp ? 'default' : 'outline'}
-                    aria-pressed={soloSpeed === sp}
-                    onClick={() => handleChangeSoloSpeed(sp)}
-                  >
-                    {t(
-                      sp === 'slow'
-                        ? 'game.speedSlow'
-                        : sp === 'fast'
-                          ? 'game.speedFast'
-                          : 'game.speedNormal',
-                    )}
-                  </Button>
-                ))}
-              </div>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.glossary')}
-              title={t('common.glossary')}
-              onClick={() => setGlossaryOpen(true)}
-            >
-              <HelpCircle className="h-5 w-5" />
-            </Button>
+        </div>
+      </div>
+
+      {/* 메인: 남은 높이를 채우는 2열(데스크톱) / 세로(모바일) 레이아웃 */}
+      <div className="mt-2 flex min-h-0 flex-1 flex-col gap-2 lg:flex-row">
+        {/* CENTER: 상대 스탯 → 상대 손패 → 보드 → 내 스탯 → 내 손패 */}
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <StatBar
+            label={t('game.opponent')}
+            hp={fogged.opponent.hp}
+            maxHp={fogged.opponent.maxHp}
+            mana={fogged.opponent.mana}
+            maxMana={fogged.opponent.maxMana}
+            deckCount={fogged.opponent.deckCount}
+            graveCount={fogged.opponent.graveCount}
+            handCount={fogged.opponent.handCount}
+            active={oppTurnActive}
+            onViewGrave={() => handleViewGrave('opponent')}
+          />
+          <OpponentHand cardCount={fogged.opponent.handCount} />
+
+          {/* 보드: 가운데 정렬하고 남는 공간을 차지 */}
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto">
+            <BoardZone
+              playerPosition={playerPosition}
+              opponentPosition={opponentPosition}
+              selectedBoardPosition={selectedBoardPosition}
+              mapHighlightPositions={mapHighlightPositions}
+              rituals={fogged.board.rituals}
+              getCardMeta={getCardMeta}
+              myId={myId}
+              onCellClick={handleBoardCellClick}
+              onMoveToSelected={handleMoveToSelected}
+              onUseRitualAtSelected={handleUseRitualAtSelected}
+            />
           </div>
+
+          <StatBar
+            label={t('game.me')}
+            hp={fogged.me.hp}
+            maxHp={fogged.me.maxHp}
+            mana={fogged.me.mana}
+            maxMana={fogged.me.maxMana}
+            deckCount={fogged.me.deckCount}
+            graveCount={fogged.me.graveCount}
+            active={myTurnActive}
+            onViewGrave={() => handleViewGrave('me')}
+          />
+
+          <MyHand
+            hand={fogged.me.hand}
+            getCardMeta={getCardMeta}
+            selectedCardIndex={selectedCardIndex}
+            onSelectCard={(index) =>
+              setSelectedCardIndex(selectedCardIndex === index ? null : index)
+            }
+            onPlayCard={handlePlayCard}
+            onEndTurn={handleEndTurn}
+            isMyTurn={isMyTurn}
+            myId={myId}
+            canAfford={hasEnoughMana}
+          />
         </div>
 
-        {/* Turn Header */}
-        <GameHeader turn={fogged.turn} isMyTurn={Boolean(myId && fogged.activePlayer === myId)} />
-
-        {/* Opponent Info */}
-        <OpponentZone
-          opponent={fogged.opponent}
-          catastrophe={fogged.catastrophe}
-          onViewGrave={handleViewGrave}
-        />
-
-        {/* Game Board */}
-        <BoardZone
-          playerPosition={playerPosition}
-          opponentPosition={opponentPosition}
-          selectedBoardPosition={selectedBoardPosition}
-          mapHighlightPositions={mapHighlightPositions}
-          rituals={fogged.board.rituals}
-          getCardMeta={getCardMeta}
-          myId={myId}
-          onCellClick={handleBoardCellClick}
-          onMoveToSelected={handleMoveToSelected}
-          onUseRitualAtSelected={handleUseRitualAtSelected}
-        />
-
-        {/* Player Info + Logs + My Deck */}
-        <PlayerZone me={fogged.me} perspectiveLogs={perspectiveLogs} onViewGrave={handleViewGrave} />
-
-        {/* My Hand */}
-        <MyHand
-          hand={fogged.me.hand}
-          getCardMeta={getCardMeta}
-          selectedCardIndex={selectedCardIndex}
-          onSelectCard={(index) =>
-            setSelectedCardIndex(selectedCardIndex === index ? null : index)
-          }
-          onPlayCard={handlePlayCard}
-          onEndTurn={handleEndTurn}
-          isMyTurn={isMyTurn}
-          myId={myId}
-          canAfford={hasEnoughMana}
-        />
+        {/* SIDE: 재앙 덱 + 게임 로그 (데스크톱은 우측 고정, 모바일은 아래) */}
+        <div className="flex shrink-0 flex-col gap-2 lg:w-72 lg:overflow-hidden">
+          <CatastropheDeckInfo
+            deckCount={fogged.catastrophe.deckCount}
+            graveCount={fogged.catastrophe.graveCount}
+            grave={fogged.catastrophe.grave}
+            onViewGrave={() => handleViewGrave('catastrophe')}
+          />
+          <div className="min-h-0 flex-1">
+            <GameLog logs={perspectiveLogs} />
+          </div>
+        </div>
       </div>
 
       <AnimationLayer

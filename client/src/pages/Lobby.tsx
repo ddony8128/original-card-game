@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { LogOut, GraduationCap, Swords, Trophy, BookOpen } from 'lucide-react';
 import { GlossaryModal } from '@/components/glossary/GlossaryModal';
 import { useDecksQuery, useDeleteDeckMutation } from '@/features/decks/queries';
-import { usePveProgressQuery } from '@/features/pve/queries';
+import { usePveProgressQuery, usePveStagesQuery } from '@/features/pve/queries';
 import { useCreateRoomMutation, useJoinRoomMutation } from '@/features/match/queries';
 import { useMeQuery, useLogoutMutation } from '@/features/auth/queries';
 import { getErrorMessage } from '@/shared/lib/errors';
@@ -27,6 +27,7 @@ export default function Lobby() {
 
   const { data: serverDecks, isLoading: loadingDecks } = useDecksQuery();
   const { data: pveProgress } = usePveProgressQuery();
+  const { data: pveStages } = usePveStagesQuery();
   const createRoom = useCreateRoomMutation();
   const joinRoom = useJoinRoomMutation();
   const deleteDeckMutation = useDeleteDeckMutation();
@@ -142,7 +143,10 @@ export default function Lobby() {
             </span>
           ) : (
             <span className="text-muted-foreground text-xs">
-              {t('lobby.pveBadgeProgress', { count: pveProgress?.clearedStageIds.length ?? 0 })}
+              {t('lobby.pveBadgeProgress', {
+                count: pveProgress?.clearedStageIds.length ?? 0,
+                total: pveStages?.total ?? pveStages?.stages.length ?? 0,
+              })}
             </span>
           )}
         </div>

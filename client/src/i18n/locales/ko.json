@@ -33,7 +33,7 @@
     "tutorial": "튜토리얼 (AI 연습)",
     "pve": "PvE (AI 도전)",
     "goldenBadge": "황금 뱃지 획득!",
-    "pveBadgeProgress": "PvE 3스테이지 클리어 시 황금 뱃지 ({{count}}/3)",
+    "pveBadgeProgress": "PvE 전 스테이지 클리어 시 황금 뱃지 ({{count}}/{{total}})",
     "goToReview": "리뷰하러 가기",
     "loadingDecks": "덱 정보를 불러오는 중입니다. 잠시만 기다려주세요.",
     "needDeck": "덱을 먼저 만들어야 합니다.",

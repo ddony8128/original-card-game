@@ -33,9 +33,9 @@ export function MyHand({
   const { t } = useTranslation();
   const myTurn = !!myId && isMyTurn(myId);
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="mb-3 flex items-center justify-between">
+    <Card className="shrink-0">
+      <CardContent className="p-3">
+        <div className="mb-2 flex items-center justify-between">
           <div className="text-sm font-medium">{t('game.myHandCount', { count: hand.length })}</div>
           <Button
             size="sm"
