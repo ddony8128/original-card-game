@@ -327,8 +327,8 @@
     "name_dev": "card_blast",
     "name_ko": "카드 날리기",
     "name_en": "Card Blast",
-    "description_ko": "카드 1장을 무작위로 버리고, 거리 2 내에 6 피해를 줍니다.",
-    "description_en": "Discard 1 random card, then deal 6 damage within range 2.",
+    "description_ko": "카드 1장을 선택해 버리고, 거리 2 내에 6 피해를 줍니다.",
+    "description_en": "Discard 1 card of your choice, then deal 6 damage within range 2.",
     "type": "instant",
     "mana": 2,
     "token": false,
@@ -340,7 +340,7 @@
             {
               "type": "discard",
               "value": 1,
-              "method": "hand_random",
+              "method": "hand_choose",
               "target": "self"
             },
             {
@@ -810,8 +810,8 @@
     "name_dev": "meteor_drop",
     "name_ko": "운석 떨구기",
     "name_en": "Meteor Drop",
-    "description_ko": "거리 4 내에 8 피해를 줍니다.",
-    "description_en": "Deal 8 damage within range 4.",
+    "description_ko": "거리 4 내에 9 피해를 줍니다.",
+    "description_en": "Deal 9 damage within range 4.",
     "type": "instant",
     "mana": 5,
     "token": false,
@@ -823,7 +823,7 @@
             {
               "type": "damage",
               "range": 4,
-              "value": 8,
+              "value": 9,
               "target": "near_enemy"
             }
           ],
