@@ -174,9 +174,45 @@ export async function buildStatePatchForAllView(params: {
   const nextVersion = version + 1;
   const baseDiff: DiffPatch = diff ?? { animations: [], log: [] };
 
+  // 로그가 참조하는 카드 id 들의 메타를 미리 모은다. 클라이언트는 로그에서
+  // cardId 를 이름으로 치환하는데, 그 카드가 손패/묘지/리추얼 등 어느 zone 에도
+  // 없으면(예: 상대가 방금 쓴 카드, 재앙 발동 카드) 메타가 누락돼 raw id 가 노출된다.
+  // → 로그에 등장하는 cardId 의 메타를 패치 cardMetas 에 합쳐서 항상 이름이 보이게 한다.
+  const logCardIds = new Set<string>();
+  for (const entry of baseDiff.log) {
+    const c = entry.params?.c;
+    if (typeof c === 'string') logCardIds.add(c);
+  }
+  const logCardMetas = (
+    await Promise.all(
+      Array.from(logCardIds).map(async (cardId) => {
+        const meta = await ctx.lookupCard(cardId);
+        if (!meta) return null;
+        return {
+          id: cardId,
+          name: meta.name_ko || meta.name_dev,
+          nameEn: meta.name_en || meta.name_dev,
+          mana: meta.mana ?? 0,
+          type: meta.type,
+          description: meta.description_ko || '',
+          descriptionEn: meta.description_en || '',
+        } as PublicHandCard;
+      }),
+    )
+  ).filter((m): m is PublicHandCard => m !== null);
+
   await Promise.all(
     players.map(async (pid) => {
       const fog = await toFoggedState(state, pid, bottomSidePlayerId, ctx);
+
+      // 로그 참조 카드 메타 중 fog.cardMetas 에 없는 것만 합친다(중복 방지).
+      if (logCardMetas.length > 0) {
+        const present = new Set((fog.cardMetas ?? []).map((m) => m.id));
+        const extra = logCardMetas.filter((m) => !present.has(m.id));
+        if (extra.length > 0) {
+          fog.cardMetas = [...(fog.cardMetas ?? []), ...extra];
+        }
+      }
       const viewerDiff: DiffPatch = {
         animations: baseDiff.animations.map((anim) => {
           const transformed = { ...anim };
