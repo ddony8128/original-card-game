@@ -119,10 +119,10 @@
     "stageNames": {
       "stage-1": "Brawler Mage",
       "stage-2": "Trash Talker",
-      "stage-3": "Noru's Weak",
+      "stage-3": "Big Control",
       "stage-4": "Brawler Mage (Hard)",
       "stage-5": "Trash Talker (Hard)",
-      "stage-6": "Noru's Weak (Hard)"
+      "stage-6": "Big Control (Hard)"
     }
   },
   "notFound": {

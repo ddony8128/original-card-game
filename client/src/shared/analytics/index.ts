@@ -34,11 +34,16 @@ const CLARITY_MILESTONES = new Set([
 ]);
 
 function injectGtag(measurementId: string) {
-  // 표준 gtag.js 스니펫. gtag 는 받은 인자를 그대로 dataLayer 에 push 한다.
+  // 공식 gtag.js 스텁과 "동일하게" 구현해야 한다.
+  // gtag.js 는 자신의 명령(config/event)을 dataLayer 에 쌓인 **arguments 객체**로
+  // 식별한다. 배열을 push 하면 일반 데이터 push 로 취급돼 이벤트가 누락될 수 있으므로
+  // 반드시 arguments 를 그대로 push 한다.
   window.dataLayer = window.dataLayer || [];
-  window.gtag = (...args: unknown[]) => {
-    window.dataLayer!.push(args);
-  };
+  function gtag() {
+    // eslint-disable-next-line prefer-rest-params
+    (window.dataLayer as unknown[]).push(arguments);
+  }
+  window.gtag = gtag as unknown as Window['gtag'];
 
   const script = document.createElement('script');
   script.async = true;
@@ -51,13 +56,17 @@ function injectGtag(measurementId: string) {
 }
 
 function injectClarity(projectId: string) {
-  // 표준 Microsoft Clarity 스니펫: SDK 로드 전 호출을 큐(q)에 쌓는 shim.
-  const queue: unknown[][] = [];
-  const clarity = (...args: unknown[]) => {
-    queue.push(args);
-  };
-  clarity.q = queue;
-  window.clarity = clarity as Window['clarity'];
+  // 공식 Microsoft Clarity 스니펫과 동일: SDK 로드 전 호출을 큐(q)에 arguments 로 쌓는 shim.
+  const c = window as unknown as Record<string, unknown>;
+  if (!c.clarity) {
+    function clarity() {
+      const self = clarity as unknown as { q?: unknown[] };
+      self.q = self.q || [];
+      // eslint-disable-next-line prefer-rest-params
+      self.q.push(arguments);
+    }
+    window.clarity = clarity as unknown as Window['clarity'];
+  }
 
   const script = document.createElement('script');
   script.async = true;
@@ -90,9 +99,13 @@ export function track(event: string, params?: Record<string, unknown>): void {
   }
 }
 
-/** SPA 페이지뷰 전송. */
+/** SPA 페이지뷰 전송. GA4 권장 파라미터(page_location/page_title) 포함. */
 export function trackPageview(path: string): void {
-  window.gtag?.('event', 'page_view', { page_path: path });
+  window.gtag?.('event', 'page_view', {
+    page_path: path,
+    page_location: typeof window !== 'undefined' ? window.location.href : path,
+    page_title: typeof document !== 'undefined' ? document.title : undefined,
+  });
 }
 
 /**
