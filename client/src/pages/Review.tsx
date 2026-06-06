@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCreateReviewMutation } from '@/features/reviews/queries';
+import { track } from '@/shared/analytics';
 
 export default function Review() {
   const navigate = useLangNavigate();
@@ -24,6 +25,7 @@ export default function Review() {
     try {
       setSubmitting(true);
       await createReview.mutateAsync({ review: review.trim() });
+      track('review_submit', { length: review.trim().length });
 
       toast.success(t('review.success'), {
         description: t('review.successDesc'),

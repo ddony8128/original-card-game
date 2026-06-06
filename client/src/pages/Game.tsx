@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useLangNavigate } from '@/i18n/nav';
 import { useQueryClient } from '@tanstack/react-query';
@@ -34,6 +34,7 @@ import { useGameActions } from '@/features/game/hooks/useGameActions';
 import { useBeforeUnloadWarning } from '@/shared/hooks/useBeforeUnloadWarning';
 import { useCardMetaStore } from '@/shared/store/cardMetaStore';
 import { pveProgressQueryKey } from '@/features/pve/queries';
+import { track } from '@/shared/analytics';
 import type { RequestInputKind, RequestInputPayload, SoloSpeed } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
 
@@ -285,6 +286,39 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
       queryClient.invalidateQueries({ queryKey: pveProgressQueryKey });
     }
   }, [pveStageId, fogged?.phase, queryClient]);
+
+  // ---- 분석 이벤트(game_start / game_end) ----
+  // mode: 튜토리얼 / PvE / PvP 구분. stage_id 는 PvE 일 때만.
+  const analyticsMode: 'tutorial' | 'pve' | 'pvp' = isTutorial
+    ? 'tutorial'
+    : pveStageId
+      ? 'pve'
+      : 'pvp';
+  const gameStartSentRef = useRef(false);
+  const gameEndSentRef = useRef(false);
+
+  // game_start: fogged 가 처음 non-null 이 될 때 1회.
+  useEffect(() => {
+    if (!fogged || gameStartSentRef.current) return;
+    gameStartSentRef.current = true;
+    track('game_start', {
+      mode: analyticsMode,
+      ...(pveStageId ? { stage_id: pveStageId } : {}),
+    });
+  }, [fogged, analyticsMode, pveStageId]);
+
+  // game_end: GAME_OVER 진입 시 1회.
+  useEffect(() => {
+    if (!fogged || fogged.phase !== 'GAME_OVER' || gameEndSentRef.current) return;
+    gameEndSentRef.current = true;
+    const result = fogged.winner === myId ? 'win' : fogged.winner ? 'lose' : 'draw';
+    track('game_end', {
+      mode: analyticsMode,
+      result,
+      turns: fogged.turn,
+      ...(pveStageId ? { stage_id: pveStageId } : {}),
+    });
+  }, [fogged, analyticsMode, pveStageId, myId]);
 
   useBeforeUnloadWarning(!!fogged && fogged.phase !== 'GAME_OVER');
 

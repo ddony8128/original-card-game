@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Sparkles, X } from 'lucide-react';
 import { useLoginMutation, useRegisterMutation, useMeQuery } from '@/features/auth/queries';
 import { toast } from 'sonner';
+import { track, identify } from '@/shared/analytics';
 
 export default function Login() {
   const navigate = useLangNavigate();
@@ -52,10 +53,12 @@ export default function Login() {
       return setLoginError(t('login.errMissingCredentials'));
     }
     try {
-      await loginMutation.mutateAsync({
+      const res = await loginMutation.mutateAsync({
         username: username.trim(),
         password: password.trim(),
       });
+      track('login', { method: 'password' });
+      if (res?.id) identify(res.id);
       await refetchMe();
       await goToLobbyAfterAuth();
     } catch (e: unknown) {
@@ -72,11 +75,14 @@ export default function Login() {
         username: regUsername.trim(),
         password: regPassword.trim(),
       });
+      track('sign_up', { method: 'password' });
       toast.success(t('login.registerSuccess'));
-      await loginMutation.mutateAsync({
+      const res = await loginMutation.mutateAsync({
         username: regUsername.trim(),
         password: regPassword.trim(),
       });
+      track('login', { method: 'password' });
+      if (res?.id) identify(res.id);
       setOpenRegister(false);
       setUsername(regUsername.trim());
       setPassword(regPassword.trim());

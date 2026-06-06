@@ -1,6 +1,6 @@
 import { useLangNavigate } from '@/i18n/nav';
 import { LangToggle } from '@/i18n/LangToggle';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -16,6 +16,7 @@ import { CreateRoomCard } from '@/components/lobby/CreateRoomCard';
 import { JoinRoomCard } from '@/components/lobby/JoinRoomCard';
 import { MyDecksCard } from '@/components/lobby/MyDecksCard';
 import { WaitingRoomsList } from '@/components/lobby/WaitingRoomsList';
+import { track } from '@/shared/analytics';
 
 export default function Lobby() {
   const navigate = useLangNavigate();
@@ -39,6 +40,19 @@ export default function Lobby() {
   };
 
   const totalDeckCount = useMemo(() => serverDecks?.length ?? 0, [serverDecks]);
+
+  // 전 스테이지 클리어(allCleared) 최초 1회 badge_earned 전송.
+  // localStorage 플래그로 사용자/세션 간 중복 발화를 방지한다.
+  useEffect(() => {
+    if (!pveProgress?.allCleared) return;
+    try {
+      if (localStorage.getItem('analytics_badge_earned')) return;
+      localStorage.setItem('analytics_badge_earned', '1');
+    } catch {
+      // localStorage 접근 불가 환경에서도 추적은 시도하되 에러는 무시.
+    }
+    track('badge_earned');
+  }, [pveProgress?.allCleared]);
 
   if (!me) {
     navigate('/login');

@@ -18,6 +18,7 @@ import RequireParticipant from './components/auth/RequireParticipant';
 import { shouldRetryQuery } from '@/shared/api/http';
 import { LangLayout } from './i18n/LangLayout';
 import { LangNavigate } from './i18n/LangNav';
+import { useAnalyticsPageviews } from './shared/analytics/useAnalyticsPageviews';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,11 +106,18 @@ const AppRoutes = () => (
   </Routes>
 );
 
+/** 라우터 내부에서 경로 변경마다 페이지뷰를 전송하는 보조 컴포넌트. */
+const AnalyticsPageviews = () => {
+  useAnalyticsPageviews();
+  return null;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Sonner />
       <BrowserRouter>
+        <AnalyticsPageviews />
         <Routes>
           <Route
             path="/en/*"

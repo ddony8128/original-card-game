@@ -6,6 +6,7 @@ import type { DeckCard, Card as LocalCard } from '@/shared/types/deck';
 import { useCardsQuery } from '@/features/cards/queries';
 import { useDecksQuery, useSaveDeckMutation } from '@/features/decks/queries';
 import type { CardDto } from '@/shared/api/types';
+import { track } from '@/shared/analytics';
 
 const MAX_MAIN_SIZE = 16;
 const MAX_CATA_SIZE = 4;
@@ -201,6 +202,10 @@ export const useDeckBuilder = () => {
         main_cards,
         cata_cards,
       });
+      // 신규 생성일 때만 deck_create 전송(수정은 제외).
+      if (!serverEditingDeckId) {
+        track('deck_create', { main_count: main, cata_count: cata });
+      }
       toast.success(
         serverEditingDeckId
           ? '서버 덱이 수정되었습니다!'
