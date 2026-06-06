@@ -139,25 +139,6 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
     sendAnswerMulligan,
   });
 
-  // diff.log 기반 클라이언트 로그를 "나/상대" 시점으로 변환
-  const perspectiveLogs = useMemo(() => {
-    if (!logs || !fogged) return [];
-    const boardWizards = fogged.board.wizards;
-    const opponentId =
-      myId && fogged ? Object.keys(boardWizards).find((id) => id !== myId) : undefined;
-
-    return logs.map((log) => {
-      let text = log.text;
-      if (myId) {
-        text = text.replaceAll(`플레이어 ${myId}`, t('game.logSelf'));
-      }
-      if (opponentId) {
-        text = text.replaceAll(`플레이어 ${opponentId}`, t('game.logOpponent'));
-      }
-      return { ...log, text };
-    });
-  }, [logs, myId, fogged, t]);
-
   // ---- request_input 해석 ----
 
   const isMapRequest = (
@@ -565,7 +546,7 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
             onViewGrave={() => handleViewGrave('catastrophe')}
           />
           <div className="min-h-0 flex-1">
-            <GameLog logs={perspectiveLogs} />
+            <GameLog logs={logs} myId={myId} />
           </div>
         </div>
       </div>
@@ -579,8 +560,8 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
       {/* 상대(AI)가 사용한 카드를 잠깐 화면 중앙에 보여준다(PvP 에서도 무해). */}
       <CardPlaySpotlight />
       {/* 방금 일어난 일(재앙 발동/피해/회복 등)을 화면 상단에 잠깐 띄우는 텍스트 배너.
-          이미 번역된 perspectiveLogs 텍스트를 재활용하며, 게임 종료 시엔 띄우지 않는다. */}
-      <EventBanner logs={perspectiveLogs} paused={isGameOver} />
+          구조화 로그를 현재 언어로 렌더하며, 게임 종료 시엔 띄우지 않는다. */}
+      <EventBanner logs={logs} myId={myId} paused={isGameOver} />
       <RequestInputModal
         request={activeRequest}
         dismissible={activeRequest?.type === 'mulligan'}

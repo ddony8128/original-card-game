@@ -17,7 +17,7 @@ export async function resolveTurnEnd(
   diff: DiffPatch,
 ) {
   const turnEnd = effect;
-  diff.log.push(`{{p:${turnEnd.owner}}} 턴 종료`);
+  diff.log.push({ code: 'turn_end', params: { p: turnEnd.owner } });
 
   // 1) 먼저 CHANGE_TURN, hand_max DISCARD 를 push 해 두고
   // 2) 마지막에 onTurnEnd 트리거 이펙트들을 push 해서,
@@ -71,7 +71,7 @@ export async function resolveTurnStart(
   // 최대 마나 증가
   player.maxMana = Math.min(player.maxMana + MANA_INC_PER_TURN, MANA_CEILING);
 
-  diff.log.push(`{{p:${turnStart.owner}}} 턴 시작`);
+  diff.log.push({ code: 'turn_start', params: { p: turnStart.owner } });
 
   // 리추얼 onTurnStart 트리거 실행 이펙트를 먼저 스택에 올린다.
   // 직접 발사 대신 ObserverRegistry 에 등록된 onTurnStart 옵저버를 통해 실행한다.

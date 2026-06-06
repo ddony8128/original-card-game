@@ -44,9 +44,21 @@ export interface AnimationSpec {
   [key: string]: unknown;
 }
 
+/**
+ * 구조화된 게임 로그 1건.
+ * - `code`: i18n 키(`gamelog.<code>`)로 클라가 현재 언어로 렌더한다.
+ * - `params`: 보간 변수. 플레이어는 원본 id(`p`/`p2`), 카드는 cardId(`c`),
+ *   수치는 `amount`, 좌표는 `r`/`cc`(또는 `fr`/`fc`/`tr`/`tc`) 등 **원본 값**을 담는다.
+ *   서버는 한국어로 렌더하지 않는다.
+ */
+export interface LogEntry {
+  code: string;
+  params?: Record<string, string | number>;
+}
+
 export interface DiffPatch {
   animations: AnimationSpec[];
-  log: string[];
+  log: LogEntry[];
 }
 
 // 서버 → 클라 개별 페이로드

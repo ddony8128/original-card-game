@@ -63,15 +63,17 @@ export const useGameFogStore = create<GameFogState & GameFogActions>((set, get) 
       useCardMetaStore.getState().upsertFromWsHand(payload.fogged_state.cardMetas);
     }
 
-    // diff.log 를 클라이언트 게임 로그로 변환하여 누적
+    // diff.log(구조화 LogEntry[]) 를 클라이언트 게임 로그로 누적한다.
+    // 렌더(코드→문구, p/c 치환)는 표시 시점에 renderLogEntry 가 i18n 으로 수행한다.
     const prevLogs = get().logs ?? [];
     const turn = payload.fogged_state.turn;
     const actor = payload.fogged_state.activePlayer;
     const newLogs: ClientSideActionLog[] =
-      payload.diff_patch.log?.map((text) => ({
+      payload.diff_patch.log?.map((entry) => ({
         turn,
         actor,
-        text,
+        code: entry.code,
+        params: entry.params,
       })) ?? [];
 
     set({

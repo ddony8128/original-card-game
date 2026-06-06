@@ -19,9 +19,10 @@ export async function resolveTriggeredEffect(
   diff: DiffPatch,
 ) {
   const trig = effect;
-  diff.log.push(
-    `TriggeredEffect 실행: card={{c:${trig.cardId}}}, trigger=${trig.trigger}`,
-  );
+  diff.log.push({
+    code: 'triggered_effect',
+    params: { c: trig.cardId, trigger: trig.trigger },
+  });
 
   const ref = trig.effectRef as TriggerConfig | undefined;
   if (!ref || !Array.isArray(ref.effects) || ref.effects.length === 0) return;

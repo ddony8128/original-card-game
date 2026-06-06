@@ -1,30 +1,45 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ClientSideActionLog } from '@/shared/types/game';
+import { useTranslation } from 'react-i18next';
+import type { ClientSideActionLog, PlayerID } from '@/shared/types/game';
 import { cn } from '@/shared/lib/utils';
+import { useCardMetaStore } from '@/shared/store/cardMetaStore';
+import { renderLogEntry } from '@/shared/lib/renderLogEntry';
 
 /** 배너가 화면에 머무는 시간(ms). 페이드 인/아웃 포함 체감 ~2.4초. */
 const BANNER_MS = 2400;
 
 /**
- * 강조(주황/빨강) 처리할 "재앙/피해/소멸" 계열 키워드.
- * perspectiveLogs 는 서버에서 이미 한국어로 치환된 텍스트이므로 한국어 키워드로 매칭한다.
- * (영어 빌드여도 로그 본문은 서버 한국어 텍스트이므로 동일하게 동작한다.)
+ * 강조(주황/빨강) 처리할 "재앙/피해/소멸" 계열 로그 코드.
+ * 구조화 로그로 전환되어 언어와 무관하게 code 기준으로 톤을 결정한다.
  */
-const DANGER_KEYWORDS = ['재앙', '발동', '피해', '소멸', 'burn'];
-/** 회복(초록) 계열 키워드. */
-const HEAL_KEYWORDS = ['회복'];
+const DANGER_CODES = new Set([
+  'cata_draw_cast',
+  'cata_card_to_grave',
+  'cata_deck_restore',
+  'triggered_effect',
+  'damage',
+  'damage_at',
+  'card_burned_full',
+  'burn_from_hand',
+  'burn_from_deck',
+  'burn_deck_random',
+  'burn_deck_top',
+]);
+/** 회복(초록) 계열 로그 코드. */
+const HEAL_CODES = new Set(['heal']);
 
 type BannerTone = 'danger' | 'heal' | 'neutral';
 
-function toneForText(text: string): BannerTone {
-  if (HEAL_KEYWORDS.some((k) => text.includes(k))) return 'heal';
-  if (DANGER_KEYWORDS.some((k) => text.includes(k))) return 'danger';
+function toneForCode(code: string): BannerTone {
+  if (HEAL_CODES.has(code)) return 'heal';
+  if (DANGER_CODES.has(code)) return 'danger';
   return 'neutral';
 }
 
 interface EventBannerProps {
-  /** Game.tsx 의 perspectiveLogs (나/상대 시점으로 치환된 로그 배열). */
+  /** 구조화 클라이언트 로그 배열. */
   logs: ClientSideActionLog[];
+  myId: PlayerID | undefined;
   /** true 면 배너를 띄우지 않는다(게임 종료 시). */
   paused?: boolean;
 }
@@ -38,7 +53,9 @@ interface EventBannerProps {
  * - AnimationLayer(z-50)/CardPlaySpotlight(z-50) 보다 위(z-[60])에 위치하되,
  *   모달(멀리건/입력)은 시야를 가리지 않도록 화면 "상단"에 배치한다.
  */
-export function EventBanner({ logs, paused = false }: EventBannerProps) {
+export function EventBanner({ logs, myId, paused = false }: EventBannerProps) {
+  const { t } = useTranslation();
+  const getCardMeta = useCardMetaStore((s) => s.getById);
   const [active, setActive] = useState<{ id: number; text: string; tone: BannerTone } | null>(null);
   // 이미 처리한 로그 개수. 첫 렌더(기존 누적 로그)는 띄우지 않기 위해 -1 로 시작한다.
   const seenCountRef = useRef<number>(-1);
@@ -66,11 +83,14 @@ export function EventBanner({ logs, paused = false }: EventBannerProps) {
 
     // 새로 추가된 라인들 중 "가장 최근 1건"만 띄운다(빠른 연속 도착 시 최신 우선).
     const latest = logs[count - 1];
-    if (!latest || !latest.text) return;
+    if (!latest) return;
+
+    const text = renderLogEntry(latest, { myId, t, getCardMeta });
+    if (!text) return;
 
     keyRef.current += 1;
-    setActive({ id: keyRef.current, text: latest.text, tone: toneForText(latest.text) });
-  }, [logs, paused]);
+    setActive({ id: keyRef.current, text, tone: toneForCode(latest.code) });
+  }, [logs, paused, myId, t, getCardMeta]);
 
   useEffect(() => {
     if (!active) return;

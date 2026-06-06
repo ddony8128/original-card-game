@@ -3,14 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/shared/lib/utils';
-import type { ClientSideActionLog } from '@/shared/types/game';
+import type { ClientSideActionLog, PlayerID } from '@/shared/types/game';
+import { useCardMetaStore } from '@/shared/store/cardMetaStore';
+import { renderLogEntry } from '@/shared/lib/renderLogEntry';
 
 interface GameLogProps {
   logs: ClientSideActionLog[] | undefined;
+  myId: PlayerID | undefined;
 }
 
-export function GameLog({ logs }: GameLogProps) {
+export function GameLog({ logs, myId }: GameLogProps) {
   const { t } = useTranslation();
+  const getCardMeta = useCardMetaStore((s) => s.getById);
   const items = logs ?? [];
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -39,6 +43,7 @@ export function GameLog({ logs }: GameLogProps) {
             <div className="space-y-1">
               {items.map((log, index) => {
                 const isLatest = index === items.length - 1;
+                const text = renderLogEntry(log, { myId, t, getCardMeta });
                 return (
                   <div
                     key={index}
@@ -49,7 +54,7 @@ export function GameLog({ logs }: GameLogProps) {
                         : 'text-muted-foreground',
                     )}
                   >
-                    <span className="font-semibold">{t('game.logTurn', { turn: log.turn })}</span> - {log.text}
+                    <span className="font-semibold">{t('game.logTurn', { turn: log.turn })}</span> - {text}
                   </div>
                 );
               })}

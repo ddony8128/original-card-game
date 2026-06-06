@@ -38,9 +38,15 @@ export async function resolveDamage(
     }
 
     target.hp -= amount as number;
-    diff.log.push(
-      `{{p:${targetId}}}의 마법사가 (${e.pos.r},${e.pos.c}) 위치에서 ${amount} 피해를 입었습니다.`,
-    );
+    diff.log.push({
+      code: 'damage_at',
+      params: {
+        p: targetId,
+        amount: amount as number,
+        r: e.pos.r,
+        cc: e.pos.c,
+      },
+    });
     diff.animations.push({
       kind: 'damage',
       player: targetId,
@@ -83,9 +89,7 @@ export async function resolveDamage(
     }
 
     if (!positions || positions.length === 0) {
-      diff.log.push(
-        '피해를 줄 수 있는 대상이 없어 DAMAGE 효과가 무효 처리되었습니다.',
-      );
+      diff.log.push({ code: 'damage_no_target' });
       return;
     }
 
@@ -105,7 +109,7 @@ export async function resolveDamage(
       damageValue: e.value,
     };
     (engine as any).state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
-    diff.log.push('피해를 줄 대상을 선택하세요.');
+    diff.log.push({ code: 'damage_choose_target' });
     return;
   }
 
@@ -130,7 +134,10 @@ export async function resolveDamage(
   }
 
   target.hp -= amount as number;
-  diff.log.push(`{{p:${targetId}}}의 마법사가 ${amount} 피해를 입었습니다.`);
+  diff.log.push({
+    code: 'damage',
+    params: { p: targetId, amount: amount as number },
+  });
   diff.animations.push({
     kind: 'damage',
     player: targetId,
@@ -162,7 +169,7 @@ export async function resolveHeal(
   player.hp = Math.min(player.hp + e.value, player.maxHp);
   const healed = player.hp - before;
   if (healed > 0) {
-    diff.log.push(`{{p:${targetId}}}의 마법사가 ${healed} 만큼 회복했습니다.`);
+    diff.log.push({ code: 'heal', params: { p: targetId, amount: healed } });
     diff.animations.push({
       kind: 'heal',
       player: targetId,

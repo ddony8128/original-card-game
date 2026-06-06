@@ -15,7 +15,10 @@ export async function resolveCastExecute(
   diff: DiffPatch,
 ) {
   const cast = effect;
-  diff.log.push(`{{p:${cast.owner}}}가 {{c:${cast.cardId}}}을(를) 사용`);
+  diff.log.push({
+    code: 'cast',
+    params: { p: cast.owner, c: cast.cardId },
+  });
   // 카드 사용을 사람이 따라갈 수 있게, 사용된 카드 정보를 애니메이션으로 알린다.
   diff.animations.push({
     kind: 'card_play',
@@ -54,9 +57,10 @@ export async function resolveInstall(
       kind: 'ritual_place',
       player: inst.owner,
     });
-    diff.log.push(
-      `{{p:${inst.owner}}}가 (${inst.pos.r},${inst.pos.c}) 위치에 {{c:${cardId}}}을(를) 설치`,
-    );
+    diff.log.push({
+      code: 'install_at',
+      params: { p: inst.owner, c: cardId, r: inst.pos.r, cc: inst.pos.c },
+    });
 
     // resolveStack 상에서 해당 카드의 최종 목적지를 board 로 설정
     if (player) {
@@ -106,7 +110,7 @@ export async function resolveInstall(
       pos,
       usedThisTurn: false,
     });
-    diff.log.push(`카드 효과로 {{c:${cardId}}}이(가) 설치되었습니다.`);
+    diff.log.push({ code: 'install_effect', params: { c: cardId } });
     diff.animations.push({
       kind: 'ritual_place',
       player: inst.owner,
@@ -159,7 +163,7 @@ export async function resolveInstall(
   );
 
   if (!absOptions || absOptions.length === 0) {
-    diff.log.push('설치 가능한 위치가 없어 INSTALL 효과가 무효 처리되었습니다.');
+    diff.log.push({ code: 'install_no_space' });
     return;
   }
 
@@ -178,7 +182,7 @@ export async function resolveInstall(
     options,
   };
   engine.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
-  diff.log.push('리추얼을 설치할 위치를 선택하세요.');
+  diff.log.push({ code: 'install_choose_position' });
 }
 
 export async function resolveThrowResolveStack(
@@ -208,56 +212,29 @@ export async function resolveThrowResolveStack(
     }
   }
 
-  const cardName =
-    (meta && (meta as any).name_ko) ||
-    (meta && (meta as any).name_dev) ||
-    card.cardId;
-  const cardDesc =
-    (meta && (meta as any).description_ko) ||
-    (meta && (meta as any).description) ||
-    '';
-
+  // 카드명/설명은 클라이언트가 현재 언어로 렌더한다(params 에는 cardId 만 담는다).
+  // 설명 suffix(` (설명)`)도 클라이언트 헬퍼가 card meta 에서 붙인다.
   switch (dest) {
     case 'grave':
       player.grave.push(card);
-      diff.log.push(
-        `카드 ${cardName}가 무덤으로 이동했습니다.${
-          cardDesc ? ` (${cardDesc})` : ''
-        }`,
-      );
+      diff.log.push({ code: 'card_to_grave', params: { c: card.cardId } });
       break;
     case 'cata_grave':
       engine.state.catastropheGrave.push(card);
-      diff.log.push(
-        `재앙 카드 ${cardName}가 재앙 묘지로 이동했습니다.${
-          cardDesc ? ` (${cardDesc})` : ''
-        }`,
-      );
+      diff.log.push({ code: 'cata_card_to_grave', params: { c: card.cardId } });
       break;
     case 'hand':
       player.hand.push(card);
-      diff.log.push(
-        `카드 ${cardName}가 손패로 돌아갔습니다.${
-          cardDesc ? ` (${cardDesc})` : ''
-        }`,
-      );
+      diff.log.push({ code: 'card_to_hand', params: { c: card.cardId } });
       break;
     case 'board':
       // 리추얼 설치 등: 실제 보드에는 RitualInstance 로 이미 표현되어 있으므로
       // resolveStack 에서만 제거하고 별도 이동은 하지 않는다.
-      diff.log.push(
-        `카드 ${cardName}의 최종 목적지가 보드(board)로 처리되었습니다.${
-          cardDesc ? ` (${cardDesc})` : ''
-        }`,
-      );
+      diff.log.push({ code: 'card_to_board', params: { c: card.cardId } });
       break;
     case 'burn':
       // 완전 소멸: 어떤 컬렉션에도 넣지 않고 제거
-      diff.log.push(
-        `카드 ${cardName}가 완전히 소멸(burn)되었습니다.${
-          cardDesc ? ` (${cardDesc})` : ''
-        }`,
-      );
+      diff.log.push({ code: 'card_burned_full', params: { c: card.cardId } });
       break;
     default:
       break;

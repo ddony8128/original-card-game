@@ -62,7 +62,7 @@ export async function resolveDraw(
     if (target.grave.length > 0) {
       shuffle(target.grave, engine.ctx.random);
       target.deck = target.grave.splice(0, target.grave.length);
-      diff.log.push(`{{p:${targetId}}}의 덱을 묘지에서 복원`);
+      diff.log.push({ code: 'deck_restore', params: { p: targetId } });
     }
 
     // 3) 여전히 일반 덱에서 뽑을 카드가 없으면, 재앙 덱을 사용 (DRAW_CATA 이펙트로 위임)
@@ -73,7 +73,7 @@ export async function resolveDraw(
           0,
           engine.state.catastropheGrave.length,
         );
-        diff.log.push(`재앙 덱을 묘지에서 복원`);
+        diff.log.push({ code: 'cata_deck_restore' });
       }
     }
 
@@ -92,7 +92,7 @@ export async function resolveDraw(
 
   if (card) {
     diff.animations.push({ kind: 'draw', player: targetId });
-    diff.log.push(`{{p:${targetId}}} 드로우`);
+    diff.log.push({ code: 'draw', params: { p: targetId } });
   }
 }
 
@@ -135,9 +135,10 @@ export async function resolveDrawCata(
   const cardInst = engine.state.catastropheDeck.shift();
   if (!cardInst) return;
 
-  diff.log.push(
-    `{{p:${actor}}}가 재앙 카드 {{c:${cardInst.cardId}}}을(를) 뽑아 즉시 발동했습니다.`,
-  );
+  diff.log.push({
+    code: 'cata_draw_cast',
+    params: { p: actor, c: cardInst.cardId },
+  });
 
   // STEP 2: resolveStack 에 재앙 카드 적재
   {
@@ -194,9 +195,10 @@ export async function resolveDiscard(
         method: 'hand_choose',
       };
       engine.effectStack.push(chooseEffect);
-      diff.log.push(
-        `{{p:${targetId}}}의 손패가 최대 제한을 초과하여 ${overflow}장을 버려야 합니다.`,
-      );
+      diff.log.push({
+        code: 'discard_overflow',
+        params: { p: targetId, amount: overflow },
+      });
     }
     return;
   }
@@ -237,9 +239,10 @@ export async function resolveDiscard(
         amount: 1,
       });
     }
-    diff.log.push(
-      `{{p:${targetId}}}의 덱에서 무작위로 ${e.value}장을 버렸습니다.`,
-    );
+    diff.log.push({
+      code: 'discard_deck_random',
+      params: { p: targetId, amount: e.value },
+    });
     diff.animations.push({
       kind: 'discard',
       player: targetId,
@@ -262,7 +265,10 @@ export async function resolveDiscard(
         });
       }
     }
-    diff.log.push(`{{p:${targetId}}}의 덱 위에서 ${count}장을 버렸습니다.`);
+    diff.log.push({
+      code: 'discard_deck_top',
+      params: { p: targetId, amount: count },
+    });
     diff.animations.push({
       kind: 'discard',
       player: targetId,
@@ -284,9 +290,10 @@ export async function resolveDiscard(
         amount: 1,
       });
     }
-    diff.log.push(
-      `{{p:${targetId}}}의 손에서 무작위로 ${count}장을 버렸습니다.`,
-    );
+    diff.log.push({
+      code: 'discard_hand_random',
+      params: { p: targetId, amount: count },
+    });
     diff.animations.push({
       kind: 'discard',
       player: targetId,
@@ -327,9 +334,10 @@ export async function resolveDiscard(
           player: targetId,
           amount: discarded.length,
         } as any);
-        diff.log.push(
-          `{{p:${targetId}}}가 손패 ${discarded.length}장을 모두 버렸습니다.`,
-        );
+        diff.log.push({
+          code: 'discard_hand_all',
+          params: { p: targetId, amount: discarded.length },
+        });
       }
       return;
     }
@@ -340,7 +348,7 @@ export async function resolveDiscard(
       options,
     };
     engine.state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
-    diff.log.push('손패에서 버릴 카드를 선택하세요.');
+    diff.log.push({ code: 'discard_choose' });
     return;
   }
 
@@ -362,7 +370,7 @@ export async function resolveDiscard(
       player: targetId,
       amount: 1,
     } as any);
-    diff.log.push(`{{p:${targetId}}}가 손에서 카드를 1장 버렸습니다.`);
+    diff.log.push({ code: 'discard_hand_one', params: { p: targetId } });
   }
 }
 
@@ -410,9 +418,7 @@ export async function resolveBurn(
     const target = players[targetId];
     if (!target) return;
     if (target.hand.length === 0) {
-      diff.log.push(
-        '소멸(burn)할 손패 카드가 없어 BURN 효과가 무효 처리되었습니다.',
-      );
+      diff.log.push({ code: 'burn_no_hand' });
       return;
     }
 
@@ -428,7 +434,7 @@ export async function resolveBurn(
       count: e.value ?? 1,
     };
     (engine as any).state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
-    diff.log.push('소멸(burn)할 카드를 선택하세요.');
+    diff.log.push({ code: 'burn_choose' });
     return;
   }
 
@@ -446,9 +452,10 @@ export async function resolveBurn(
       const idx = Math.floor(engine.ctx.random() * target.deck.length);
       target.deck.splice(idx, 1);
     }
-    diff.log.push(
-      `{{p:${targetId}}}의 덱에서 무작위로 ${count}장이 소멸(burn)되었습니다.`,
-    );
+    diff.log.push({
+      code: 'burn_deck_random',
+      params: { p: targetId, amount: count },
+    });
     return;
   }
 
@@ -465,9 +472,10 @@ export async function resolveBurn(
     for (let i = 0; i < count; i += 1) {
       target.deck.shift();
     }
-    diff.log.push(
-      `{{p:${targetId}}}의 덱 위에서 ${count}장이 소멸(burn)되었습니다.`,
-    );
+    diff.log.push({
+      code: 'burn_deck_top',
+      params: { p: targetId, amount: count },
+    });
     return;
   }
 
@@ -485,13 +493,13 @@ export async function resolveBurn(
     let idx = target.hand.findIndex((ci) => ci.id === e.instanceId);
     if (idx >= 0) {
       const [card] = target.hand.splice(idx, 1);
-      diff.log.push(`{{c:${card.cardId}}}이(가) 손패에서 소멸(burn)되었습니다.`);
+      diff.log.push({ code: 'burn_from_hand', params: { c: card.cardId } });
     } else {
       // 2) 덱에서도 한 번 더 탐색 (필요시 확장 가능)
       idx = target.deck.findIndex((ci) => ci.id === e.instanceId);
       if (idx >= 0) {
         const [card] = target.deck.splice(idx, 1);
-        diff.log.push(`{{c:${card.cardId}}}이(가) 덱에서 소멸(burn)되었습니다.`);
+        diff.log.push({ code: 'burn_from_deck', params: { c: card.cardId } });
       }
     }
 

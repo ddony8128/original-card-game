@@ -43,9 +43,16 @@ export async function resolveMove(
       from,
       to: [move.to.r, move.to.c],
     });
-    diff.log.push(
-      `{{p:${effect.owner}}}의 마법사가 (${from[0]},${from[1]}) → (${move.to.r},${move.to.c}) 이동`,
-    );
+    diff.log.push({
+      code: 'move_to',
+      params: {
+        p: effect.owner,
+        fr: from[0],
+        fc: from[1],
+        tr: move.to.r,
+        tc: move.to.c,
+      },
+    });
 
     // 이동한 칸에 상대 리추얼이 있으면 파괴 트리거 처리
     {
@@ -90,9 +97,7 @@ export async function resolveMove(
     );
 
     if (optionsAbs.length === 0) {
-      diff.log.push(
-        '이동 가능한 칸이 없어 MOVE(choose) 효과가 무효 처리되었습니다.',
-      );
+      diff.log.push({ code: 'move_no_space' });
       return;
     }
 
@@ -111,7 +116,7 @@ export async function resolveMove(
       options,
     };
     (engine as any).state.phase = GamePhase.WAITING_FOR_PLAYER_INPUT;
-    diff.log.push('이동할 방향을 선택하세요.');
+    diff.log.push({ code: 'move_choose_direction' });
     return;
   }
 
@@ -134,7 +139,7 @@ export async function resolveMove(
     const from: [number, number] = [wizard.r, wizard.c];
     wizard.r = toR;
     wizard.c = toC;
-    diff.log.push(`카드 효과로 {{p:${effect.owner}}}의 마법사가 이동했습니다.`);
+    diff.log.push({ code: 'move_effect', params: { p: effect.owner } });
     diff.animations.push({
       kind: 'move',
       player: effect.owner,
@@ -164,5 +169,5 @@ export async function resolveMove(
     return;
   }
 
-  diff.log.push('지원되지 않는 move direction 입니다.');
+  diff.log.push({ code: 'move_unsupported' });
 }

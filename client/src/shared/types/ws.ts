@@ -42,9 +42,18 @@ export interface AnimationSpec {
   [key: string]: unknown;
 }
 
+/**
+ * 구조화된 게임 로그 1건. `code` 는 `gamelog.<code>` i18n 키, `params` 는 보간 변수.
+ * 플레이어 id 는 `p`/`p2`, cardId 는 `c`, 수치는 `amount`, 좌표는 `r`/`cc` 등 원본 값.
+ */
+export interface LogEntry {
+  code: string;
+  params?: Record<string, string | number>;
+}
+
 export interface DiffPatch {
   animations: AnimationSpec[];
-  log: string[];
+  log: LogEntry[];
 }
 
 export interface GameInitPayload {

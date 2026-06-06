@@ -32,7 +32,10 @@ export interface PublicHandCard {
 export type ClientSideActionLog = {
   turn: number;
   actor: PlayerID;
-  text: string;
+  /** 구조화 로그 코드. `gamelog.<code>` i18n 키로 렌더한다. */
+  code: string;
+  /** 보간 변수. 플레이어 id(`p`/`p2`), cardId(`c`), 수치(`amount`), 좌표 등 원본 값. */
+  params?: Record<string, string | number>;
   timestamp?: number;
 };
 
