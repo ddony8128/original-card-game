@@ -8,7 +8,12 @@
  * - PII 전송 금지: 식별은 서버 user id(익명)만 사용한다.
  */
 
-const GA4_ID = import.meta.env.VITE_GA4_MEASUREMENT_ID as string | undefined;
+// GA4 측정 ID. env 로 덮어쓸 수 있고, 없으면 프로덕션 빌드에서만 기본 ID 를 쓴다
+// (개발/프리뷰에서는 데이터 오염을 피하려고 비활성). 측정 ID 는 클라이언트에 노출되는
+// 공개 식별자라 코드에 두어도 무방하다.
+const GA4_ID =
+  (import.meta.env.VITE_GA4_MEASUREMENT_ID as string | undefined) ||
+  (import.meta.env.PROD ? 'G-T8CJ1SSNDG' : undefined);
 // Clarity 프로젝트 ID. env 로 덮어쓸 수 있고, 없으면 프로덕션 빌드에서만 기본 ID 를 쓴다
 // (개발/프리뷰에서는 세션 데이터 오염을 피하려고 비활성). Clarity ID 는 클라이언트에
 // 노출되는 공개 식별자라 코드에 두어도 무방하다.
