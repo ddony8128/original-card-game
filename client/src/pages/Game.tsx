@@ -37,14 +37,8 @@ import { pveProgressQueryKey } from '@/features/pve/queries';
 import type { RequestInputKind, RequestInputPayload, SoloSpeed } from '@/shared/types/ws';
 import type { CardInstance } from '@/shared/types/game';
 
-const SOLO_SPEED_KEY = 'soloSpeed';
-const SOLO_SPEEDS: SoloSpeed[] = ['slow', 'normal', 'fast'];
-
-function readStoredSoloSpeed(): SoloSpeed {
-  if (typeof window === 'undefined') return 'normal';
-  const stored = window.localStorage.getItem(SOLO_SPEED_KEY);
-  return SOLO_SPEEDS.includes(stored as SoloSpeed) ? (stored as SoloSpeed) : 'normal';
-}
+// AI 턴 속도는 '느림'으로 고정한다(플레이어가 각 행동을 따라갈 수 있도록).
+const FIXED_SOLO_SPEED: SoloSpeed = 'slow';
 
 interface GameProps {
   solo?: boolean;
@@ -92,15 +86,15 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
   const [graveModalType, setGraveModalType] = useState<'me' | 'opponent' | 'catastrophe' | null>(
     null,
   );
-  // 솔로 AI 턴 속도. localStorage 에 영속화하며, 게임 시작 시 start_solo 로 전달된다.
-  const [soloSpeed, setSoloSpeed] = useState<SoloSpeed>(() => readStoredSoloSpeed());
+  // 솔로 AI 턴 속도는 '느림' 고정(게임 시작 시 start_solo 로 전달된다).
+  const soloSpeed: SoloSpeed = FIXED_SOLO_SPEED;
 
   // 페이지 진입 시 전역 게임 상태 초기화
   useEffect(() => {
     clearGameState();
   }, [clearGameState]);
 
-  const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction, sendSetSpeed } =
+  const { sendReady, sendAnswerMulligan, sendPlayerInput, sendPlayerAction } =
     useGameSocket({
       roomCode: isSolo ? 'solo' : (roomCode ?? ''),
       userId: me?.id,
@@ -115,14 +109,6 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
       enabled: isSolo ? Boolean(soloDeckId) : true,
     });
 
-  // 속도 변경: state + localStorage 갱신 후 진행 중인 게임에 실시간 반영한다.
-  const handleChangeSoloSpeed = (next: SoloSpeed) => {
-    setSoloSpeed(next);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(SOLO_SPEED_KEY, next);
-    }
-    sendSetSpeed(next);
-  };
 
   // 솔로 모드에서 사용할 덱이 없으면 덱 빌더로 안내한다.
   useEffect(() => {
@@ -482,29 +468,6 @@ export default function Game({ solo = false, pveStageId }: GameProps) {
         </Button>
         <GameHeader turn={fogged.turn} isMyTurn={myTurnActive} />
         <div className="flex items-center gap-1">
-          {/* 솔로 모드 전용: AI 턴 속도 조절(느림/보통/빠름). 실시간 반영. */}
-          {isSolo && (
-            <div className="hidden items-center gap-1 sm:flex" role="group" aria-label={t('game.speed')}>
-              {SOLO_SPEEDS.map((sp) => (
-                <Button
-                  key={sp}
-                  type="button"
-                  size="sm"
-                  variant={soloSpeed === sp ? 'default' : 'outline'}
-                  aria-pressed={soloSpeed === sp}
-                  onClick={() => handleChangeSoloSpeed(sp)}
-                >
-                  {t(
-                    sp === 'slow'
-                      ? 'game.speedSlow'
-                      : sp === 'fast'
-                        ? 'game.speedFast'
-                        : 'game.speedNormal',
-                  )}
-                </Button>
-              ))}
-            </div>
-          )}
           <Button
             variant="ghost"
             size="icon"
