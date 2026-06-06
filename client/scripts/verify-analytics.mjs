@@ -5,9 +5,11 @@ async function main(){
   const ctx=await b.newContext();
   const p=await ctx.newPage();
   const errors=[];
+  const net=[];
   p.on('console',m=>{if(m.type()==='error')errors.push(m.text().slice(0,120));});
+  p.on('request',r=>{const u=r.url();if(/google-analytics\.com\/g\/collect|googletagmanager\.com\/gtag\/js|analytics\.google\.com|clarity\.ms/.test(u))net.push(u.slice(0,90));});
   await p.goto(`${BASE}/login`,{waitUntil:'networkidle',timeout:20000}).catch(e=>console.log('goto',String(e).slice(0,80)));
-  await p.waitForTimeout(1500);
+  await p.waitForTimeout(2500);
   const res = await p.evaluate(()=>{
     const scripts=[...document.querySelectorAll('script')].map(s=>s.src).filter(Boolean);
     const dl = (window).dataLayer;
@@ -23,6 +25,8 @@ async function main(){
     };
   });
   console.log('RESULT', JSON.stringify(res,null,2));
+  console.log('NET (analytics requests):'); net.forEach(u=>console.log('  '+u));
+  console.log('  gaCollectFired =', net.some(u=>/google-analytics\.com\/g\/collect|analytics\.google\.com/.test(u)));
   console.log('CONSOLE_ERRORS', errors.length, errors.slice(0,5));
   await b.close();
 }
