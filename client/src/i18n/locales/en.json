@@ -115,7 +115,15 @@
     "selectDeck": "Select Deck",
     "select": "Select",
     "selected": "Selected",
-    "progressHint": "Clear all stages to earn the golden badge ({{cleared}}/{{total}})"
+    "progressHint": "Clear all stages to earn the golden badge ({{cleared}}/{{total}})",
+    "stageNames": {
+      "stage-1": "Brawler Mage",
+      "stage-2": "Trash Talker",
+      "stage-3": "Noru's Weak",
+      "stage-4": "Brawler Mage (Hard)",
+      "stage-5": "Trash Talker (Hard)",
+      "stage-6": "Noru's Weak (Hard)"
+    }
   },
   "notFound": {
     "subtitle": "Oops! Page not found",

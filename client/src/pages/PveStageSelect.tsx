@@ -143,7 +143,9 @@ export default function PveStageSelect() {
                     ) : (
                       <Swords className="text-muted-foreground h-10 w-10" />
                     )}
-                    <h2 className="text-lg font-bold">{stage.name}</h2>
+                    <h2 className="text-lg font-bold">
+                      {t(`pve.stageNames.${stage.id}`, { defaultValue: stage.name })}
+                    </h2>
                     {cleared && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-3 py-0.5 text-sm font-bold text-amber-300">
                         {t('pve.cleared')}
