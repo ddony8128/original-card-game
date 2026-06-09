@@ -1,234 +1,111 @@
-이 프로젝트는 **1:1 대전 마법 카드 게임**의 풀스택 구현입니다.  
-프론트엔드는 `client/` (React + TypeScript + Vite), 백엔드는 `server/` (Express 5 + Supabase)로 구성되어 있습니다.
+# Magic! Doom! (매직! 둠!)
+
+격자 보드 위에서 펼치는 **1:1 대전 마법 카드 게임**의 풀스택 구현.
+마법사를 움직이고, 즉발/마법진/재앙 카드를 조합해 상대의 HP를 0으로 만드세요.
+
+🔗 **Live:** https://cardgame.perfect.ai.kr ( `/en` 으로 영어 버전 )
+
+- **클라이언트** `client/` — React + TypeScript + Vite (Vercel 배포)
+- **서버** `server/` — Express 5 + TypeScript + Supabase (Render 배포)
 
 ---
 
-## 전체 구조
+## 핵심 특징
 
-- **클라이언트 (`client/`)**
-
-  - React + TypeScript + Vite
-  - 상태 관리: **Zustand** (게임/덱 상태), **React Query** (서버 상태)
-  - 라우팅: **React Router**
-  - WebSocket: 게임 진행 상태 실시간 동기화 (`ws/gameSocket.ts`)
-
-- **서버 (`server/`)**
-  - Express 5 + TypeScript
-  - 인증: **JWT httpOnly 쿠키**
-  - 데이터: Supabase(Postgres)를 추상화한 `lib/supabase`
-  - 게임 엔진: `src/core/*` (보드/턴/카드 효과/재앙 처리)
-
-역할 분리: 클라이언트는 UI·애니메이션·입력을 담당하고, 서버는 **덱/매치/게임 흐름/로그/리뷰**를 책임집니다.
+- **3가지 플레이 모드**
+  - **튜토리얼** — 코치 오버레이로 규칙을 익히는 AI 연습전(기본 덱 제공, 끝나면 덱 빌더 안내)
+  - **PvE** — 성격이 다른 AI 보스 **6 스테이지**(일반 3 + 하드 3, 하드는 보스 HP 30). 전부 클리어 시 황금 뱃지
+  - **PvP** — 방 생성/참가 후 WebSocket 실시간 대전
+- **게임 엔진** — 보드/턴/마나/이동, 즉발·마법진(ritual)·재앙(catastrophe) 카드 효과, 80턴 무승부 규칙. 효과는 `EffectStack` + resolver 모듈로 처리
+- **AI 상대** — 합법 수 열거 + 규칙 인지 휴리스틱(사거리/킬각/회복/마법진 함정), 스테이지별 프로필
+- **덱 빌더** — 메인 16 / 재앙 4 규칙 검증, 39종 카드 검색·필터
+- **다국어(한/영)** — `react-i18next` + `/en` 라우팅, 카드명·설명·게임 로그·PvE 스테이지명까지 현지화, 용어집 제공
+- **한 화면 인게임 UI** — 보드 중심 반응형 레이아웃(PC 한 화면 / 모바일 스크롤), 카드 타입·마나 가독성, 행동 가이드/이벤트 배너
+- **분석** — GA4 + Microsoft Clarity(env-gated, 프로덕션 자동 활성). 핵심 퍼널 이벤트는 PvE/PvP/튜토리얼 모드 구분
+- **밸런스 도구** — 셀프플레이 시뮬레이션 하네스로 승률·턴수 측정 (`docs/balance-report.md`)
 
 ---
 
-## 주요 기능
+## 기술 스택
 
-- **회원가입 & 로그인**
-
-  - `POST /api/auth/register` – `{ username, password }` 로 회원가입
-  - `POST /api/auth/login` – 로그인 시 JWT를 `auth_token` httpOnly 쿠키에 저장
-  - `GET /api/auth/me` – 현재 로그인한 사용자 정보 조회
-
-- **카드 목록 (`/api/cards`)**
-
-  - 카드 검색/필터 (마나, 이름, 타입, 토큰 여부 등)
-  - 상세 조회
-
-- **덱 빌더 (`/api/decks` + `/deck-builder` 페이지)**
-
-  - 메인 덱 16장 / 재앙 덱 4장 **규칙 검증** 포함
-  - 토큰/재앙 카드는 메인에 넣을 수 없음
-  - 서버에 덱 저장/수정/삭제, 클라이언트에서는 미리보기/로컬 상태 유지
-
-- **매치 & 게임**
-
-  - `/api/match/create` – 방 생성, 방 코드 발급
-  - `/api/match/join` – 방 코드로 참가, Host/Guest 매칭
-  - `/api/match/deck` – 각자 덱 제출, 양쪽 제출 완료 시 `playing` 상태로 전환
-  - `/api/match/:roomCode` – 매치 상태 폴링
-  - WebSocket – 실제 턴 진행, 카드 사용, 이동, 재앙 카드(onDrawn), 리추얼 설치/파괴 등 게임 엔진과 동기화
-
-- **게임 로그 & 결과 (`/api/game`)**
-
-  - `GET /api/game/result/:roomCode` – 게임 종료 후 결과 조회
-  - `GET /api/game/log/:roomCode` – 턴 로그 조회 (없으면 204)
-
-- **게임 리뷰 (`/api/reviews` + `/review` 페이지)**
-  - `POST /api/reviews` – 게임 후 소감을 남기는 간단 리뷰 작성 (인증 필요)
-  - 프론트 `/review` 페이지에서 텍스트 입력 후 서버로 전송, 서버는 Supabase `reviews` 테이블에 저장
+| | |
+|---|---|
+| **Client** | React, TypeScript, Vite, Zustand(게임/덱 상태), React Query(서버 상태), React Router, react-i18next, Radix UI + Tailwind, lucide-react, sonner |
+| **Server** | Express 5, TypeScript, `ws`(WebSocket), jsonwebtoken(JWT), Supabase(Postgres) |
+| **Test** | Vitest (+ jsdom/MSW 클라, 인메모리 Supabase 목 서버) |
 
 ---
 
-## 주요 화면 흐름 (클라이언트)
+## 프로젝트 구조
 
-- **`/login`**
-
-  - 로그인 / 회원가입 폼
-  - 성공 시 `/lobby` 로 이동
-
-- **`/lobby`**
-
-  - 현재 사용자 정보 / 내 덱 목록
-  - 방 만들기(Host) / 방 코드로 참가(Guest)
-  - 만들어둔 덱이 없으면 게임 시작 불가 안내
-
-- **`/deck-builder`**
-
-  - 서버 카드 검색/필터, 카드 상세 툴팁
-  - 메인/재앙 슬롯에 드래그 또는 클릭 추가
-  - 덱 저장/수정 → 서버 `/api/decks` 호출
-
-- **`/back-room`**
-
-  - Host/Guest 상태, 각자 덱 선택 및 제출
-  - `waiting / playing / finished` 상태 표시
-  - 둘 다 덱을 제출하면 **게임 시작 버튼** 활성화
-
-- **`/game`**
-
-  - WebSocket으로 게임 상태(fogged state) 수신
-  - 보드(마법사 위치/마법진), 손패, 덱/묘지, 재앙 덱 정보 표시
-  - 버튼으로 **카드 사용, 이동, 마법진 사용, 턴 종료** 수행
-  - 재앙 카드 onDrawn / 토큰 설치 / 보호 토큰과 같은 특수 효과도 엔진에서 처리된 결과만 반영
-  - 게임 종료 시 승/패/무승부 오버레이 및 **리뷰 페이지로 이동 버튼**
-
-- **`/review`**
-  - 최신 종료 게임에 대한 한 줄 리뷰를 작성
-  - `POST /api/reviews` 호출 후 성공 시 토스트/리다이렉트
+```
+client/   React 앱 (pages, components/game, features, i18n, ws, shared)
+server/   Express + 게임 엔진
+  src/core/        게임 엔진(engine·effects·ai·resources·rules)
+  src/routes/      REST: auth/cards/decks/match/game/reviews/pve
+  src/ws/          WebSocket 게임 매니저(PvP/solo)
+  resources/       cards.json(39종), pveStages.json(6 스테이지)
+  migrations/       001~006 SQL (Supabase 수동 적용)
+docs/     balance-report.md, analytics-plan.md
+```
 
 ---
 
-## 서버 API 요약
+## 로컬 개발
 
-Base URL: `/api`
+요구: **Node.js >=24.13.0 <25**
 
-- **Auth** – `/api/auth`
-- **Cards** – `/api/cards`
-- **Decks** – `/api/decks`
-- **Match** – `/api/match`
-- **Game Logs/Result** – `/api/game`
-- **Reviews** – `/api/reviews` (POST, 인증 필요)
+```bash
+# 터미널 A — 서버 (http://localhost:3000)
+cd server && npm i && npm run build && npm start
 
-인증은 **httpOnly 쿠키(`auth_token`)** 또는 `Authorization: Bearer <token>` 둘 다 지원하지만, 프론트에서는 쿠키 기반 + `credentials: "include"` 사용을 권장합니다.
+# 터미널 B — 클라이언트 (http://localhost:5173)
+cd client && npm i && npm run dev
+```
+
+환경 변수
+```env
+# server/.env
+PORT=3000
+JWT_SECRET=dev-secret
+SUPABASE_URL=...
+SUPABASE_SERVICE_KEY=...
+
+# client/.env
+VITE_API_BASE_URL=http://localhost:3000
+# 분석(비우면 비활성, 프로덕션 빌드는 기본 ID 사용)
+VITE_GA4_MEASUREMENT_ID=
+VITE_CLARITY_PROJECT_ID=
+```
 
 ---
 
 ## 테스트
 
-### 클라이언트 (`client`)
-
-- 준비
-
-  - 의존성 설치: `cd client && npm i`
-  - Vitest + jsdom 환경, MSW 로 서버 API 모킹 (`src/test/*`)
-
-- 실행
-  - 일반 실행
-    ```bash
-    cd client
-    npm run test
-    ```
-  - 워치 모드
-    ```bash
-    npm run test -- --watch
-    ```
-  - 커버리지
-    ```bash
-    npm run test -- --coverage
-    ```
-
-### 서버 (`server`)
-
-- 준비
-
-  - 의존성 설치: `cd server && npm i`
-  - `server/.env.test` 예시
-    ```env
-    JWT_SECRET=dev-secret
-    NODE_ENV=test
-    ```
-  - Supabase 는 실제 서버 대신 **인메모리 목** 사용 (`src/test/__mocks__/supabase.ts`)
-
-- 실행
-  - 일반 실행
-    ```bash
-    cd server
-    npm run test
-    ```
-  - 워치 모드
-    ```bash
-    npm run test:watch
-    ```
-  - 커버리지
-    ```bash
-    npm run test:coverage
-    ```
+```bash
+cd client && npm test     # Vitest + jsdom + MSW
+cd server && npm test     # Vitest, Supabase 인메모리 목
+```
 
 ---
 
-## 로컬 개발 실행
+## 서버 API 요약 (Base: `/api`)
 
-### 서버 (`server`)
+| 그룹 | 경로 | 비고 |
+|---|---|---|
+| Auth | `/auth/register·login·me` | JWT — httpOnly 쿠키 또는 `Authorization: Bearer` |
+| Cards | `/cards` | 검색/필터/상세 |
+| Decks | `/decks` | 메인 16 / 재앙 4 검증 |
+| Match | `/match/create·join·deck·:roomCode` | 방 생성·참가·덱 제출·상태 |
+| Game | `/game/result·log/:roomCode` | 결과·턴 로그 |
+| Reviews | `/reviews` | 게임 후 리뷰(인증) |
+| PvE | `/pve/stages·progress` | 스테이지 목록·클리어 진행도 |
 
-- 필요 조건
+실시간 게임 진행(카드 사용/이동/마법진/재앙/턴)은 **WebSocket**으로 동기화하며, 프로덕션에서는 클라이언트가 백엔드에 직접 연결한다.
 
-  - Node.js >=24.13.0 <25 (package.json `engines` 기준)
+---
 
-- 설치
+## 데이터 / 배포 노트
 
-  ```bash
-  cd server
-  npm install
-  ```
-
-- 환경 변수 (`server/.env` 예시)
-
-  ```env
-  PORT=3000
-  JWT_SECRET=dev-secret
-  ```
-
-- 실행
-  ```bash
-  npm run build
-  npm start
-  # http://localhost:3000
-  ```
-
-### 클라이언트 (`client`)
-
-- 설치
-
-  ```bash
-  cd client
-  npm install
-  ```
-
-- 환경 변수 (`client/.env` 예시)
-
-  ```env
-  VITE_API_BASE_URL=http://localhost:3000
-  ```
-
-- 실행
-  ```bash
-  npm run dev
-  # http://localhost:5173
-  ```
-
-### 빠른 실행 요약
-
-1. 터미널 A
-   ```bash
-   cd server
-   npm i
-   npm run build
-   npm start
-   ```
-2. 터미널 B
-   ```bash
-   cd client
-   npm i
-   npm run dev
-   ```
+- 카드 데이터의 **원본은 Supabase `cards` 테이블**, `server/resources/cards.json`은 런타임이 읽는 동기화 리소스다. 수치 변경 시 cards.json + `migrations/*.sql`(DB) 양쪽을 맞춘다.
+- 클라이언트는 **Vercel**, 서버는 **Render** 배포. 런타임 서버가 cards.json/pveStages.json을 읽으므로, 리소스 변경의 라이브 반영에는 서버 재배포가 필요하다.
